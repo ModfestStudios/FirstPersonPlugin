@@ -15,6 +15,15 @@ class FIRSTPERSONMODULE_API UPlayerHealthWidget : public UUserWidget
 	GENERATED_BODY()
 public:
 
+
+	UPROPERTY(EditAnywhere, Category = "Temperature")
+		bool bDisplayFahrenheitTemperature;
+
+
+	//=====================================================================================================================================================
+	//======================================================================FUNCTIONS======================================================================
+	//=====================================================================================================================================================
+
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Healthy"))
 		FLinearColor HealthColorHealthy = FLinearColor::FLinearColor(0.046776, 0.578125, 0.093811, 1.000000);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Scuffed"))
@@ -29,18 +38,20 @@ public:
 		FLinearColor HealthColorCritical = FLinearColor::FLinearColor(0.822917, 0.0, 0.007703, 1.000000);
 
 
-
-	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature")
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hyperthermic"))
+		FLinearColor TemperatureColorHyperthermic = FLinearColor::FLinearColor(0.770833, 0.012755, 0.012044, 1.000000);
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hot"))
 		FLinearColor TemperatureColorHot = FLinearColor::FLinearColor(0.770833, 0.012755, 0.012044, 1.000000);
-	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature")
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Warm"))
 		FLinearColor TemperatureColorWarm = FLinearColor::FLinearColor(0.932292,0.413318,0.082547,1.000000);
-	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature")
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Normal"))
 		FLinearColor TemperatureColorNeutral = FLinearColor::FLinearColor(0.796875, 0.773010,0.701416, 1.000000);
-	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature")
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Cold"))
 		FLinearColor TemperatureColorCold = FLinearColor::FLinearColor(0.162241, 0.528483, 0.973445, 1.000000);
-	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature")
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Freezing"))
 		FLinearColor TemperatureColorFreezing = FLinearColor::FLinearColor(0.034668,0.037981,0.739583,1.000000);
-
+	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hypothermic"))
+		FLinearColor TemperatureColorHypothermic = FLinearColor::FLinearColor(0.034668, 0.037981, 0.739583, 1.000000);
 
 
 
@@ -64,10 +75,20 @@ public:
 		float GetPlayerHydrationLevel();
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
 		float GetPlayerEnergyLevel();
+
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
 		float GetPlayerTemperature();
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetPlayerTemperatureFahrenheit();
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
 		float GetPlayerTemperatureNormal();
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetAmbientTemperature();
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetAmbientTemperatureFahrenheit();
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetHeatChange();
+
 
 	//======================
 	//========COLORS========
@@ -81,5 +102,7 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Utilities")
 		class AFirstPersonCharacter* GetOwningCharacter();
+	UFUNCTION(BlueprintPure, Category = "Utilities")
+		class UVitalsComponent* GetVitalsComponent();
 	
 };

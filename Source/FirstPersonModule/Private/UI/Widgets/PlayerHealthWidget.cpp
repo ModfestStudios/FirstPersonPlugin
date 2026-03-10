@@ -3,7 +3,13 @@
 
 #include "UI/Widgets/PlayerHealthWidget.h"
 #include "Characters/FirstPersonCharacter.h"
+#include "Components/VitalsComponent.h"
 
+/*engine*/
+#include "Engine/World.h"
+
+/*subsystems*/
+#include "Subsystems/WeatherSubsystem.h"
 
 
 //===================
@@ -43,16 +49,56 @@ float UPlayerHealthWidget::GetPlayerEnergyLevel()
 float UPlayerHealthWidget::GetPlayerTemperature()
 {
 	return GetOwningCharacter() ? GetOwningCharacter()->GetTemperature() : 0.0f;
+	
+}
+
+float UPlayerHealthWidget::GetPlayerTemperatureFahrenheit()
+{
+	float Celsius = GetPlayerTemperature();
+	
+	if (UWeatherSubsystem* WSS = GetWorld()->GetSubsystem<UWeatherSubsystem>())
+		return WSS->CeliusToFahrenheit(Celsius);
+	else
+		return Celsius;
 }
 
 
 
 float UPlayerHealthWidget::GetPlayerTemperatureNormal()
 {
-	FVector2D inputRange(40.0f, 90.0f);
+	FVector2D inputRange(40.0f, 105.0f);
 	FVector2D outputRange(0.0f, 1.0f);
 
 	return FMath::GetMappedRangeValueClamped(inputRange, outputRange, GetPlayerTemperature());
+}
+
+float UPlayerHealthWidget::GetAmbientTemperature()
+{
+	if (UVitalsComponent* VitalsComp = GetVitalsComponent())
+	{
+		return VitalsComp->GetAmbientTemperature();
+	}
+
+	return 0.0f;
+}
+
+float UPlayerHealthWidget::GetAmbientTemperatureFahrenheit()
+{
+	float Celsius = GetAmbientTemperature();
+
+	if (UWeatherSubsystem* WSS = GetWorld()->GetSubsystem<UWeatherSubsystem>())
+		return WSS->CeliusToFahrenheit(Celsius);
+	else
+		return Celsius;
+}
+
+float UPlayerHealthWidget::GetHeatChange()
+{
+	if (UVitalsComponent* VitalsComp = GetVitalsComponent())
+	{
+		return VitalsComp->GetHeatChange();
+	}
+	return 0.0f;
 }
 
 //======================
@@ -82,18 +128,26 @@ FLinearColor UPlayerHealthWidget::GetHealthColor()
 
 FLinearColor UPlayerHealthWidget::GetTemperatureColor()
 {
-	float Temp = GetPlayerTemperature();
-
-	if (Temp <= 40.0f)
-		return TemperatureColorFreezing;
-	if (Temp <= 55.0f)
-		return TemperatureColorCold;
-	if (Temp <= 75.0f)
+	UVitalsComponent* VitalsComp = GetVitalsComponent();
+	if (!VitalsComp)
 		return TemperatureColorNeutral;
-	if (Temp <= 90.0f)
+
+	float Temp = GetPlayerTemperature();	
+
+	if (Temp <= VitalsComp->HypothermiaThreshold)
+		return TemperatureColorHypothermic;
+	if (Temp <= VitalsComp->FreezingThreshold)
+		return TemperatureColorFreezing;
+	if (Temp <= VitalsComp->ColdThreshold)
+		return TemperatureColorCold;
+	if (Temp < VitalsComp->WarmThreshold && Temp > VitalsComp->ColdThreshold)
+		return TemperatureColorNeutral;
+	if (Temp >= VitalsComp->WarmThreshold)
 		return TemperatureColorWarm;
-	if (Temp > 90.0f)
+	if (Temp >= VitalsComp->HotThreshold)
 		return TemperatureColorHot;
+	if (Temp >= VitalsComp->HyperthermiaThreshold)
+		return TemperatureColorHyperthermic;
 
 	/*default*/
 	return TemperatureColorNeutral;
@@ -102,4 +156,12 @@ FLinearColor UPlayerHealthWidget::GetTemperatureColor()
 AFirstPersonCharacter* UPlayerHealthWidget::GetOwningCharacter()
 {
 	return GetOwningPlayerPawn<AFirstPersonCharacter>();
+}
+
+UVitalsComponent* UPlayerHealthWidget::GetVitalsComponent()
+{
+	if (AFirstPersonCharacter* Char = GetOwningCharacter())
+		return Char->GetVitalsComponent();
+	else
+		return nullptr;
 }

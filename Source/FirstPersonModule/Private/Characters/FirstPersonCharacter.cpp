@@ -16,6 +16,7 @@
 /*components*/
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/VitalsComponent.h"
 
 /*engine*/
 #include "Engine/GameInstance.h"
@@ -111,6 +112,13 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		}
 		
 	}
+
+	VitalsComponent = ObjectInitializer.CreateDefaultSubobject<UVitalsComponent>(this, VitalsComponentName);
+	if(VitalsComponent)
+	{
+
+	}
+
 
 	InventoryManager = ObjectInitializer.CreateDefaultSubobject<UInventoryManagerComponent>(this, InventoryManagerComponentName);
 	if (InventoryManager)
@@ -499,6 +507,11 @@ void AFirstPersonCharacter::OnReceiveRadialDamage(AActor* DamagedActor, float Da
 	//GEngine->AddOnScreenDebugMessage(628, 1.0f, FColor::Emerald, DamageText);
 }
 
+UVitalsComponent* AFirstPersonCharacter::GetVitalsComponent()
+{
+	return VitalsComponent;
+}
+
 const float AFirstPersonCharacter::GetStamina() const
 {
 	return Stamina;
@@ -521,7 +534,7 @@ const float AFirstPersonCharacter::GetHydrationLevel() const
 
 const float AFirstPersonCharacter::GetTemperature() const
 {
-	return Temperature;
+	return VitalsComponent->GetPlayerTemperature();;
 }
 
 

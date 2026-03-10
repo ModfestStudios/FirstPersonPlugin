@@ -45,6 +45,9 @@ public:
 		TArray<UDamageCondition*> Conditions;
 };
 
+
+
+
 UCLASS()
 class FIRSTPERSONMODULE_API AFirstPersonCharacter : public ACharacter
 {
@@ -136,8 +139,10 @@ public:
 		float Stamina = 100.0f;	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Health")
 		float MaxStamina = 100.0f;
-	UPROPERTY(BlueprintReadOnly, Category = "Health")
-		float Temperature = 98.6f;
+	
+
+
+
 	UPROPERTY(BlueprintReadOnly, Category = "Health")
 		float Encumbrance = 0.0f;	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Health")
@@ -148,6 +153,11 @@ public:
 		float Hydration = 5000;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Health")
 		float Energy = 7500.0f;
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Vitals")
+		class UVitalsComponent* VitalsComponent;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Vitals")
+		FName VitalsComponentName = "Vitals Component";
 
 protected:
 	/*input*/
@@ -237,6 +247,9 @@ public:
 	UFUNCTION()
 		virtual void OnReceiveRadialDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, class AController* InstigatedBy, AActor* DamageCauser);
 	
+	UFUNCTION(BlueprintPure, Category = "Health & Stats")
+		class UVitalsComponent* GetVitalsComponent();
+
 	//=======================
 	//========STAMINA========
 	//=======================

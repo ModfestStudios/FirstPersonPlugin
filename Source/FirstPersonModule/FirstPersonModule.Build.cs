@@ -30,6 +30,7 @@ public class FirstPersonModule : ModuleRules
 			{
 				"Core",
 				"CoreUObject",
+				"DeveloperSettings",
 				"Engine",
 				"InputCore",
                 "OnlineSubsystem",
