@@ -6,6 +6,29 @@
 #include "GameFramework/Info.h"
 #include "OperatingSystem.generated.h"
 
+USTRUCT(BlueprintType)
+struct FOperatingSystemUser
+{
+	GENERATED_BODY()
+public:
+
+
+	UPROPERTY(EditAnywhere, Category = "User")
+		FString Username;
+	UPROPERTY(EditAnywhere, Category = "User")
+		FString Password;
+
+
+	FOperatingSystemUser()
+	{
+	}
+	FOperatingSystemUser(FString Username, FString Password)
+	{
+		this->Username = Username;
+		this->Password = Password;
+	}
+};
+
 UENUM(BlueprintType)
 enum class EOperatingSystemMainState : uint8
 {
@@ -71,9 +94,12 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Operating System|Core")
 		FText OperatingSystemName = NSLOCTEXT("OperatingSystem", "OSName", "Rabbit Hole");
 
-
-
-
+protected:
+	/*list of users on this machine*/
+	UPROPERTY(EditAnywhere, Category = "Operating System|Users")
+		TArray<FOperatingSystemUser> Users;
+	UPROPERTY(EditAnywhere, Category = "Operating System|Users")
+		FString CurrentUser;
 
 	//=============================================================================================================================================================
 	//==========================================================================FUNCTIONS==========================================================================
@@ -93,7 +119,19 @@ public:
 		virtual void InitiateBIOS();
 
 
-
 	UFUNCTION()
 		virtual void EndBootSequence();
+
+
+
+	//=====================
+	//========users========
+	//=====================
+	UFUNCTION(BlueprintCallable, Category = "Operating System|Users")
+		void SetCurrentUser(FOperatingSystemUser User);
+	UFUNCTION(BlueprintCallable, Category = "Operating System|Users")
+		TArray<FOperatingSystemUser> GetAllUsers();
+	UFUNCTION(BlueprintCallable, Category = "Operating System|Users")
+		FString GetCurrentUser();
+
 };
