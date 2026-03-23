@@ -63,6 +63,33 @@ public:
 		float ExecuteTime;
 };
 
+USTRUCT(BlueprintType)
+struct FOperatingSystemDirectory
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(VisibleAnywhere, Category = "Directory")
+		int32 DirectoryID = INDEX_NONE;
+	UPROPERTY(EditAnywhere, Category = "Directory")
+		int32 ParentID = INDEX_NONE;
+
+	UPROPERTY(EditAnywhere, Category = "Directory")
+		FString Label;
+	UPROPERTY(VisibleAnywhere, Category = "Directory")
+		bool bHidden = false;
+	UPROPERTY(VisibleAnywhere, Category = "Directory")
+		FName Path;
+
+	FOperatingSystemDirectory() {}
+	FOperatingSystemDirectory(FString Label, int32 DirectoryID, int32 ParentId)
+	{
+		this->Label = Label;
+		this->DirectoryID = DirectoryID;
+		this->ParentID = ParentId;
+	}
+};
+
 
 /**
  * 
@@ -88,11 +115,15 @@ public:
 		TArray<FOperatingSystemVariable> SystemVariables;
 
 
-
-
 	/*operating system*/
 	UPROPERTY(EditAnywhere, Category = "Operating System|Core")
 		FText OperatingSystemName = NSLOCTEXT("OperatingSystem", "OSName", "Rabbit Hole");
+
+	/*directories*/
+protected:
+	UPROPERTY(EditAnywhere, Category = "Operating System|Directories")
+		TArray<FOperatingSystemDirectory> Directories;
+
 
 protected:
 	/*list of users on this machine*/
@@ -122,11 +153,18 @@ protected:
 	UFUNCTION()
 		virtual void EndBootSequence();
 
+	//=========================
+	//=======directories=======
+	//=========================
+public:
+	UFUNCTION(BlueprintCallable, Category = "Operating System|Directories")
+		TArray<FOperatingSystemDirectory> GetAllRootDirectories();
 
 
 	//=====================
 	//========users========
 	//=====================
+public:
 	UFUNCTION(BlueprintCallable, Category = "Operating System|Users")
 		void SetCurrentUser(FOperatingSystemUser User);
 	UFUNCTION(BlueprintCallable, Category = "Operating System|Users")

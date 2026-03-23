@@ -16,6 +16,17 @@ class FIRSTPERSONMODULE_API UTerminalCommand_List : public UTerminalCommand
 public:
 
 
+	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
+
+
+
+	//=============================================================================================================================================
+	//==================================================================FUNCTIONS==================================================================
+	//=============================================================================================================================================
+
+	UTerminalCommand_List();
+
+
 
 	
 };

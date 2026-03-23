@@ -5,11 +5,15 @@
 #include "OperatingSystem/TerminalCommand.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Clear.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Echo.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_WhoAmI.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_List.h"
 
 ATerminalApplication::ATerminalApplication()
 {
 	Commands.Add(UTerminalCommand_Clear::StaticClass());
 	Commands.Add(UTerminalCommand_Echo::StaticClass());
+	Commands.Add(UTerminalCommand_WhoAmI::StaticClass());
+	Commands.Add(UTerminalCommand_List::StaticClass());
 }
 
 void ATerminalApplication::ExecuteCommand(FString Command)
@@ -128,7 +132,16 @@ void ATerminalApplication::ExecuteCommandObject(TSubclassOf<UTerminalCommand> Co
 		FTerminalCommandResult Result = Command->GetDefaultObject<UTerminalCommand>()->OnCommandExecuted(this, CommandParameters);
 
 		if (!Result.TerminalMessage.IsEmpty())
-			PrintToTerminal(Result.TerminalMessage);
+		{
+			if (Result.bSuccess)
+			{
+				PrintToTerminal(Result.TerminalMessage);
+			}
+			else
+			{
+				PrintToTerminal("<Error>[ERROR]</> " + Result.TerminalMessage);
+			}
+		}
 	}
 }
 

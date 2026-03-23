@@ -15,6 +15,10 @@ class FIRSTPERSONMODULE_API UTerminalCommand_WhoAmI : public UTerminalCommand
 	GENERATED_BODY()
 public:
 
+	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
 
 	
+
+
+	UTerminalCommand_WhoAmI();
 };

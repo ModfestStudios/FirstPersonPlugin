@@ -21,7 +21,6 @@ void AOperatingSystemApplication::OnApplicationClosed()
 
 AOperatingSystem* AOperatingSystemApplication::GetOperatingSystem()
 {
-	
-	return nullptr;
+	return OperatingSystem;
 }
 

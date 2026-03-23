@@ -22,7 +22,7 @@ public:
 	FTerminalCommandResult()
 	{
 		bSuccess = false;
-		TerminalMessage = "...";
+		TerminalMessage = "";
 		bClearScreen = false;
 	};
 
