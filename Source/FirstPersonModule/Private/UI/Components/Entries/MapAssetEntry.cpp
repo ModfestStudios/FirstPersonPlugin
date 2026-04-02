@@ -3,7 +3,7 @@
 
 #include "UI/Components/Entries/MapAssetEntry.h"
 #include "Maps/MapAsset.h"
-#include "Subsystems/ServerSubsystem.h"
+#include "Subsystems/MapSubsystem.h"
 
 /*engine*/
 #include "Engine/GameInstance.h"
@@ -40,8 +40,8 @@ void UMapAssetEntry::SetAsNextMap()
 	if (!MapInfo)
 		return;
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
-		ServerSubsystem->SetNextMap(MapInfo);
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
+		MapSubsystem->SetNextMap(MapInfo);
 }
 
 void UMapAssetEntry::AddToMapRotation()
@@ -49,6 +49,6 @@ void UMapAssetEntry::AddToMapRotation()
 	if (!MapInfo)
 		return;
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
-		ServerSubsystem->AddToMapRotation(MapInfo);
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
+		MapSubsystem->AddToMapRotation(MapInfo);
 }

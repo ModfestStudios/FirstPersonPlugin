@@ -34,6 +34,16 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Players")
 		bool AllPlayersDead();
 
+	//==================
+	//=======MAPS=======
+	//==================
+public:
+	UFUNCTION(BlueprintImplementableEvent, Category = "Maps")
+		void OnCurrentMapChanged(class UMapAsset* NewMap);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Maps")
+		void OnNextMapChanged(class UMapAsset* NextMap);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Maps")
+		void OnMapRotationChanged(const TArray<class UMapAsset*>& NewRotation);
 
 	//==================
 	//=====MISSIONS=====

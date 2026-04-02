@@ -9,6 +9,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogFirstPersonGameMode, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogFirstPersonCharacter, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogFirstPersonGameMaster, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogInventoryModule, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogMapSubsystem, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogServerSubsystem, Log, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogMission, Log, All);
 

@@ -179,7 +179,7 @@ void AFirstPersonGame::OnCurrentMapUpdated(UMapAsset* MapAsset)
 		GS->Multicast_OnCurrentMapUpdated(MapAsset);
 }
 
-/*OnNextMapSet() - Event called from ServerSubsystem whenever the "Next Map" (pending map to switch to) is set*/
+/*OnNextMapSet() - Event called from MapSubsystem whenever the "Next Map" (pending map to switch to) is set*/
 void AFirstPersonGame::OnNextMapUpdated(UMapAsset* MapAsset)
 {
 	/*notify GameState to replicate to other players*/

@@ -6,7 +6,7 @@
 #include "AssetToolsModule.h"
 #include "Modules/ModuleManager.h"
 
-class FFirstPersonEditorModule : public IModuleInterface
+class FIRSTPERSONEDITORMODULE_API FFirstPersonEditorModule : public IModuleInterface
 {
 public:
 
@@ -16,6 +16,7 @@ public:
 	static EAssetTypeCategories::Type CharactersCategory;
 	static EAssetTypeCategories::Type MissionsCategory;
 	static EAssetTypeCategories::Type MapsCategory;
+
 
 	/** IModuleInterface implementation */
 	void StartupModule() override;

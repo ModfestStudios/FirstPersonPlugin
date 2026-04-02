@@ -26,7 +26,8 @@
 /*players*/
 #include "Players/FirstPersonPlayerController.h"
 
-
+/*subsystems*/
+#include "Subsystems/MapSubsystem.h"
 
 /*utilities*/
 #include "../Logging.h"
@@ -63,155 +64,7 @@ void UServerSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-void UServerSubsystem::SetCurrentMap(UMapAsset* MapAsset)
-{
-	/*safety check*/
-	if (!MapAsset)
-		return;
 
-	if (IsServer())
-	{
-		PreviousMap = CurrentMap;
-		CurrentMap = MapAsset;
-
-		/*notify gamemode which will update gamestate which will in turn update client's ServerSubsystem calling this same function back*/
-		if (GetGameMode())
-			GetGameMode()->OnCurrentMapUpdated(MapAsset);
-	}
-}
-
-const UMapAsset* UServerSubsystem::GetCurrentMap() const
-{
-	return CurrentMap;	
-}
-
-/*Client_CurrentMapUpdated() - Pseudo-Client function that is updated by the GameState notifying it when the server has updated the "Current Map" property*/
-void UServerSubsystem::Client_OnCurrentMapUpdated(UMapAsset* MapAsset)
-{
-	PreviousMap = CurrentMap;
-	CurrentMap = MapAsset;
-}
-
-const TArray<UMapAsset*> UServerSubsystem::GetMapRotation() const
-{	
-	return MapRotation;
-}
-
-void UServerSubsystem::SetMapRotation(TArray<UMapAsset*> MapList)
-{
-	if (IsServer())
-	{
-		MapRotation.Empty(); // clear old list
-		MapRotation = MapList;
-
-		/*notify gamemode which will update gamestate which will in turn update client's ServerSubsystem calling this same function back*/
-		if (GetGameMode())
-			GetGameMode()->OnMapRotationUpdated(MapList);
-	}	
-}
-
-void UServerSubsystem::AddToMapRotation(UMapAsset* MapAsset)
-{
-	if (!MapAsset)
-		return;
-
-	if (IsServer())
-	{		
-		MapRotation.Add(MapAsset);
-
-		/*notify gamemode/gamestate*/
-		if (AFirstPersonGame* GM = GetWorld() ? GetWorld()->GetAuthGameMode<AFirstPersonGame>() : nullptr)
-			GM->OnMapRotationUpdated(MapRotation);
-	}	
-}
-
-void UServerSubsystem::Client_OnMapRotationUpdated(TArray<UMapAsset*> MapList)
-{
-	MapRotation.Empty(); // clear old list
-	MapRotation = MapList;
-}
-
-const UMapAsset* UServerSubsystem::GetNextMap() const
-{
-	return NextMap;
-}
-
-void UServerSubsystem::SetNextMap(UMapAsset* MapAsset)
-{	
-	if (!MapAsset)
-		return;
-
-	if (IsServer()) 
-	{
-		NextMap = MapAsset;
-		if (GetGameMode())
-			GetGameMode()->OnNextMapUpdated(MapAsset);
-	}
-	
-	/*clients*/
-	else
-	{
-		/*Request a new map via the PlayerController so the server can evaluate if this player has permissions to do so*/
-		if (AFirstPersonPlayerController* PC = Cast<AFirstPersonPlayerController>(UGameplayStatics::GetPlayerController(GetWorld(), 0)))
-		{
-			PC->ServerSelectNextMap(MapAsset);
-		}
-	}	
-}
-
-void UServerSubsystem::ClearNextMap()
-{
-	if (IsServer())
-	{
-		NextMap = nullptr;
-	}
-}
-
-void UServerSubsystem::Client_OnNextMapUpdated(UMapAsset* MapAsset)
-{
-	NextMap = MapAsset;
-}
-
-const UMapAsset* UServerSubsystem::GetHoveredMap() const
-{
-	return HoveredMap;
-}
-
-void UServerSubsystem::SetHoveredMap(UMapAsset* MapAsset)
-{
-	HoveredMap = MapAsset;
-}
-
-void UServerSubsystem::ClearHoveredMap()
-{
-	HoveredMap = nullptr;
-}
-
-bool UServerSubsystem::IsMapSelected(UMapAsset* MapInfo)
-{
-	if (CurrentMap == MapInfo)
-		return true;
-	else if (NextMap == MapInfo)
-		return true;
-	else if (MapRotation.Contains(MapInfo))
-		return true;
-	else
-		return false;
-}
-
-FString UServerSubsystem::SantizeMapPath(FString Path)
-{	
-	UE_LOG(LogServerSubsystem, Log, TEXT("UServerSubsystem::SantizeMapPath(%s)"), *Path);
-	int32 DotIndex;
-	
-	if (Path.FindChar('.', DotIndex))
-	{		
-		Path.LeftInline(DotIndex);
-		UE_LOG(LogServerSubsystem, Log, TEXT("Santized Path : %s"), *Path);
-		return Path;
-	}
-	return Path;
-}
 
 
 FSessionInfo UServerSubsystem::GetCurrentSessionInfo()
@@ -420,13 +273,13 @@ void UServerSubsystem::OnCreateSessionComplete(FName SessionName, bool bWasSucce
 	if (bWasSuccessful)
 	{
 		UE_LOG(LogServerSubsystem, Log, TEXT("[SUCCESS] - LAN Session %s Created Successfully"), *SessionName.ToString());
-
+		UMapSubsystem* MSS = GetGameInstance()->GetSubsystem<UMapSubsystem>();
 
 		if (UWorld* World = GetWorld())
 		{
-			FString MapURL = GetNextMap()->Level.ToString();
+			FString MapURL = MSS->GetNextMap()->Level.ToString();
 			UE_LOG(LogServerSubsystem, Log, TEXT("Preparing Level [%s] for travel..."),*MapURL);
-			MapURL = SantizeMapPath(MapURL);			
+			MapURL = MSS->SantizeMapPath(MapURL);			
 			MapURL += "?listen"; //make sure we're listening for clients
 			if (MapURL.IsEmpty())
 			{

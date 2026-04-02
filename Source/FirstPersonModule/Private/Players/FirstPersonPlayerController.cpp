@@ -26,6 +26,7 @@
 #include "Subsystems/CharacterSubsystem.h"
 #include "Subsystems/GameMasterSubsystem.h"
 #include "Subsystems/ServerSubsystem.h"
+#include "Subsystems/MapSubsystem.h"
 
 /*ui*/
 #include "UMG.h"
@@ -270,9 +271,9 @@ void AFirstPersonPlayerController::ServerSelectNextMap_Implementation(UMapAsset*
 	{
 		if (GM->bAllowClientsToSetNextMap) //GameMode must allow this option
 		{
-			if (UServerSubsystem* SSS = GetGameInstance()->GetSubsystem<UServerSubsystem>())
+			if (UMapSubsystem* MSS = GetGameInstance()->GetSubsystem<UMapSubsystem>())
 			{
-				SSS->SetNextMap(RequestedMap);
+				MSS->SetNextMap(RequestedMap);
 			}
 		}		
 	}	
