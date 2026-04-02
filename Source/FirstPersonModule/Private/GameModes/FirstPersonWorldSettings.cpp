@@ -3,6 +3,8 @@
 
 #include "GameModes/FirstPersonWorldSettings.h"
 
+
+#if WITH_EDITOR
 void AFirstPersonWorldSettings::PostEditChangeProperty(FPropertyChangedEvent& ChangeEvent)
 {
 	FName PropertyName = (ChangeEvent.Property != NULL ? ChangeEvent.Property->GetFName() : NAME_None);
@@ -20,6 +22,7 @@ void AFirstPersonWorldSettings::PostEditChangeProperty(FPropertyChangedEvent& Ch
 
 	Super::PostEditChangeProperty(ChangeEvent);
 }
+#endif
 
 float AFirstPersonWorldSettings::GetAmbientTemperature()
 {

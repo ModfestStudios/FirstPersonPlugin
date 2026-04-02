@@ -35,7 +35,7 @@ public:
 	//======================
 	UFUNCTION()
 		void InitializeDefaultMaps();
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
+	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps", meta = (DeterminesOutputType="MapClass", DynamicOutputParam="OutMaps"))
 		void GetMapsByClass(TSubclassOf<UMapAsset> MapClass, TArray<UMapAsset*>& OutMaps) const;
 
 	
