@@ -27,12 +27,14 @@ protected:
 	//===========================================================================FUNCTIONS===========================================================================
 	//===============================================================================================================================================================
 
+public:
+#if WITH_EDITOR
+
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& ChangeEvent) override;
+#endif
+
 
 public:
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& ChangeEvent) override;
-
-
-
 	UFUNCTION(BlueprintCallable, Category = "Weather|Temperature")
 		float GetAmbientTemperature();
 

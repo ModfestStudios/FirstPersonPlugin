@@ -90,7 +90,8 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	FirstPersonView = ObjectInitializer.CreateDefaultSubobject<UFirstPersonViewComponent>(this, FirstPersonViewComponentName);
 	if (FirstPersonView)
 	{
-		static ConstructorHelpers::FObjectFinder<USkeletalMesh> armMeshAsset(TEXT("/Script/Engine.SkeletalMesh'/Game/Characters/_Base/Mesh/FirstPersonArms_Male_Ideal.FirstPersonArms_Male_Ideal'"));
+		
+		static ConstructorHelpers::FObjectFinder<USkeletalMesh> armMeshAsset(TEXT("/FirstPersonModule/Characters/Mesh/MaleMannequin_Quin_FirstPersonArms.MaleMannequin_Quin_FirstPersonArms"));
 		if (armMeshAsset.Succeeded())
 			FirstPersonView->SetFirstPersonArms(armMeshAsset.Object);
 
