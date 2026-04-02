@@ -63,24 +63,24 @@ public:
 
 
 
-	/*map settings*/
-private:	
-
-	/*the current level we're on*/
-	UPROPERTY()
-		UMapAsset* CurrentMap;
-	UPROPERTY()
-		UMapAsset* PreviousMap;
-	/*the next map queued up*/
-	UPROPERTY()
-		UMapAsset* NextMap;
-	/*lis of maps queued in order (if using a map rotation style setup)*/
-	UPROPERTY()
-		TArray<UMapAsset*> MapRotation;
-
-	/*this is used in UI widgets that want to display information based on a widget that's hovered over (automatically set by UMapInfoEntry*/
-	UPROPERTY()
-		UMapAsset* HoveredMap;
+//	/*map settings*/
+//private:	
+//
+//	/*the current level we're on*/
+//	UPROPERTY()
+//		UMapAsset* CurrentMap;
+//	UPROPERTY()
+//		UMapAsset* PreviousMap;
+//	/*the next map queued up*/
+//	UPROPERTY()
+//		UMapAsset* NextMap;
+//	/*lis of maps queued in order (if using a map rotation style setup)*/
+//	UPROPERTY()
+//		TArray<UMapAsset*> MapRotation;
+//
+//	/*this is used in UI widgets that want to display information based on a widget that's hovered over (automatically set by UMapInfoEntry*/
+//	UPROPERTY()
+//		UMapAsset* HoveredMap;
 
 
 
@@ -108,54 +108,6 @@ public:
 
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-
-
-
-
-
-	//===================================
-	//===========MAP ROTATIONS===========
-	//===================================
-
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void SetCurrentMap(UMapAsset* MapAsset);
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Server Subsystem|Maps")
-		const UMapAsset* GetCurrentMap() const;
-	UFUNCTION()
-		void Client_OnCurrentMapUpdated(UMapAsset* MapAsset);
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Server Subsystem|Maps")
-		const TArray<UMapAsset*> GetMapRotation() const;
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void SetMapRotation(TArray<UMapAsset*> MapList);
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void AddToMapRotation(UMapAsset* MapAsset);
-	UFUNCTION()
-		void Client_OnMapRotationUpdated(TArray<UMapAsset*> MapList);
-	
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Server Subsystem|Maps")
-		const UMapAsset* GetNextMap() const;	
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void SetNextMap(UMapAsset* MapAsset);
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void ClearNextMap();
-	UFUNCTION()
-		void Client_OnNextMapUpdated(UMapAsset* MapAsset);
-
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Server Subsystem|Maps")
-		const UMapAsset* GetHoveredMap() const;
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void SetHoveredMap(UMapAsset* MapAsset);
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		void ClearHoveredMap();
-
-
-	/*returns true if is current map, next map, or part of map rotation*/
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Server Subsystem|Maps")
-		bool IsMapSelected(UMapAsset* MapInfo);
-	/*will take a Map URL/Path and return a santized version*/
-	UFUNCTION(BlueprintCallable, Category = "Server Subsystem|Maps")
-		FString SantizeMapPath(FString Path);
 
 
 

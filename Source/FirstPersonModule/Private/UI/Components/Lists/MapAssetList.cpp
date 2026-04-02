@@ -11,7 +11,15 @@
 #include "Maps/MapAsset.h"
 
 /*subsystems*/
+#include "Subsystems/MapSubsystem.h"
 #include "Subsystems/ModSubsystem.h"
+
+
+UMapAssetList::UMapAssetList(const FObjectInitializer& ObjectInitializer)
+	:Super(ObjectInitializer)
+{
+	ClassFilter = UMapAsset::StaticClass();
+}
 
 void UMapAssetList::NativeConstruct()
 {
@@ -25,24 +33,36 @@ void UMapAssetList::RefreshMapList()
 	/*clear old values*/
 	Maps.Empty();
 
-	if (ListView)
-		ListView->ClearListItems();
+	//if (ListView)
+	//	ListView->ClearListItems();
 
-	/*search for new maps*/
-	if (UModSubsystem* ModSubsystem = GetGameInstance()->GetSubsystem<UModSubsystem>())
+	/*grab default maps*/
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
 	{
-		if (FilterCategory.IsNone())
-			Maps = ModSubsystem->GetAllMaps();
-		else
-			Maps = ModSubsystem->GetMapsByCategory(FilterCategory);
+		if (ClassFilter)
+			MapSubsystem->GetMapsByClass(ClassFilter, Maps);
 	}
+
+	BP_OnMapListUpdated();
+
+	if (OnMapListUpdated.IsBound())
+		OnMapListUpdated.Broadcast();
+
+	///*search for new maps*/
+	//if (UModSubsystem* ModSubsystem = GetGameInstance()->GetSubsystem<UModSubsystem>())
+	//{
+	//	if (FilterCategory.IsNone())
+	//		Maps = ModSubsystem->GetAllMaps();
+	//	else
+	//		Maps = ModSubsystem->GetMapsByCategory(FilterCategory);
+	//}
 
 	/*auto-assigns any items to the list*/
-	if (ListView)
-	{
-		for (int32 i = 0; i < Maps.Num(); i++)
-		{
-			ListView->AddItem(Maps[i]);
-		}
-	}
+	//if (ListView)
+	//{
+	//	for (int32 i = 0; i < Maps.Num(); i++)
+	//	{
+	//		ListView->AddItem(Maps[i]);
+	//	}
+	//}
 }

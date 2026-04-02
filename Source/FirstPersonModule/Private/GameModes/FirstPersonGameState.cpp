@@ -3,8 +3,10 @@
 
 #include "GameModes/FirstPersonGameState.h"
 #include "GameModes/FirstPersonGame.h"
+#include "GameModes/FirstPersonLevelScript.h"
 #include "Players/FirstPersonPlayerController.h"
 #include "Players/FirstPersonPlayerState.h"
+
 
 /*engine*/
 #include "Engine/GameInstance.h"
@@ -23,6 +25,7 @@
 #include "Subsystems/CharacterSubsystem.h"
 #include "Subsystems/CinemaSubsystem.h"
 #include "Subsystems/ServerSubsystem.h"
+#include "Subsystems/MapSubsystem.h"
 
 /*utilities*/
 #include "Engine/LevelStreamingDynamic.h"
@@ -95,28 +98,40 @@ void AFirstPersonGameState::OnRep_CSSViewTargetChanged()
 
 void AFirstPersonGameState::Multicast_OnCurrentMapUpdated_Implementation(UMapAsset* CurrentMap)
 {
+	/*notify level script actor of event*/
+	if (AFirstPersonLevelScript* LS = GetLevelScript())
+		LS->OnCurrentMapChanged(CurrentMap);
+
 	if (!HasAuthority()) //client safety check
 	{
-		if (UServerSubsystem* SSS = GetServerSubsystem())
-			SSS->Client_OnCurrentMapUpdated(CurrentMap);
+		if (UMapSubsystem* MSS = GetMapSubsystem())
+			MSS->Client_OnCurrentMapUpdated(CurrentMap);
 	}
 }
 
 void AFirstPersonGameState::Multicast_OnNextMapUpdated_Implementation(UMapAsset* NextMap)
 {
+	/*notify level script actor of event*/
+	if (AFirstPersonLevelScript* LS = GetLevelScript())
+		LS->OnNextMapChanged(NextMap);
+
 	if (!HasAuthority())
 	{
-		if (UServerSubsystem* SSS = GetServerSubsystem())
-			SSS->Client_OnNextMapUpdated(NextMap);
+		if (UMapSubsystem* MSS = GetMapSubsystem())
+			MSS->Client_OnNextMapUpdated(NextMap);
 	}
 }
 
 void AFirstPersonGameState::Multicast_OnMapRotationUpdated_Implementation(const TArray<class UMapAsset*>& MapRotation)
 {
+	/*notify level script actor of event*/
+	if (AFirstPersonLevelScript* LS = GetLevelScript())
+		LS->OnMapRotationChanged(MapRotation);
+
 	if (!HasAuthority()) //client safety check
 	{
-		if (UServerSubsystem* SSS = GetServerSubsystem())
-			SSS->Client_OnMapRotationUpdated(MapRotation);
+		if (UMapSubsystem* MSS = GetMapSubsystem())
+			MSS->Client_OnMapRotationUpdated(MapRotation);
 	}
 }
 
@@ -249,9 +264,20 @@ void AFirstPersonGameState::OnLevelInstanceLoadFinished()
 	UE_LOG(LogGameMode, Log, TEXT("%s::OnLevelInstanceLoadFinished() - End"), *GetName());
 }
 
+AFirstPersonLevelScript* AFirstPersonGameState::GetLevelScript()
+{
+	ULevel* CurrentLevel = GetWorld()->GetCurrentLevel();
+	return Cast<AFirstPersonLevelScript>(GetWorld()->GetLevelScriptActor(CurrentLevel));
+}
+
 UServerSubsystem* AFirstPersonGameState::GetServerSubsystem()
 {
 	return GetGameInstance()->GetSubsystem<class UServerSubsystem>();
+}
+
+UMapSubsystem* AFirstPersonGameState::GetMapSubsystem()
+{
+	return GetGameInstance()->GetSubsystem<class UMapSubsystem>();
 }
 
 

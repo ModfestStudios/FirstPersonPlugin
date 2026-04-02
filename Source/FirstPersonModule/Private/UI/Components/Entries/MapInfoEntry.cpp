@@ -3,7 +3,7 @@
 
 #include "UI/Components/Entries/MapInfoEntry.h"
 #include "Maps/MapAsset.h"
-#include "Subsystems/ServerSubsystem.h"
+#include "Subsystems/MapSubsystem.h"
 #include "Blueprint/IUserObjectListEntry.h"
 #include "Blueprint/IUserListEntry.h"
 
@@ -47,8 +47,8 @@ void UMapInfoEntry::SetAsNextMap()
 	if (!MapInfo)
 		return;
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
-		ServerSubsystem->SetNextMap(MapInfo);
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
+		MapSubsystem->SetNextMap(MapInfo);
 }
 
 void UMapInfoEntry::AddToMapRotation()
@@ -56,8 +56,8 @@ void UMapInfoEntry::AddToMapRotation()
 	if (!MapInfo)
 		return;
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
-		ServerSubsystem->AddToMapRotation(MapInfo);
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
+		MapSubsystem->AddToMapRotation(MapInfo);
 }
 
 void UMapInfoEntry::NotifyOfHover()
@@ -65,10 +65,10 @@ void UMapInfoEntry::NotifyOfHover()
 	bHoverState = true;
 
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
 	{
-		if (ServerSubsystem->GetHoveredMap() != MapInfo)
-			ServerSubsystem->SetHoveredMap(MapInfo);
+		if (MapSubsystem->GetHoveredMap() != MapInfo)
+			MapSubsystem->SetHoveredMap(MapInfo);
 	}
 
 	/*call blueprint version*/
@@ -84,10 +84,10 @@ void UMapInfoEntry::NotifyOfUnhover()
 {
 	bHoverState = false;
 
-	if (UServerSubsystem* ServerSubsystem = GetGameInstance()->GetSubsystem<UServerSubsystem>())
+	if (UMapSubsystem* MapSubsystem = GetGameInstance()->GetSubsystem<UMapSubsystem>())
 	{
-		if (ServerSubsystem->GetHoveredMap() == MapInfo)
-			ServerSubsystem->ClearHoveredMap();
+		if (MapSubsystem->GetHoveredMap() == MapInfo)
+			MapSubsystem->ClearHoveredMap();
 	}
 
 	/*call blueprint version*/

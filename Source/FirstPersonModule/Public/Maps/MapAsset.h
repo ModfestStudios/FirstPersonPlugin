@@ -16,6 +16,9 @@ class FIRSTPERSONMODULE_API UMapAsset : public UPrimaryDataAsset
 public:
 
 
+	/*if enabled - will not be registerede by MapSubsystem - useful for hiding from auto-showing in menus system :)*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map")
+		bool bExcludeFromSubsystem = false;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map")
 		FText MapName;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map")
@@ -34,7 +37,6 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map|Region")
 		FText Region;
-
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map|Tags")
 		TMap<FName, FName> Tags;

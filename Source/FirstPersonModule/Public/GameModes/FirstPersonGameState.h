@@ -110,7 +110,9 @@ public:
 	//===========UTILITIES===========
 	//===============================
 protected:
+	class AFirstPersonLevelScript* GetLevelScript();
 	class UServerSubsystem* GetServerSubsystem();
+	class UMapSubsystem* GetMapSubsystem();
 
 
 	
