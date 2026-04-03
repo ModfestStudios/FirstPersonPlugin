@@ -11,7 +11,18 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FTeamRosterChanged);
 UENUM(BlueprintType)
 enum class EMissionListType : uint8
 {
-	AllMissions
+	AllMissions,
+	Training,
+	Stealth
+};
+
+UENUM(BlueprintType)
+enum class EMissionType : uint8
+{
+	Training,
+	Assault,
+	Recon,
+	Stealth
 };
 
 /**
@@ -86,6 +97,10 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Missions|Mission List")
 		TArray<class UMissionAsset*> GetAllMissions();
+	UFUNCTION(BlueprintCallable, Category = "Missions|Mission List")
+		TArray<class UMissionAsset*> GetMissionsByType(EMissionListType FilterType);
+
+
 	UFUNCTION(BlueprintCallable, Category = "Missions|Mission List")
 		virtual void AddMission(class UMissionAsset* Mission);
 

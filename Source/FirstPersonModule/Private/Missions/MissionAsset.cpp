@@ -2,7 +2,12 @@
 
 
 #include "Missions/MissionAsset.h"
+#include "Subsystems/MissionSubsystem.h"
 
 
 const FPrimaryAssetType UMissionAsset::PrimaryAssetType(TEXT("Mission"));
 
+UMissionAsset::UMissionAsset()
+{
+	
+}
