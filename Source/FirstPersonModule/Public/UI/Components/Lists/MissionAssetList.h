@@ -17,14 +17,20 @@ class FIRSTPERSONMODULE_API UMissionAssetList : public UUserWidget
 public:
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Missions")
+		bool bAutoPopulateMissions = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Missions")
+		bool bExcludeTrainingMissions = true;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Missions")
 		EMissionListType MissionsFilter;
-	UPROPERTY(BlueprintReadOnly, Category = "Missions")
+	
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Missions", meta = (EditCondition="!bAutoPopulateMissions"))
 		TArray<class UMissionAsset*> Missions;
 
 	//=========================================================================================================================================
 	//================================================================FUNCTIONS================================================================
 	//=========================================================================================================================================
 
+	virtual void NativeConstruct() override;
 
 	UFUNCTION(BlueprintCallable, Category = "Missions")
 		virtual void RefreshMissionList();

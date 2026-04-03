@@ -64,8 +64,23 @@ void UMissionSubsystem::ClearCurrentMission()
 }
 
 TArray<class UMissionAsset*> UMissionSubsystem::GetAllMissions()
-{
+{	
 	return Missions;
+}
+
+TArray<class UMissionAsset*> UMissionSubsystem::GetMissionsByType(EMissionListType FilterType)
+{
+	TArray<UMissionAsset*> FilteredMissions;
+
+	for (UMissionAsset* Mission : Missions)
+	{
+		if (UEnum::GetValueAsString(FilterType) == UEnum::GetValueAsString(Mission->MissionType))
+			FilteredMissions.Add(Mission);
+	}
+
+	SortMissionsAlphabetically(FilteredMissions);
+
+	return FilteredMissions;
 }
 
 void UMissionSubsystem::AddMission(UMissionAsset* Mission)
@@ -135,6 +150,7 @@ void UMissionSubsystem::LoadMissionLevelAsync()
 		OnMissionLevelLoaded();
 	}
 
+	
 }
 
 void UMissionSubsystem::BeginMissionTravel()

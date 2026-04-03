@@ -4,7 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "Maps/MapAsset.h"
+#include "Subsystems/MissionSubsystem.h"
 #include "MissionAsset.generated.h"
+
+
 
 /**
  * 
@@ -17,7 +20,8 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map")
 		FText MissionName;
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Map")
+		EMissionType MissionType = EMissionType::Assault;
 
 	static const FPrimaryAssetType PrimaryAssetType;
 
@@ -25,10 +29,17 @@ public:
 	//============================================FUNCTIONS============================================
 	//=================================================================================================
 
+	UMissionAsset();
+
 
 	virtual FPrimaryAssetId GetPrimaryAssetId() const override
 	{
 		return FPrimaryAssetId(PrimaryAssetType, GetFName());
+	}
+
+	static bool SortAlphabetically(const UMissionAsset& ItemA, const UMissionAsset& ItemB)
+	{
+		return ItemA.MissionName.ToString() < ItemB.MissionName.ToString();
 	}
 
 };
