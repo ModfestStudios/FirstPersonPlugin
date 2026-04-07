@@ -3,10 +3,24 @@
 
 #include "Interactives/InteractiveActor.h"
 
+#include "Players/FirstPersonPlayerController.h"
+#include "Characters/FirstPersonCharacter.h"
+
 /*components*/
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+
+
+/*network*/
+#include "Net/UnrealNetwork.h"
+
+void AInteractiveActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AInteractiveActor, ActiveUsers);
+}
 
 // Sets default values
 AInteractiveActor::AInteractiveActor(const FObjectInitializer& ObjectInitializer)
@@ -39,12 +53,24 @@ void AInteractiveActor::BeginPlay()
 void AInteractiveActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AInteractiveActor::OnInteraction(AFirstPersonCharacter* User, UInteractiveCollisionComponent* InteractiveComponent, const UInteractiveAction* Action)
 {
+	if (!ActiveUsers.Contains(User))
+		ActiveUsers.Add(User);
+
 	Execute_BP_OnInteraction(this, User, InteractiveComponent, Action);
+}
+
+void AInteractiveActor::OnInteractionEnds(AFirstPersonCharacter* User, UInteractiveCollisionComponent* InteractiveComponent, const UInteractiveAction* Action)
+{
+
+}
+
+bool AInteractiveActor::IsBeingInteractedBy(AFirstPersonCharacter* User)
+{
+	return ActiveUsers.Contains(User);
 }
 
 //void AInteractiveActor::OnInteraction_Implementation(AFirstPersonCharacter* User, UInteractiveCollisionComponent* InteractiveComponent, const UInteractiveAction* Action)

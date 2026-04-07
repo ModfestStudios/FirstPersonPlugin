@@ -1,5 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+//TODO: Not sure what this command was intended for; can be removed for now
+
 #pragma once
 
 #include "CoreMinimal.h"
