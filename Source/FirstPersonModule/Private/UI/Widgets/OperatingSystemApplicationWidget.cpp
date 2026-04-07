@@ -17,7 +17,7 @@ void UOperatingSystemApplicationWidget::NativeOnInitialized()
 			Application = GetWorld()->SpawnActor<AOperatingSystemApplication>(ApplicationClass);
 			
 			if (Application)
-				Application->OnApplicationLaunched(ApplicationLaunchParameters, OS);
+				Application->LaunchApplication(ApplicationLaunchParameters, OS);
 		}
 	}
 

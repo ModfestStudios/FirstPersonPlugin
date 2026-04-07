@@ -30,6 +30,7 @@ public:
 	{
 		this->bSuccess = bSuccess;
 		this->TerminalMessage = TerminalMessage;
+		//TODO: This doesn't do anything currently; question sent to Micah about it
 		this->bClearScreen = bClearScreen;
 	}
 
@@ -96,6 +97,10 @@ public:
 	//===========================================================================FUNCTIONS===========================================================================
 	//===============================================================================================================================================================
 
+	/*function that is called by the application itself - which in turn calls the remaining functions*/
+	UFUNCTION()
+		virtual FTerminalCommandResult ExecuteCommand(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters);
+protected:
 	UFUNCTION()
 		virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Terminal Command", meta = (DisplayName = "On Command Executed"))

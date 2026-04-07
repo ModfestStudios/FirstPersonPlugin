@@ -4,18 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "OperatingSystem/TerminalCommand.h"
-#include "TerminalCommand_ChangeDirectory.generated.h"
+#include "TerminalCommand_HelloWorld.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FIRSTPERSONMODULE_API UTerminalCommand_ChangeDirectory : public UTerminalCommand
+class FIRSTPERSONMODULE_API UTerminalCommand_HelloWorld : public UTerminalCommand
 {
 	GENERATED_BODY()
 public:
 	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
 
-	UTerminalCommand_ChangeDirectory();
-	
+	UTerminalCommand_HelloWorld();
+
+private:
+	FString showEncryptedMessage() const;
+	FString showDecryptedMessage() const;
 };

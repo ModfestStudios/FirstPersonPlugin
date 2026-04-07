@@ -23,14 +23,23 @@ protected:
 	//=================================================================FUNCTIONS=================================================================
 	//===========================================================================================================================================
 	
+	
+
+
 
 public:
+	UFUNCTION(BlueprintCallable, Category = "Operating System|Application")
+		virtual void LaunchApplication(const TArray<FString>& Parameters,class AOperatingSystem* OS);
+protected:
 	UFUNCTION()
 		virtual void OnApplicationLaunched(const TArray<FString>& Parameters, class AOperatingSystem* OS);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Operating System|Application", meta = (DisplayName = "On Application Launched"))
 		void BP_OnApplicationLaunched(const TArray<FString>& Parameters);
 
-
+public:
+	UFUNCTION(BlueprintCallable, Category = "Operating System|APplication")
+		virtual void CloseApplication();
+protected:
 	UFUNCTION()
 		virtual void OnApplicationClosed();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Operating System|Application", meta = (DisplayName = "On Application Closed"))
@@ -38,8 +47,8 @@ public:
 
 
 
-
-	UFUNCTION(BlueprintCallable, Category = "Operating System|Application")
+public:
+	UFUNCTION(BlueprintPure, Category = "Operating System|Application")
 		class AOperatingSystem* GetOperatingSystem();
 
 

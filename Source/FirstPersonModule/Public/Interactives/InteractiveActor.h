@@ -13,6 +13,19 @@ class FIRSTPERSONMODULE_API AInteractiveActor : public AActor, public IInteracti
 	GENERATED_BODY()
 public:
 
+
+	
+protected:
+	/*list of people actively using this item*/
+	UPROPERTY(Replicated)
+		TArray<class AFirstPersonCharacter*> ActiveUsers;
+
+
+
+
+
+public:
+	/*components*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
 		class UStaticMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
@@ -36,6 +49,14 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 
-	virtual void OnInteraction(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action) override;
+	UFUNCTION()
+		virtual void OnInteraction(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action) override;
+	UFUNCTION()
+		virtual void OnInteractionEnds(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action);
+
+	/*returns whether true if this user is currently interacting with this Actor*/
+	UFUNCTION()
+		virtual bool IsBeingInteractedBy(class AFirstPersonCharacter* User);
+
 
 };

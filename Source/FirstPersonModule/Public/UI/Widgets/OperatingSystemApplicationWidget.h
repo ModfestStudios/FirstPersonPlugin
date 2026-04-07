@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -29,6 +29,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Application")
 		class AOperatingSystemApplication* Application;
 
+
+	//=============================================================================================================================================================
+	//==========================================================================FUNCTIONS==========================================================================
+	//=============================================================================================================================================================
+
+
+
+
 	virtual void NativeOnInitialized() override;
+
+
+
 	
 };

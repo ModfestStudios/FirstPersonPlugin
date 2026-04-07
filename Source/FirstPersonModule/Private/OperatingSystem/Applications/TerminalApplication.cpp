@@ -2,11 +2,21 @@
 
 
 #include "OperatingSystem/Applications/TerminalApplication.h"
+#include "OperatingSystem/OperatingSystem.h"
 #include "OperatingSystem/TerminalCommand.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Clear.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Echo.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_WhoAmI.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_List.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_qrscanner.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_touch.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_gpg.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_rm.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_ChangeDirectory.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_Help.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_HelloWorld.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_Exit.h"
+
 
 ATerminalApplication::ATerminalApplication()
 {
@@ -14,6 +24,15 @@ ATerminalApplication::ATerminalApplication()
 	Commands.Add(UTerminalCommand_Echo::StaticClass());
 	Commands.Add(UTerminalCommand_WhoAmI::StaticClass());
 	Commands.Add(UTerminalCommand_List::StaticClass());
+	Commands.Add(UTerminalCommand_qrscanner::StaticClass());
+	Commands.Add(UTerminalCommand_touch::StaticClass());
+	Commands.Add(UTerminalCommand_gpg::StaticClass());
+	Commands.Add(UTerminalCommand_rm::StaticClass());
+	Commands.Add(UTerminalCommand_ChangeDirectory::StaticClass());
+	Commands.Add(UTerminalCommand_Help::StaticClass());
+	Commands.Add(UTerminalCommand_HelloWorld::StaticClass());
+	Commands.Add(UTerminalCommand_Exit::StaticClass());
+
 }
 
 void ATerminalApplication::ExecuteCommand(FString Command)
@@ -21,7 +40,10 @@ void ATerminalApplication::ExecuteCommand(FString Command)
 	TArray<FString> CommandArray;
 	int32 CommandIndex = -1;
 	FTerminalCommandExecutionParameters CommandParameters;
-
+	AOperatingSystem* OS = this->GetOperatingSystem();
+	FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
+	FString HomeDirectory = OS->GetHomeDirectory();
+	PrintToTerminal("<User>white-rabbit</>:<directory>~/" + HomeDirectory + ActiveWorkingDirectory + "</>$ <Default>" + Command + "</>");
 	Command.ParseIntoArray(CommandArray,TEXT(" "), true);
 
 	/* combine quoted commands into a single entry */
@@ -86,7 +108,7 @@ void ATerminalApplication::ExecuteCommand(FString Command)
 		if (i > 0)
 		{
 			FString Cmd = CommandArray[i];
-			if (Cmd.Contains("-"))
+			if (Cmd.Left(1) == "-")
 			{
 				CommandParameters.Flags.Add(Cmd);
 			}
@@ -95,16 +117,20 @@ void ATerminalApplication::ExecuteCommand(FString Command)
 		}
 	}
 
-	
-
-
-	if (IsValidCommand(CommandParameters.Command, CommandIndex) && CommandIndex >= 0)
-	{
-		ExecuteCommandObject(Commands[CommandIndex], CommandParameters);		
+	if (BlockedCommand(CommandParameters.Command.ToString())) {
+		PrintToTerminal("System: " + CommandParameters.Command.ToString() + ": Permission denied: Command forbidden");
+		PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
 	}
-	else
-	{
-		PrintToTerminal(FString::Printf(TEXT("<Error>Invalid Command: %s</>"), *CommandParameters.Command.ToString()));
+	else {
+		if (IsValidCommand(CommandParameters.Command, CommandIndex) && CommandIndex >= 0)
+		{
+			ExecuteCommandObject(Commands[CommandIndex], CommandParameters);
+		}
+		else
+		{
+			PrintCommonTerminalResponse(ETerminalCommonMessage::CommandNotFound, *CommandParameters.Command.ToString());
+			PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
+		}
 	}
 }
 
@@ -129,7 +155,7 @@ void ATerminalApplication::ExecuteCommandObject(TSubclassOf<UTerminalCommand> Co
 {
 	if (Command)
 	{
-		FTerminalCommandResult Result = Command->GetDefaultObject<UTerminalCommand>()->OnCommandExecuted(this, CommandParameters);
+		FTerminalCommandResult Result = Command->GetDefaultObject<UTerminalCommand>()->ExecuteCommand(this, CommandParameters);
 
 		if (!Result.TerminalMessage.IsEmpty())
 		{
@@ -139,17 +165,51 @@ void ATerminalApplication::ExecuteCommandObject(TSubclassOf<UTerminalCommand> Co
 			}
 			else
 			{
-				PrintToTerminal("<Error>[ERROR]</> " + Result.TerminalMessage);
+				PrintToTerminal(Result.TerminalMessage, ETerminalMessageStyle::Error);
 			}
 		}
 	}
 }
 
-void ATerminalApplication::PrintToTerminal(const FString& Message)
+void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMessageStyle Style)
 {
-	TerminalMessages.Add(Message);
+	switch (Style)
+	{
+	case ETerminalMessageStyle::None:
+		TerminalMessages.Add(Message);
+		break;
+	case ETerminalMessageStyle::OK:
+		TerminalMessages.Add("<OK>[OK]</> " + Message);
+		break;
+	case ETerminalMessageStyle::Error:
+		TerminalMessages.Add("<ERROR>[ERROR]</> " + Message);
+		break;
+	case ETerminalMessageStyle::Status:
+		TerminalMessages.Add("<Status>[STATUS]</> " + Message);
+		break;
+	}
 
+	RefreshTerminal();
+}
 
+void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage MessageResponse, FString UserDefinedValue1)
+{
+	//TODO: Need to cleanup common errors to properly mimic linux common failures;
+	switch (MessageResponse)
+	{
+	case ETerminalCommonMessage::SyntaxLength:
+		PrintToTerminal("Syntax too long/short " + UserDefinedValue1, ETerminalMessageStyle::Error);
+		break;
+	case ETerminalCommonMessage::SyntaxFormat:
+		PrintToTerminal("Syntax error invalid format  " + UserDefinedValue1, ETerminalMessageStyle::Error);
+		break;
+	case ETerminalCommonMessage::CommandNotFound:
+		PrintToTerminal(UserDefinedValue1 + ": command not found");
+		break;
+	case ETerminalCommonMessage::UseHelp:
+		PrintToTerminal("For commands available, use: help");
+		break;
+	}
 	RefreshTerminal();
 }
 
@@ -163,7 +223,29 @@ void ATerminalApplication::ClearTerminal()
 
 void ATerminalApplication::RefreshTerminal()
 {
-
 	if (OnTerminalUpdated.IsBound())
 		OnTerminalUpdated.Broadcast();
 }
+
+bool ATerminalApplication::BlockedCommand(const FString& Command)
+{
+	TArray<FString> BlockedCommands = {
+		TEXT("mkdir"),
+		TEXT("rmdir"),
+		TEXT("chmod"),
+		TEXT("systemctl"),
+		TEXT("mv"),
+		TEXT("nano"),
+		TEXT("vi"),
+		TEXT("kill"),
+		TEXT("killall"),
+		TEXT("ifconfig"),
+		TEXT("chown"),
+		TEXT("bash"),
+		TEXT("sh")
+	};
+
+	return BlockedCommands.Contains(Command);
+}
+
+
