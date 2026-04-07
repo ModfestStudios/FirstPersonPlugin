@@ -6,6 +6,6 @@
 FTerminalCommandResult UTerminalCommand_Exit::OnCommandExecuted(ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters)
 {
 	
-	
+	//test
 	return FTerminalCommandResult();
 }
