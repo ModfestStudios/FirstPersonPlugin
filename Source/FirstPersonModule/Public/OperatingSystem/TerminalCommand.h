@@ -54,6 +54,54 @@ public:
 
 };
 
+USTRUCT(BlueprintType)
+struct FTerminalCommandFlag
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Flag")
+		FString Flag;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Flag")
+		FString Value;
+
+	FTerminalCommandFlag() {}
+
+	FTerminalCommandFlag(FString Name)
+	{
+		/*removes starting dash prefixes for easier usability*/
+		int32 StartIndex = 0;
+		while (StartIndex < Name.Len() && Name[StartIndex] == '-')
+		{
+			StartIndex++;
+		}
+
+		this->Flag = Name.Mid(StartIndex);		
+	}
+
+	FTerminalCommandFlag(FString Name, FString Value)
+	{
+		/*removes starting dash prefixes for easier usability*/
+		int32 StartIndex = 0;
+		while (StartIndex < Name.Len() && Name[StartIndex] == '-')
+		{
+			StartIndex++;
+		}
+
+		this->Flag = Name.Mid(StartIndex);
+		this->Value = Value;
+	}
+
+	bool operator==(const FTerminalCommandFlag& Other) const
+	{
+		return Flag.ToUpper() == Other.Flag.ToUpper();
+	}
+
+	bool operator==(const FString& String) const
+	{
+		return Flag.ToUpper() == String.ToUpper();
+	}
+};
+
 
 /*command execution paramaters*/
 USTRUCT(BlueprintType)
@@ -67,7 +115,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Terminal Command Execution Parameters")
 		TArray<FTerminalSubcommand> Subcommands;
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Terminal Command Execution Parameters")
-		TArray<FString> Flags;
+		TArray<FTerminalCommandFlag> Flags;
 
 };
 
@@ -87,7 +135,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Terminal Command")
 		TArray<FTerminalSubcommand> Subcommands;
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Terminal Command")
-		TArray<FString> CommandFlags;
+		TArray<FTerminalCommandFlag> CommandFlags;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Terminal Command")
 		bool bRequireElevatedPermissions = false;
@@ -96,7 +144,7 @@ public:
 	//===============================================================================================================================================================
 	//===========================================================================FUNCTIONS===========================================================================
 	//===============================================================================================================================================================
-
+public:
 	/*function that is called by the application itself - which in turn calls the remaining functions*/
 	UFUNCTION()
 		virtual FTerminalCommandResult ExecuteCommand(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters);
@@ -107,5 +155,10 @@ protected:
 		FTerminalCommandResult BP_OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters);
 
 
-	
+	//=========================================
+	//================UTILITIES================
+	//=========================================
+
+	const FString GetFlagValue(FString Flag, FTerminalCommandExecutionParameters& CommandParameters) const;
+
 };

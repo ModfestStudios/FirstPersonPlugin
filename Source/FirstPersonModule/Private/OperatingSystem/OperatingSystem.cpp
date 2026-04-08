@@ -32,8 +32,7 @@ void AOperatingSystem::InitializeFromTerminal(ATerminalSystem* Terminal)
 //=====BOOT=====
 //==============
 void AOperatingSystem::Boot()
-{
-	
+{	
 	if (SystemState == EOperatingSystemMainState::PoweredOff)
 		BeginBootSequence();
 }

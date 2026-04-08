@@ -4,6 +4,7 @@
 #include "OperatingSystem/Applications/TerminalApplication.h"
 #include "OperatingSystem/OperatingSystem.h"
 #include "OperatingSystem/TerminalCommand.h"
+#include "OperatingSystem/Applications/Commands/TerminalCommand_ParseCommand.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Clear.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_Echo.h"
 #include "OperatingSystem/Applications/Commands/TerminalCommand_WhoAmI.h"
@@ -20,6 +21,7 @@
 
 ATerminalApplication::ATerminalApplication()
 {
+	Commands.Add(UTerminalCommand_ParseCommand::StaticClass());
 	Commands.Add(UTerminalCommand_Clear::StaticClass());
 	Commands.Add(UTerminalCommand_Echo::StaticClass());
 	Commands.Add(UTerminalCommand_WhoAmI::StaticClass());
@@ -33,6 +35,31 @@ ATerminalApplication::ATerminalApplication()
 	Commands.Add(UTerminalCommand_HelloWorld::StaticClass());
 	Commands.Add(UTerminalCommand_Exit::StaticClass());
 
+}
+
+void ATerminalApplication::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+	ProcessDelayedMessages(DeltaTime);
+}
+
+void ATerminalApplication::ProcessDelayedMessages(float DeltaTime)
+{
+	if (MessageQueue.Num() > 0)
+	{
+		/*always grab only the FIRST message and modify it, making all others paused until this one is complete*/
+		FDelayedTerminalMessage& QueuedMessage = MessageQueue[0];
+		float TimeRemaining = QueuedMessage.DelayRemaining - DeltaTime; //Tick() is per-frace, while DeltaTime is time (in seconds) since last frame/tick. Used for tracking time-passed with variable frame rates
+		QueuedMessage.DelayRemaining = TimeRemaining;
+		
+		/*message queue has been completed - and we can now fire off*/
+		if (TimeRemaining <= 0.0f)
+		{
+			PrintMessage(QueuedMessage.Message);
+			MessageQueue.RemoveAt(0); //removes the message, and shrinks everything into place for next round
+		}
+	}
 }
 
 void ATerminalApplication::ExecuteCommand(FString Command)
@@ -51,84 +78,20 @@ void ATerminalApplication::ExecuteCommand(FString Command)
 
 	/*print entered command to terminal*/
 	PrintToTerminal("<User>white-rabbit</>:<directory>~/" + HomeDirectory + ActiveWorkingDirectory + "</>$ <Default>" + Command + "</>");
+
+	/*split everything up based on spaces*/
 	Command.ParseIntoArray(CommandArray,TEXT(" "), true);
 
-	/* combine quoted commands into a single entry */
-	for (int32 i = 0; i < CommandArray.Num(); i++)
-	{
-		FString& Token = CommandArray[i];
-
-		if (!Token.StartsWith(TEXT("\"")))
-		{
-			continue;
-		}
-
-		
-		if (Token.Len() >= 2 && Token.EndsWith(TEXT("\"")))
-		{
-			Token = Token.Mid(1, Token.Len() - 2);
-			continue;
-		}
-
-		// Start combining
-		FString Combined = Token.RightChop(1); // remove opening quote
-		int32 EndIndex = i;
-		bool bFoundClosingQuote = false;
-
-		for (int32 NextIndex = i + 1; NextIndex < CommandArray.Num(); ++NextIndex)
-		{
-			
-			Combined += TEXT(" ");
-			Combined += CommandArray[NextIndex];
-
-			if (CommandArray[NextIndex].EndsWith(TEXT("\"")))
-			{
-				// Remove closing quote
-				Combined.LeftChopInline(1);
-
-				EndIndex = NextIndex;
-				bFoundClosingQuote = true;
-				break;
-			}
-		}
-
-		if (bFoundClosingQuote)
-		{
-			CommandArray[i] = Combined;
-
-			// Remove consumed entries
-			const int32 NumToRemove = EndIndex - i;
-			CommandArray.RemoveAt(i + 1, NumToRemove, true);
-		}
-	}
-
-
-	/*parse out commands, subcommands, and flags*/
-	for (int32 i = 0; i < CommandArray.Num(); i++)
-	{
-		if (i == 0)
-		{
-			CommandParameters.Command = FName(CommandArray[0]);
-			continue;
-		}
-
-		if (i > 0)
-		{
-			FString Cmd = CommandArray[i];
-			if (Cmd.Left(1) == "-")
-			{
-				CommandParameters.Flags.Add(Cmd);
-			}
-			else
-				CommandParameters.Subcommands.Add(FTerminalSubcommand(FName(Cmd)));
-		}
-	}
-
+	/*do some parsing*/
+	ParseQuotes(CommandArray);
+	ParseCommands(CommandArray, CommandParameters);	
+	
+	/*execute commands*/
 	if (BlockedCommand(CommandParameters.Command.ToString())) {
 		PrintToTerminal("System: " + CommandParameters.Command.ToString() + ": Permission denied: Command forbidden");
 		PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
 	}
-	else 
+	else
 	{
 		if (IsValidCommand(CommandParameters.Command, CommandIndex) && CommandIndex >= 0)
 		{
@@ -179,23 +142,35 @@ void ATerminalApplication::ExecuteCommandObject(TSubclassOf<UTerminalCommand> Co
 	}
 }
 
-void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMessageStyle Style)
+void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMessageStyle Style, float Delay)
 {
+	FString MessageToPrint = FString();
+
 	switch (Style)
 	{
 		case ETerminalMessageStyle::None:
-			TerminalMessages.Add(Message);
+			MessageToPrint = Message;
 			break;
 		case ETerminalMessageStyle::OK:
-			TerminalMessages.Add("<OK>[OK]</> " + Message);
+			MessageToPrint = "<OK>[OK]</> " + Message;
 			break;
 		case ETerminalMessageStyle::Error:
-			TerminalMessages.Add("<ERROR>[ERROR]</> " + Message);
+			MessageToPrint = "<ERROR>[ERROR]</> " + Message;
 			break;
 		case ETerminalMessageStyle::Status:
-			TerminalMessages.Add("<Status>[STATUS]</> " + Message);
+			MessageToPrint = "<Status>[STATUS]</> " + Message;
 			break;
 	}
+
+	/*if the message has a delay, add it to the queue*/
+	if (Delay > 0.0f)
+		MessageQueue.Add(FDelayedTerminalMessage(Message, Delay));
+	/*if the message does not have a delay, but delays are still actively running - we need to add it to the queue with a 0.0f delay to wait its turn*/
+	else if (MessageQueue.Num() > 0)
+			MessageQueue.Add(FDelayedTerminalMessage(Message, 0.0f));
+	/*if there is no delay, and currently the queue is not backed up - then we just print directly*/
+	else 
+		PrintMessage(Message);
 
 	RefreshTerminal();
 }
@@ -218,7 +193,13 @@ void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage Me
 		PrintToTerminal("For commands available, use: help");
 		break;
 	}
-	RefreshTerminal();
+
+	//RefreshTerminal(); //not needed as PrintToTerminal() already calls this
+}
+
+void ATerminalApplication::PrintMessage(FString Message)
+{	
+	TerminalMessages.Add(Message);
 }
 
 void ATerminalApplication::ClearTerminal()
@@ -232,6 +213,95 @@ void ATerminalApplication::RefreshTerminal()
 {
 	if (OnTerminalUpdated.IsBound())
 		OnTerminalUpdated.Broadcast();
+}
+
+void ATerminalApplication::ParseQuotes(TArray<FString>& CommandArray)
+{
+	/* combine quoted commands into a single entry */
+	for (int32 i = 0; i < CommandArray.Num(); i++)
+	{
+		FString& Token = CommandArray[i];
+
+		if (!Token.StartsWith(TEXT("\"")))
+		{
+			continue;
+		}
+
+
+		if (Token.Len() >= 2 && Token.EndsWith(TEXT("\"")))
+		{
+			Token = Token.Mid(1, Token.Len() - 2);
+			continue;
+		}
+
+		// Start combining
+		FString Combined = Token.RightChop(1); // remove opening quote
+		int32 EndIndex = i;
+		bool bFoundClosingQuote = false;
+
+		for (int32 NextIndex = i + 1; NextIndex < CommandArray.Num(); ++NextIndex)
+		{
+
+			Combined += TEXT(" ");
+			Combined += CommandArray[NextIndex];
+
+			if (CommandArray[NextIndex].EndsWith(TEXT("\"")))
+			{
+				// Remove closing quote
+				Combined.LeftChopInline(1);
+
+				EndIndex = NextIndex;
+				bFoundClosingQuote = true;
+				break;
+			}
+		}
+
+		if (bFoundClosingQuote)
+		{
+			CommandArray[i] = Combined;
+
+			// Remove consumed entries
+			const int32 NumToRemove = EndIndex - i;
+			CommandArray.RemoveAt(i + 1, NumToRemove, true);
+		}
+	}
+}
+
+void ATerminalApplication::ParseCommands(TArray<FString>& CommandArray, FTerminalCommandExecutionParameters& CommandParameters)
+{
+	/*parse out commands, subcommands, and flags*/
+	for (int32 i = 0; i < CommandArray.Num(); i++)
+	{
+		if (i == 0)
+		{
+			CommandParameters.Command = FName(CommandArray[0]);
+			continue;
+		}
+
+		if (i == 1 && !CommandArray[1].StartsWith("-"))
+		{
+			FName Cmd = FName(CommandArray[1]);
+			CommandParameters.Subcommands.Add(FTerminalSubcommand(Cmd));
+		}
+
+		/*handle flags*/
+		if (i > 0)
+		{
+			/*grab command and surrounding ones*/
+			FString Cmd = CommandArray[i];
+			FString PrevCmd = CommandArray[i - 1];
+			FString NextCmd = (i + 1) < CommandArray.Num() ? CommandArray[i + 1] : "";
+
+			if (Cmd.Left(1) == "-") //check to see if this is marked as a flag
+			{
+				/*determines if this flag has a value attached to it*/
+				if (NextCmd.IsEmpty() || NextCmd.Left(1) == "-")
+					CommandParameters.Flags.Add(FTerminalCommandFlag(Cmd)); //add flag (no value)
+				else if(!NextCmd.IsEmpty() && NextCmd.Left(1) != "-")
+					CommandParameters.Flags.Add(FTerminalCommandFlag(Cmd, NextCmd)); //add flag with value
+			}
+		}
+	}	
 }
 
 void ATerminalApplication::AddCommandToHistory(FString Command)
@@ -252,10 +322,11 @@ FString ATerminalApplication::GetPreviousCommand()
 		if (CommandHistoryIndex + 1 < CommandHistory.Num())
 			CommandHistoryIndex++; //increment the history to the last entry
 		
+		/*return history entry*/
 		return CommandHistory[CommandHistoryIndex];
 	}
 	else
-		return FString();
+		return FString(); //returns empty string
 	
 }
 
@@ -263,19 +334,22 @@ FString ATerminalApplication::GetNextCommand()
 {
 	if (CommandHistory.Num() > 0)
 	{
+		/*return a command if it exists*/
 		if (CommandHistoryIndex - 1 > -1)
 			CommandHistoryIndex--;
+		
+		/*clear command history selection and return an empty string for the UI to process*/
 		else
 		{
+			
 			ResetCommandHistory();
 			return FString();
-		}
-			
+		}			
 
 		return CommandHistory[CommandHistoryIndex];
 	}
 
-	return FString();
+	return FString(); //returns empty string
 }
 
 void ATerminalApplication::ClearCommandHistory()

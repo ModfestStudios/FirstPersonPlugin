@@ -32,43 +32,79 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
         bool flagDevice = false;
         bool fileExtension = false;
         bool fourthWall = false;
-        TArray<FString> commandExportSplit;
+        //TArray<FString> commandExportSplit;
         FString commandExport;
-        TArray<FString> commandAuthKeySplit;
-        TArray<FString> commandDeviceSplit;
+        //TArray<FString> commandAuthKeySplit;
+        //TArray<FString> commandDeviceSplit;
         if (CommandParameters.Flags.Num() < 1) {
             Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
             return FTerminalCommandResult();
         }
-        for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
-            FString currentParameter = CommandParameters.Flags[i];
-            if (currentParameter == "--help") {
+
+
+        /*loop through flags*/
+        for (FTerminalCommandFlag& Flag : CommandParameters.Flags)
+        {
+            if (Flag.Flag == "help")
+            {
                 Terminal->PrintToTerminal(getHelpText());
                 return FTerminalCommandResult();
             }
-            if (currentParameter.Left(11) == "--auth-user") {
-                currentParameter.ParseIntoArray(commandAuthKeySplit, TEXT(":"), true);
-                if (commandAuthKeySplit[1].Equals(currentUser, ESearchCase::CaseSensitive)) {
+            if (Flag.Flag == "auth-user")
+            {
+                if (Flag.Value == currentUser.ToLower())
                     flagAuthKey = true;
-                }
+
             }
-            if (currentParameter.Left(8) == "--export") {
-                commandExport = currentParameter;
-                currentParameter.ParseIntoArray(commandExportSplit, TEXT(":"), true);
-                fileExists = OS->FileSystemCheckIfFileExists(commandExportSplit[1], ActiveWorkingDirectory, FOperatingSystemFileType::File);
+            if (Flag.Flag == "export")
+            {
+                commandExport = Flag.Value;
+                fileExists = OS->FileSystemCheckIfFileExists(commandExport, ActiveWorkingDirectory, FOperatingSystemFileType::File);
                 flagExport = true;
             }
-            if (currentParameter == "--list-devices") {
-                flagListDevices = true;
-            }
-            if (currentParameter.Left(8) == "--device") {
-                currentParameter.ParseIntoArray(commandDeviceSplit, TEXT(":"), true);
+            if (Flag.Flag == "device")
+            {
                 flagDevice = true;
             }
-            if (currentParameter.Left(12) == "--fourthwall") {
+            if (Flag.Flag == "list-devices")
+            {
+                flagListDevices = true;
+            }
+            if (Flag.Flag == "fourthwall")
+            {
                 fourthWall = true;
             }
         }
+
+        //for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
+        //    FString currentParameter = CommandParameters.Flags[i];
+        //    if (currentParameter == "--help") {
+        //        Terminal->PrintToTerminal(getHelpText());
+        //        return FTerminalCommandResult();
+        //    }
+        //    if (currentParameter.Left(11) == "--auth-user") {
+        //        currentParameter.ParseIntoArray(commandAuthKeySplit, TEXT(":"), true);
+        //        if (commandAuthKeySplit[1].Equals(currentUser, ESearchCase::CaseSensitive)) {
+        //            flagAuthKey = true;
+        //        }
+        //    }
+        //    if (currentParameter.Left(8) == "--export") {
+        //        commandExport = currentParameter;
+        //        currentParameter.ParseIntoArray(commandExportSplit, TEXT(":"), true);
+        //        fileExists = OS->FileSystemCheckIfFileExists(commandExportSplit[1], ActiveWorkingDirectory, FOperatingSystemFileType::File);
+        //        flagExport = true;
+        //    }
+        //    if (currentParameter == "--list-devices") {
+        //        flagListDevices = true;
+        //    }
+        //    if (currentParameter.Left(8) == "--device") {
+        //        currentParameter.ParseIntoArray(commandDeviceSplit, TEXT(":"), true);
+        //        flagDevice = true;
+        //    }
+        //    if (currentParameter.Left(12) == "--fourthwall") {
+        //        fourthWall = true;
+        //    }
+        //}
 
         // TODO: Need to bake in delays/loading animations into this function
         if (flagListDevices) {
@@ -84,16 +120,36 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             Terminal->PrintToTerminal("Authorized user key accepted", ETerminalMessageStyle::OK);
         }
 
-        if (flagDevice) {
-            if (commandDeviceSplit.Num() != 2) {
+        if (flagDevice) 
+        {
+            FString DeviceID = GetFlagValue("device",CommandParameters);
+            
+            /*checks to see if device flag had a proper value given to ti*/
+            if (DeviceID.IsEmpty())
+            {
                 Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
                 return FTerminalCommandResult();
             }
-            Terminal->PrintToTerminal("Initiating deviceID[" + commandDeviceSplit[1] + "]...", ETerminalMessageStyle::Status);
-            if (commandDeviceSplit[1] != "5") {
-                Terminal->PrintToTerminal("Unable to initiate deviceID[" + commandDeviceSplit[1] + "]", ETerminalMessageStyle::Error);
+
+            /*if (commandDeviceSplit.Num() != 2) {
+                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
+                return FTerminalCommandResult();
+            }*/
+
+
+            Terminal->PrintToTerminal("Initiating deviceID[" + DeviceID + "]...", ETerminalMessageStyle::Status);
+
+            if (DeviceID != "5")
+            {
+                Terminal->PrintToTerminal("Unable to initiate deviceID[" + DeviceID + "]", ETerminalMessageStyle::Error);
                 return FTerminalCommandResult();
             }
+
+           /* if (commandDeviceSplit[1] != "5") {
+                Terminal->PrintToTerminal("Unable to initiate deviceID[" + commandDeviceSplit[1] + "]", ETerminalMessageStyle::Error);
+                return FTerminalCommandResult();
+            }*/
+
             else {
                 Terminal->PrintToTerminal("Device successfully initiated", ETerminalMessageStyle::OK);
                 Terminal->PrintToTerminal("Waiting for QR code to scan ...", ETerminalMessageStyle::Status);
@@ -113,30 +169,59 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             return FTerminalCommandResult();
         }
 
-        if (flagExport) {
-            if (commandExportSplit[1].Contains("/") || commandExportSplit.Num() != 2) {
-                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxFormat, commandExport);
+        if (flagExport) 
+        {
+            FString FileName = GetFlagValue("export", CommandParameters);
+
+            if (FileName.Contains("/"))
+            {
+                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxFormat, FileName);
                 return FTerminalCommandResult();
             }
-            else {
+
+            else 
+            {
                 Terminal->PrintToTerminal("Processing file export request ... ", ETerminalMessageStyle::Status);
-                if (fileExists) {
-                    Terminal->PrintToTerminal("Unable to export.  File " + commandExportSplit[1] + " already exists.", ETerminalMessageStyle::Error);
+                if (fileExists) 
+                {
+                    Terminal->PrintToTerminal("Unable to export.  File " + FileName + " already exists.", ETerminalMessageStyle::Error);
                     goto CheckFourth;
                 }
-                Terminal->PrintToTerminal("Exporting to file " + commandExportSplit[1], ETerminalMessageStyle::Status);
-                if (OS) {
+                
+                Terminal->PrintToTerminal("Exporting to file " + FileName, ETerminalMessageStyle::Status);
+                
+                if (OS) 
+                {
                     //TODO: Need to check real PGP key file size in linux and permissions
-                    OS->FileSystemAddFile((commandExportSplit[1] + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
+                    OS->FileSystemAddFile((FileName + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
                 }
-                Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + commandExportSplit[1] + ".asc", ETerminalMessageStyle::OK);
+                Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + FileName + ".asc", ETerminalMessageStyle::OK);
             }
+
+            //if (commandExportSplit[1].Contains("/") || commandExportSplit.Num() != 2) {
+            //    Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxFormat, commandExport);
+            //    return FTerminalCommandResult();
+            //}
+            //else {
+            //    Terminal->PrintToTerminal("Processing file export request ... ", ETerminalMessageStyle::Status);
+            //    if (fileExists) {
+            //        Terminal->PrintToTerminal("Unable to export.  File " + commandExportSplit[1] + " already exists.", ETerminalMessageStyle::Error);
+            //        goto CheckFourth;
+            //    }
+            //    Terminal->PrintToTerminal("Exporting to file " + commandExportSplit[1], ETerminalMessageStyle::Status);
+            //    if (OS) {
+            //        //TODO: Need to check real PGP key file size in linux and permissions
+            //        OS->FileSystemAddFile((commandExportSplit[1] + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
+            //    }
+            //    Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + commandExportSplit[1] + ".asc", ETerminalMessageStyle::OK);
+            //}
             
         }
 
     CheckFourth:
         //TODO: Need a way to "write" this file to the system and record a global variable that this created file is the signature file (used outside of qrscanner); likely "UDF" array value to keep simple
-        if (fourthWall) {
+        if (fourthWall) 
+        {
             //TODO: Need to update this message to make sense for ARG quest; this is placeholder
             //TODO: Also have the ability to grab more about their system to "freak the user out" as it shows more about them (card entered in Trello)
             Terminal->PrintToTerminal("Requested to break the fourth wall ... ", ETerminalMessageStyle::Status);

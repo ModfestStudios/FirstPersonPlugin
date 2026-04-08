@@ -15,20 +15,38 @@ FTerminalCommandResult UTerminalCommand_Help::OnCommandExecuted(ATerminalApplica
         Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
         return FTerminalCommandResult();
     }
-    for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
-        FString currentParameter = CommandParameters.Flags[i];
-        if (currentParameter == "--commands") {
+
+    for (FTerminalCommandFlag& Flag : CommandParameters.Flags)
+    {
+        if (Flag == "commands")
+        {
             Terminal->PrintToTerminal(getCommandsHelpText());
             return FTerminalCommandResult();
         }
-        if (currentParameter == "--about") {
+
+        if (Flag == "about")
+        {
             Terminal->PrintToTerminal(getAboutHelpText());
             return FTerminalCommandResult();
         }
     }
-        Terminal->ClearTerminal();
-        Terminal->PrintToTerminal(getHelpText());
-        return FTerminalCommandResult();
+
+    //for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) 
+    //{
+    //    FString currentParameter = CommandParameters.Flags[i];
+    //    if (currentParameter == "--commands") {
+    //        Terminal->PrintToTerminal(getCommandsHelpText());
+    //        return FTerminalCommandResult();
+    //    }
+    //    if (currentParameter == "--about") {
+    //        Terminal->PrintToTerminal(getAboutHelpText());
+    //        return FTerminalCommandResult();
+    //    }
+    //}
+
+    Terminal->ClearTerminal();
+    Terminal->PrintToTerminal(getHelpText());
+    return FTerminalCommandResult();
 }
 
 //TODO: Need to build out operating system help file structure/naming
