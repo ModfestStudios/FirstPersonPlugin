@@ -35,6 +35,8 @@ ATerminalApplication::ATerminalApplication()
 	Commands.Add(UTerminalCommand_HelloWorld::StaticClass());
 	Commands.Add(UTerminalCommand_Exit::StaticClass());
 
+	PrimaryActorTick.bCanEverTick = true;
+
 }
 
 void ATerminalApplication::Tick(float DeltaTime)
@@ -44,14 +46,22 @@ void ATerminalApplication::Tick(float DeltaTime)
 	ProcessDelayedMessages(DeltaTime);
 }
 
-void ATerminalApplication::ProcessDelayedMessages(float DeltaTime)
+bool ATerminalApplication::IsMessageQueued()
 {
 	if (MessageQueue.Num() > 0)
+		return true;
+	else
+		return false;
+}
+
+void ATerminalApplication::ProcessDelayedMessages(float DeltaTime)
+{
+	if (IsMessageQueued())
 	{
 		/*always grab only the FIRST message and modify it, making all others paused until this one is complete*/
 		FDelayedTerminalMessage& QueuedMessage = MessageQueue[0];
 		float TimeRemaining = QueuedMessage.DelayRemaining - DeltaTime; //Tick() is per-frace, while DeltaTime is time (in seconds) since last frame/tick. Used for tracking time-passed with variable frame rates
-		QueuedMessage.DelayRemaining = TimeRemaining;
+		MessageQueue[0].DelayRemaining = TimeRemaining;
 		
 		/*message queue has been completed - and we can now fire off*/
 		if (TimeRemaining <= 0.0f)
@@ -172,7 +182,7 @@ void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMess
 	else 
 		PrintMessage(MessageToPrint);
 
-	RefreshTerminal();
+	
 }
 
 void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage MessageResponse, FString UserDefinedValue1)
@@ -193,13 +203,12 @@ void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage Me
 		PrintToTerminal("For commands available, use: help");
 		break;
 	}
-
-	//RefreshTerminal(); //not needed as PrintToTerminal() already calls this
 }
 
 void ATerminalApplication::PrintMessage(FString Message)
 {	
 	TerminalMessages.Add(Message);
+	RefreshTerminal();
 }
 
 void ATerminalApplication::ClearTerminal()

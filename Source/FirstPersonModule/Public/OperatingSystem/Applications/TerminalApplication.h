@@ -105,8 +105,14 @@ public:
 
 	virtual void Tick(float DeltaTime) override;
 
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Application|Terminal")
+		bool IsMessageQueued();
+
+protected:
 	virtual void ProcessDelayedMessages(float DeltaTime);
 
+
+public:
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void ExecuteCommand(FString Command);
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
