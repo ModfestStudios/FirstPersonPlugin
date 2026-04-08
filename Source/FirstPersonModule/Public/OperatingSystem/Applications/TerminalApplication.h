@@ -44,10 +44,18 @@ public:
 
 
 	/*list of messages currently on-screen by the terminal*/
+public:
 	UPROPERTY(BlueprintReadOnly, Category = "Application|Terminal")
 		TArray<FString> TerminalMessages;
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
 		TArray<TSubclassOf<class UTerminalCommand>> Commands;
+
+protected:
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
+		TArray<FString> CommandHistory;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
+		int32 CommandHistoryIndex = -1; //-1 == no display - user is typing in blank state
+
 
 
 	/*events*/
@@ -78,7 +86,25 @@ public:
 		virtual void ClearTerminal();
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void RefreshTerminal();
+	
+	//=====================
+	//=======HISTORY=======
+	//=====================
 
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void AddCommandToHistory(FString Command);
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void ResetCommandHistory();
+	/*returns the previous command in order*/
+	UFUNCTION(BlueprintPure, Category = "Application|Terminal")
+		virtual FString GetPreviousCommand();
+	UFUNCTION(BlueprintPure, Category = "Application|Terminal")
+		virtual FString GetNextCommand();
+	/*clears all history*/
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void ClearCommandHistory();
+
+	
 	UFUNCTION(BluePrintCallable)
 		bool BlockedCommand(const FString& Command);
 

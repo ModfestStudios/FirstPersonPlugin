@@ -14,10 +14,6 @@ class FIRSTPERSONMODULE_API UTerminalCommand_Exit : public UTerminalCommand
 {
 	GENERATED_BODY()
 public:
-
-
 	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
-
-	//comment test 123
 	
 };

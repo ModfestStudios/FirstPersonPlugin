@@ -37,12 +37,19 @@ ATerminalApplication::ATerminalApplication()
 
 void ATerminalApplication::ExecuteCommand(FString Command)
 {
+	/*initialize*/
 	TArray<FString> CommandArray;
 	int32 CommandIndex = -1;
 	FTerminalCommandExecutionParameters CommandParameters;
 	AOperatingSystem* OS = this->GetOperatingSystem();
 	FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
 	FString HomeDirectory = OS->GetHomeDirectory();
+
+	/*save command to history*/
+	AddCommandToHistory(Command);
+	ResetCommandHistory();
+
+	/*print entered command to terminal*/
 	PrintToTerminal("<User>white-rabbit</>:<directory>~/" + HomeDirectory + ActiveWorkingDirectory + "</>$ <Default>" + Command + "</>");
 	Command.ParseIntoArray(CommandArray,TEXT(" "), true);
 
@@ -121,7 +128,8 @@ void ATerminalApplication::ExecuteCommand(FString Command)
 		PrintToTerminal("System: " + CommandParameters.Command.ToString() + ": Permission denied: Command forbidden");
 		PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
 	}
-	else {
+	else 
+	{
 		if (IsValidCommand(CommandParameters.Command, CommandIndex) && CommandIndex >= 0)
 		{
 			ExecuteCommandObject(Commands[CommandIndex], CommandParameters);
@@ -175,18 +183,18 @@ void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMess
 {
 	switch (Style)
 	{
-	case ETerminalMessageStyle::None:
-		TerminalMessages.Add(Message);
-		break;
-	case ETerminalMessageStyle::OK:
-		TerminalMessages.Add("<OK>[OK]</> " + Message);
-		break;
-	case ETerminalMessageStyle::Error:
-		TerminalMessages.Add("<ERROR>[ERROR]</> " + Message);
-		break;
-	case ETerminalMessageStyle::Status:
-		TerminalMessages.Add("<Status>[STATUS]</> " + Message);
-		break;
+		case ETerminalMessageStyle::None:
+			TerminalMessages.Add(Message);
+			break;
+		case ETerminalMessageStyle::OK:
+			TerminalMessages.Add("<OK>[OK]</> " + Message);
+			break;
+		case ETerminalMessageStyle::Error:
+			TerminalMessages.Add("<ERROR>[ERROR]</> " + Message);
+			break;
+		case ETerminalMessageStyle::Status:
+			TerminalMessages.Add("<Status>[STATUS]</> " + Message);
+			break;
 	}
 
 	RefreshTerminal();
@@ -218,13 +226,61 @@ void ATerminalApplication::ClearTerminal()
 	TerminalMessages.Reset();
 
 	RefreshTerminal();
-	
 }
 
 void ATerminalApplication::RefreshTerminal()
 {
 	if (OnTerminalUpdated.IsBound())
 		OnTerminalUpdated.Broadcast();
+}
+
+void ATerminalApplication::AddCommandToHistory(FString Command)
+{
+	CommandHistory.Insert(Command, 0); //always insert the latest command into the front of the array
+}
+
+void ATerminalApplication::ResetCommandHistory()
+{
+	CommandHistoryIndex = -1;
+}
+
+FString ATerminalApplication::GetPreviousCommand()
+{
+	if (CommandHistory.Num() > 0)
+	{
+		/*check to see if there's more history*/
+		if (CommandHistoryIndex + 1 < CommandHistory.Num())
+			CommandHistoryIndex++; //increment the history to the last entry
+		
+		return CommandHistory[CommandHistoryIndex];
+	}
+	else
+		return FString();
+	
+}
+
+FString ATerminalApplication::GetNextCommand()
+{
+	if (CommandHistory.Num() > 0)
+	{
+		if (CommandHistoryIndex - 1 > -1)
+			CommandHistoryIndex--;
+		else
+		{
+			ResetCommandHistory();
+			return FString();
+		}
+			
+
+		return CommandHistory[CommandHistoryIndex];
+	}
+
+	return FString();
+}
+
+void ATerminalApplication::ClearCommandHistory()
+{
+	CommandHistory.Empty();
 }
 
 bool ATerminalApplication::BlockedCommand(const FString& Command)
