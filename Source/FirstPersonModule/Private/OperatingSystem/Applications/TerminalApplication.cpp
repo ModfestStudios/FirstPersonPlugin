@@ -164,13 +164,13 @@ void ATerminalApplication::PrintToTerminal(const FString& Message, ETerminalMess
 
 	/*if the message has a delay, add it to the queue*/
 	if (Delay > 0.0f)
-		MessageQueue.Add(FDelayedTerminalMessage(Message, Delay));
+		MessageQueue.Add(FDelayedTerminalMessage(MessageToPrint, Delay));
 	/*if the message does not have a delay, but delays are still actively running - we need to add it to the queue with a 0.0f delay to wait its turn*/
 	else if (MessageQueue.Num() > 0)
-			MessageQueue.Add(FDelayedTerminalMessage(Message, 0.0f));
+			MessageQueue.Add(FDelayedTerminalMessage(MessageToPrint, 0.0f));
 	/*if there is no delay, and currently the queue is not backed up - then we just print directly*/
 	else 
-		PrintMessage(Message);
+		PrintMessage(MessageToPrint);
 
 	RefreshTerminal();
 }
