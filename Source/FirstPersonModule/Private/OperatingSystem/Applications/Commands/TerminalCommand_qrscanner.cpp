@@ -117,7 +117,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             return FTerminalCommandResult();
         }
         else {
-            Terminal->PrintToTerminal("Authorized user key accepted", ETerminalMessageStyle::OK);
+            Terminal->PrintToTerminal("Authorized user key accepted", ETerminalMessageStyle::OK,0.5);
         }
 
         if (flagDevice) 
@@ -137,7 +137,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             }*/
 
 
-            Terminal->PrintToTerminal("Initiating deviceID[" + DeviceID + "]...", ETerminalMessageStyle::Status);
+            Terminal->PrintToTerminal("Initiating deviceID[" + DeviceID + "]...", ETerminalMessageStyle::Status, 1.5);
 
             if (DeviceID != "5")
             {
@@ -151,7 +151,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             }*/
 
             else {
-                Terminal->PrintToTerminal("Device successfully initiated", ETerminalMessageStyle::OK);
+                Terminal->PrintToTerminal("Device successfully initiated", ETerminalMessageStyle::OK, 0.5);
                 Terminal->PrintToTerminal("Waiting for QR code to scan ...", ETerminalMessageStyle::Status);
                 //TODO: This is where the program/game should stop in terminal so user can scan their arm / show animation
                 //TODO: When the scan completes, proceed to next line of code
