@@ -131,11 +131,10 @@ BUILD AND VERSION
     Encryption layer: S.Light protocol
 
 ABOUT
-    a heavily customized GNU linux-based operating system     
-    helloworld is a purpose built operating system for you
-    it is your key to finding the answers your safety depends on
-    it is amnesiac, rebooting wipes memory, this is for your protection
-    if you are at risk of compromise, type "shutdown now" to terminate immediately
+    A heavily customized GNU linux-based operating system.     
+    It is your key to finding the answers your life depends on.
+    It is amnesiac; rebooting wipes memory, this is for your protection.
+    If you are at risk of compromise, type "shutdown now" to terminate immediately.
 
 OPERATING SYSTEM OVERVIEW
     commands

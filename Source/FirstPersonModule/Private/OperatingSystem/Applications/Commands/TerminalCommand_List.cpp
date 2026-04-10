@@ -67,7 +67,7 @@ FTerminalCommandResult UTerminalCommand_List::OnCommandExecuted(ATerminalApplica
 		}*/
 
 		if (SortBySize && SortByDate) {
-			Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, " -t and -lS not compatible");
+			Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, " -t and -lS not compatible together");
 			return FTerminalCommandResult();
 		}
 

@@ -29,6 +29,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
         FString commandExport;
         if (CommandParameters.Flags.Num() < 1) {
             Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
+            Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
             return FTerminalCommandResult();
         }
 
@@ -140,6 +141,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
                 if (OS) 
                 {
                     //TODO: Need to check real PGP key file size in linux and permissions
+                    //TODO: need to check if exists as not to duplicate 
                     OS->FileSystemAddFile((FileName + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
                 }
                 Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + FileName + ".asc", ETerminalMessageStyle::OK, 1.5);

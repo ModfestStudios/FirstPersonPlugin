@@ -16,6 +16,7 @@ FTerminalCommandResult UTerminalCommand_HelloWorld::OnCommandExecuted(ATerminalA
     bool ToolExists = Terminal->CheckToolExists("helloworld");
     if (!ToolExists) {
         Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::CommandNotFound, "helloworld");
+        Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
         return FTerminalCommandResult();
     }
 

@@ -200,7 +200,7 @@ void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage Me
 		PrintToTerminal(UserDefinedValue1 + ": command not found");
 		break;
 	case ETerminalCommonMessage::UseHelp:
-		PrintToTerminal("For commands available, use: help");
+		PrintToTerminal("Access help by typing: help");
 		break;
 	}
 }
