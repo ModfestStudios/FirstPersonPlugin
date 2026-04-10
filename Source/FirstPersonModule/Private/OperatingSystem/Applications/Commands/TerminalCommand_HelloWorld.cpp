@@ -13,23 +13,24 @@ FTerminalCommandResult UTerminalCommand_HelloWorld::OnCommandExecuted(ATerminalA
     FString HomeDirectory = OS->GetHomeDirectory();
     FOperatingSystemFiles FileResult;
 
-    //Checks if player deleted their tool
-    FileResult = OS->FileSystemGetFile("", "", "Tool:helloworld");
-
-    if (FileResult.Name == "") {
+    bool ToolExists = Terminal->CheckToolExists("helloworld");
+    if (!ToolExists) {
         Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::CommandNotFound, "helloworld");
         return FTerminalCommandResult();
     }
 
     FileResult = OS->FileSystemGetFile("", "", "PlayerPrivateKey");
 
+    Terminal->PrintToTerminal("Searching system for user key...", ETerminalMessageStyle::Status);
     if (FileResult.Name == "") {
-        Terminal->PrintToTerminal("No authorized user private key detected: unable to decrypt message",ETerminalMessageStyle::Error);
-        Terminal->PrintToTerminal(showEncryptedMessage());
+        Terminal->PrintToTerminal("No authorized user private key detected in ~/" + HomeDirectory + "/Keys directory; unable to decrypt message.",ETerminalMessageStyle::Error, 1.5);
+        Terminal->PrintToTerminal("Displaying message:", ETerminalMessageStyle::Status);
+        Terminal->PrintToTerminal(showEncryptedMessage(),ETerminalMessageStyle::None,2.5);
     }
     else {
-        Terminal->PrintToTerminal("Authorized user private key detected (~/" + HomeDirectory + FileResult.Path + "/" + FileResult.Name + "): message decrypted", ETerminalMessageStyle::OK);
-        Terminal->PrintToTerminal(showDecryptedMessage());
+        Terminal->PrintToTerminal("Authorized user private key detected (~/" + HomeDirectory + FileResult.Path + "/" + FileResult.Name + "); message successfully decrypted", ETerminalMessageStyle::OK, 1.5);
+        Terminal->PrintToTerminal("Displaying message:", ETerminalMessageStyle::Status);
+        Terminal->PrintToTerminal(showDecryptedMessage(),ETerminalMessageStyle::None,2.5);
     }
 	return FTerminalCommandResult();
 }

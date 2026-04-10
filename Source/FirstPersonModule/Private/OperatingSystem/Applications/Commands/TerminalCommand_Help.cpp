@@ -31,20 +31,6 @@ FTerminalCommandResult UTerminalCommand_Help::OnCommandExecuted(ATerminalApplica
         }
     }
 
-    //for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) 
-    //{
-    //    FString currentParameter = CommandParameters.Flags[i];
-    //    if (currentParameter == "--commands") {
-    //        Terminal->PrintToTerminal(getCommandsHelpText());
-    //        return FTerminalCommandResult();
-    //    }
-    //    if (currentParameter == "--about") {
-    //        Terminal->PrintToTerminal(getAboutHelpText());
-    //        return FTerminalCommandResult();
-    //    }
-    //}
-
-    Terminal->ClearTerminal();
     Terminal->PrintToTerminal(getHelpText());
     return FTerminalCommandResult();
 }
@@ -70,8 +56,9 @@ ORIENTATION
     we need information.  collect what we tell you to.
     
 NEXT STEPS
-    when you know who you are, scan your key into the system then type 'helloworld'
-    Use 'help --commands' to learn how to navigate this system
+    when you know who you are, scan your key into the system then type "helloworld"
+    Type "help --about" to learn more about this system
+    Type "help --commands" to learn how to navigate this system
 
 )HELP");
 }
@@ -79,15 +66,12 @@ NEXT STEPS
 FString UTerminalCommand_Help::getCommandsHelpText() const {
     return TEXT(R"HELP(
 NAME
-    help - operating system help / orientation file
+    help :: operating system help / orientation file
 
 SYNOPSIS
     help
-        --commands
-        --about
-
-DESCRIPTION
-    These shell commands are defined internally.
+    help --commands
+    help --about
 
 COMMANDS
     ls
@@ -118,15 +102,23 @@ COMMANDS
 
 TOOLS
 
-    this system is preloaded with tools and commands crucial for your success
-    commands can be found using "help --commands" to list
-    all pre-loaded tools are within the tools directory
-    to view available tools, view tool directory by typing 'cd tools'
-    once inside the tools, type "ls" to see available tools
-    type the tool name in the terminal and commit (enter) to run
+    This system is preloaded with tools crucial for your success.
+    All pre-loaded tools are within the tools directory.
+    To view available tools, access the tools directory by typing "cd tools"
+    Once inside the tools directory, type "ls" to see available tools.
+    Type the tool name in the terminal and commit (hit enter) to run
+
+    EXAMPLE:
+        qrscanner
+
+    NOTE:
+        Tools can be run from any directory.
 
 ADDITIONAL HELP
     use "--help" flag with tools or commands for specific help details
+    EXAMPLES:
+        ls --help
+        qrscanner --help
 
 )HELP");
 }
@@ -141,37 +133,55 @@ BUILD AND VERSION
 ABOUT
     a heavily customized GNU linux-based operating system     
     helloworld is a purpose built operating system for you
-    it is your key to finding the answers your life depends on
-    it is secure because it is amnesiac, rebooting wipes memory
-    if you are at risk of compromise, type "shutdown now" to terminate
+    it is your key to finding the answers your safety depends on
+    it is amnesiac, rebooting wipes memory, this is for your protection
+    if you are at risk of compromise, type "shutdown now" to terminate immediately
 
 OPERATING SYSTEM OVERVIEW
     commands
-        core functionality provided in the operating system
-        type "help --commands" to see the list of commands
-        commands are typed into the terminal (e.g. "help" is a command)
+        commands are core functionality provided in the operating system
+        type "help --commands" to see the list of available commands
+        commands are typed into the terminal (e.g. "help" and "ls" are commands)
+        NOTE: this OS is limited to key commands; non-critical are disabled/not listed
 
     flags
         additional functionality to use when executing a command/tool
-        flags are denoted by a leading double-dash (--)
+        flags are denoted by a leading double-dash (--) or single dash (-)
         for example "help --commands" the flag is "--commands"
-        most tools have a "--help" flag for more tool details
-        use the help flag to understand your tools
+        most tools and commands have a "--help" flag for more tool details
+        use the help flag for specific help on tools or commands
+        EXAMPLES:
+            ls --help
+            qrscanner --help
 
     directories and files
-        for security purposes, helloworld is locked down to core files/directories
-        using the "ls" command will list files and directories
-        directories are shown in blue text; files in system default grey
-        every default file and directory has a purpose, remember this
+        for security purposes, helloworld is locked down to mission files/directories
+        you can only navigate to the folders and files important to your mission
+        using the "ls" command will list the available files and directories
+        directories are shown as <Directory>blue</> text; files are shown as grey
+        every file and directory has a purpose, find it
+
+    working directory prompt
+        the prompt tells you which <directory>directory</> you are working in within the OS
+            EXAMPLE1:
+                <User>white-rabbit</>:<directory>~/lambda5</>$
+                shows you are in the home directory <directory>lambda5</>
+                NOTE: "~/" denotes "home" ; you cannot go any higher than home
+            EXAMPLE2:
+                <User>white-rabbit</>:<directory>~/lambda5/Tools</>$
+                shows you are in the <Directory>Tools</> directory which is a child of home (<Directory>lambda5</>)
+        to change directories, use the "cd" command
 
     s.light protocol 
         sensitive messages are s.light encrypted to avoid compromise
         s.light encryption is bleeding edge and m.verse quantum resistant
-        all files maintain authentic signature (.sig) and key (in keys)
+        all critical files maintain authentic signatures (.sig) and keys (in <Directory>Keys</>)
         NOTE: signature (.sig) files are hidden; use "ls -art" to see hidden files
-        use this and keys folder to verify authenticity, compromise is a risk
-        Note: all s.light protocols are embedded into the standard "gpg" tool
-        NOTE: all returned drops must be encrypted to maintain OPSEC
+        use this and keys folder to verify authenticity, compromising comms is a risk
+        NOTE:
+            all s.light protocols are embedded into the standard "gpg" tool
+            all returned drops must be encrypted to maintain OPSEC
+            use "gpg --help" for more details on encryption handling  
 
 AUTHOR
     written by Dr. Alto Clef

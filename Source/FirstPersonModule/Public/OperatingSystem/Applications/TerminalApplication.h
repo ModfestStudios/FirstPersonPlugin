@@ -123,6 +123,8 @@ public:
 		virtual void PrintToTerminal(const FString& Message, ETerminalMessageStyle Style = ETerminalMessageStyle::None,float Delay = 0.0f);
 	UFUNCTION(BlueprintCallable, Category= "Application|Terminal")
 		virtual void PrintCommonTerminalResponse(ETerminalCommonMessage MessageResponse = ETerminalCommonMessage::None, FString UserDefinedValue1 = "");
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual bool CheckToolExists(FString ToolName);
 private:
 	/*the function that performs the actual print (called by all public facing PrintToTerminal commands)*/
 	UFUNCTION()

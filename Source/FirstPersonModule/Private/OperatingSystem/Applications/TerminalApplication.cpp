@@ -191,10 +191,10 @@ void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage Me
 	switch (MessageResponse)
 	{
 	case ETerminalCommonMessage::SyntaxLength:
-		PrintToTerminal("Syntax too long/short " + UserDefinedValue1, ETerminalMessageStyle::Error);
+		PrintToTerminal("Syntax too long/short " + UserDefinedValue1 + " ; for further help try appending --help to command/tool", ETerminalMessageStyle::Error);
 		break;
 	case ETerminalCommonMessage::SyntaxFormat:
-		PrintToTerminal("Syntax error invalid format  " + UserDefinedValue1, ETerminalMessageStyle::Error);
+		PrintToTerminal("Syntax error invalid format  " + UserDefinedValue1 + " ; for further help try appending --help to command/tool", ETerminalMessageStyle::Error);
 		break;
 	case ETerminalCommonMessage::CommandNotFound:
 		PrintToTerminal(UserDefinedValue1 + ": command not found");
@@ -203,6 +203,21 @@ void ATerminalApplication::PrintCommonTerminalResponse(ETerminalCommonMessage Me
 		PrintToTerminal("For commands available, use: help");
 		break;
 	}
+}
+
+bool ATerminalApplication::CheckToolExists(FString inToolName)
+{
+	AOperatingSystem* OS = this->GetOperatingSystem();
+	FOperatingSystemFiles FileResult;
+	FString ToolName = "Tool:" + inToolName;
+
+	FileResult = OS->FileSystemGetFile("", "", ToolName);
+
+	if (FileResult.Name != "") {
+		return true;
+	}
+
+	return false;
 }
 
 void ATerminalApplication::PrintMessage(FString Message)
