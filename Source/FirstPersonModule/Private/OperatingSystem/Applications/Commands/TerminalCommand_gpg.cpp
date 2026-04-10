@@ -12,6 +12,8 @@ FTerminalCommandResult UTerminalCommand_gpg::OnCommandExecuted(ATerminalApplicat
 	AOperatingSystem* OS = Terminal->GetOperatingSystem();
 	FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
 	FString HomeDirectory = OS->GetHomeDirectory();
+	bool DetachSign = false;
+	bool VerifySignature = false;
 
 	TArray<FOperatingSystemFiles> FileResult;
 
@@ -77,11 +79,93 @@ FTerminalCommandResult UTerminalCommand_gpg::OnCommandExecuted(ATerminalApplicat
 				if (FileResult[i].Name.EndsWith(".sig")) {
 					PathPrefix = PathPrefix = "~/" + HomeDirectory;
 					if (FileResult[i].Path == "") { PathPrefix = PathPrefix + "/"; }
-					Terminal->PrintToTerminal("<STATUS>[SIGNATURE FILE]</> " + PathPrefix + FileResult[i].Path + "/" + FileResult[i].Name);
+					else {
+						PathPrefix = PathPrefix + FileResult[i].Path + "/";
+					}
+					Terminal->PrintToTerminal("<STATUS>[SIGNATURE FILE]</> " + PathPrefix + FileResult[i].Name);
 				}
 
 			}
 			return FTerminalCommandResult();
+		}
+
+		if (Flag.Flag == "detach-sign") {
+			DetachSign = true;
+		}
+
+		if (Flag.Flag == "verify") {
+			VerifySignature = true;
+		}
+
+		if (DetachSign) {
+			FString DirectoryPath = ActiveWorkingDirectory + "/";
+			FString FileToSign = GetFlagValue("detach-sign", CommandParameters);
+
+			if (FileToSign.IsEmpty()) {
+				Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, ":: missing file to sign with --detach-sign");
+				return FTerminalCommandResult();
+			}
+
+			Terminal->PrintToTerminal("Preparing signature of file: ~/" + HomeDirectory + DirectoryPath + FileToSign);
+			bool CheckFileExists = OS->FileSystemCheckIfFileExists(FileToSign,ActiveWorkingDirectory,FOperatingSystemFileType::File);
+			if (!CheckFileExists) {
+				Terminal->PrintToTerminal("Unable to sign: File does not exist: ~/" + HomeDirectory + DirectoryPath + FileToSign, ETerminalMessageStyle::Error, 0.5);
+				return FTerminalCommandResult();
+			}
+			FOperatingSystemFiles PrivateKeyFile = OS->FileSystemGetFile("", "", "PlayerPrivateKey");
+			if (PrivateKeyFile.Name.IsEmpty()) {
+				Terminal->PrintToTerminal("Unable to sign: No private key detected on system", ETerminalMessageStyle::Error, 0.5);
+				return FTerminalCommandResult();
+			}
+			Terminal->PrintToTerminal("User private key loaded: ~/" + HomeDirectory + PrivateKeyFile.Path + "/" + PrivateKeyFile.Name, ETerminalMessageStyle::OK, 0.5);
+			OS->FileSystemAddFile(FileToSign + ".sig", FDateTime::Now(), ActiveWorkingDirectory, 0, "rx-xx-rf", FOperatingSystemFileType::File, false, "AuthenticSignature:Player");
+			Terminal->PrintToTerminal("Signature file generated: ~/" + HomeDirectory + DirectoryPath + FileToSign + ".sig", ETerminalMessageStyle::OK, 0.5);
+			return FTerminalCommandResult();
+		}
+
+		if (VerifySignature) {
+			FString FileToVerify = GetFlagValue("verify", CommandParameters);
+
+			if (FileToVerify.IsEmpty()) {
+				Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, ":: missing filename to verify with --verify");
+				return FTerminalCommandResult();
+			}
+
+			bool CheckFileExists = OS->FileSystemCheckIfFileExists(FileToVerify, ActiveWorkingDirectory, FOperatingSystemFileType::File);
+
+			if (!CheckFileExists) {
+				Terminal->PrintToTerminal("Unable to verify: File does not exist: " + FileToVerify, ETerminalMessageStyle::Error, 0.5);
+				return FTerminalCommandResult();
+			}
+
+			bool FoundSignatureFile = false;
+			bool AuthenticSignatureFile = false;
+			FString FileSigName = FileToVerify + ".sig";
+			FileResult = OS->FileSystemListFiles();
+			for (int32 i = 0; i < FileResult.Num(); i++) {
+				if (FileResult[i].Name == FileSigName) {
+					FoundSignatureFile = true;
+					if (FileResult[i].UDF1 == "AuthenticSignature:Player" || FileResult[i].UDF1 == "AuthenticSignature:L5") {
+						AuthenticSignatureFile = true;
+					}
+				}
+			}
+
+			if (!FoundSignatureFile) {
+				Terminal->PrintToTerminal("Unable to verify: No signature (.SIG) exists for: " + FileToVerify, ETerminalMessageStyle::Error, 0.5);
+				return FTerminalCommandResult();
+			}
+
+			if (FoundSignatureFile && !AuthenticSignatureFile) {
+				Terminal->PrintToTerminal("<ERROR>[WARNING]</> Signature (" + FileSigName + ") is not able to be verified for " + FileToVerify, ETerminalMessageStyle::None, 0.5);
+				Terminal->PrintToTerminal("<ERROR>[WARNING]</> System may be compromised; shutdown immediately to clear data", ETerminalMessageStyle::None, 0.5);
+				return FTerminalCommandResult();
+			}
+
+			if (FoundSignatureFile && AuthenticSignatureFile) {
+				Terminal->PrintToTerminal("<OK>[SIGNATURE VERIFIED]</> Signature (" + FileSigName + ") verified against file " + FileToVerify, ETerminalMessageStyle::None, 0.5);
+				return FTerminalCommandResult();
+			}
 		}
 	}
 	return FTerminalCommandResult();
@@ -121,14 +205,16 @@ OPTIONS
 		creates seperate filename.sig file without changing file signed
 		NOTE: command must be run in directory of file being signed
 
-	--verify [signature name] [file to be verified]
-		checks defined signature with file signed to validate signature
-		NOTE: command must be run in directory of file being validated
+	--verify [file to verify]
+		verifies signature file in folder against signed source
+		NOTE:
+			command must be run in directory of file being validated
+			signatures (.sig) and file must be in same folder to run
 		
 EXAMPLES
 
     gpg --detach-sign asamplefile
-	gpg --verify asamplefile.sig asamplefile
+	gpg --verify asamplefile
 
 )HELP");
 }

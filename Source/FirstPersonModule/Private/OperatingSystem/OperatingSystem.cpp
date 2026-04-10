@@ -232,7 +232,7 @@ void AOperatingSystem::BeginPlay()
 	FileSystemAddFile("Keys", FDateTime(2026, 4, 3), "", 0, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
 	FileSystemAddFile("Tools", FDateTime(2026, 4, 3), "", 34589, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
 	FileSystemAddFile("helloworld", FDateTime(2026, 4, 3), "/Tools", 11420, "-r--r--r--", FOperatingSystemFileType::File, false, "Tool:helloworld");
-	FileSystemAddFile("helloworld.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
+	FileSystemAddFile("helloworld.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
 	FileSystemAddFile("winningsequence", FDateTime(2026, 4, 3), "", 0, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
 	GenerateLotteryFiles();
 	//TODO: Winning Sequence identified file
@@ -242,9 +242,9 @@ void AOperatingSystem::BeginPlay()
 	//TODO: Need to determine naming for key; are we going with rabbits or another, etc.. 
 	FileSystemAddFile("lambda5_public.asc", FDateTime(2026, 4, 3), "/Keys", 436, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Lambda5PublicKey");
 	FileSystemAddFile("qrscanner", FDateTime(2026, 4, 3), "/Tools", 22237, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Tool:qrscanner");
-	FileSystemAddFile("qrscanner.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
+	FileSystemAddFile("qrscanner.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
 	FileSystemAddFile("gpg", FDateTime(2026, 4, 3), "/Tools", 12352, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Tool:gpg");
-	FileSystemAddFile("gpg.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
+	FileSystemAddFile("gpg.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
 
 	FString KeypadFilePath = "/openthenoor";
 	FileSystemAddFile(KeypadFilePath.RightChop(1), FDateTime(2009, 3, 14), "", 76175, "-rwxr-xr--", FOperatingSystemFileType::Directory, true);

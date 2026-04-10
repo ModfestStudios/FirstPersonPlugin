@@ -49,7 +49,7 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
             if (Flag.Flag == "export")
             {
                 commandExport = Flag.Value;
-                fileExists = OS->FileSystemCheckIfFileExists(commandExport, ActiveWorkingDirectory, FOperatingSystemFileType::File);
+                fileExists = OS->FileSystemCheckIfFileExists(commandExport, "/Keys", FOperatingSystemFileType::File);
                 flagExport = true;
             }
             if (Flag.Flag == "device")
@@ -132,8 +132,16 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
                 Terminal->PrintToTerminal("Processing file export request ... ", ETerminalMessageStyle::Status);
                 if (fileExists) 
                 {
-                    Terminal->PrintToTerminal("Unable to export.  File " + FileName + " already exists.", ETerminalMessageStyle::Error, 0.5);
+                    Terminal->PrintToTerminal("Unable to export.  File ~/" + HomeDirectory + "/Keys/" + FileName + " already exists.", ETerminalMessageStyle::Error, 0.5);
                     goto CheckFourth;
+                }
+                FOperatingSystemFiles ExistingPrivateKeyFile = OS->FileSystemGetFile("", "", "PlayerPrivateKey");
+
+                if (ExistingPrivateKeyFile.UDF1 == "PlayerPrivateKey") {
+                    Terminal->PrintToTerminal("Detected existing private key ~/" + HomeDirectory + ExistingPrivateKeyFile.Path + "/" + ExistingPrivateKeyFile.Name, ETerminalMessageStyle::Status, 0.5);
+                    Terminal->PrintToTerminal("Removing existing key from system...", ETerminalMessageStyle::Status, 0.2);
+                    OS->FileSystemDeleteFile(ExistingPrivateKeyFile.Name, ExistingPrivateKeyFile.Path, FOperatingSystemFileType::File);
+                    Terminal->PrintToTerminal("Existing private key successfully removed", ETerminalMessageStyle::OK, 0.5);
                 }
                 
                 Terminal->PrintToTerminal("Exporting to file " + FileName, ETerminalMessageStyle::Status, 0.5);
