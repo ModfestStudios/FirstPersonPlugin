@@ -255,7 +255,6 @@ SIGNATURES:
 	The signing of a file generates a .SIG file to verify.
 	The receiver verifies it using the senders public key.
 
-
 	If verification fails, the file may be altered or forged.
 	Never trust or execute unverified files.
 )HELP");

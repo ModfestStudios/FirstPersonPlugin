@@ -55,16 +55,21 @@ What you need is already here, though it may not appear so.
 
 Look beyond what is visible.  Sort matters.
 
-Begin with what occupies the most.
+Begin with what occupies the least.
 
 Then by first recorded.
 
 The contents will open the next door of information.
 
-Find the winning sequence.  Report it back to us.
+Find the winning sequence.
+
+Verify your find.
+
+Deliver it back to us, signed in a way only your key can verify.
 )MESSAGE");
 }
 
+//TODO: Need to encrypt the real message and put it here when ready
 FString UTerminalCommand_HelloWorld::showEncryptedMessage() const
 {
         return TEXT(R"MESSAGE(
