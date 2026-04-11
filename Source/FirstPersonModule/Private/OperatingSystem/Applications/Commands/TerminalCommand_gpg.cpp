@@ -184,7 +184,7 @@ DESCRIPTION
 	tool aides in encrypton, decryption, crytographic signing, and crytographic signature validation
 	NOTE: this is a heavily modified GnuPG tool intended to streamline organizational use
 
-	learn more about the encryption by typing "help --about"
+	learn more about the encryption by typing "gpg --about"
 
 OPTIONS
     --help
@@ -226,7 +226,7 @@ NAME
 
 OVERVIEW:
 	The success of the mission depends on secure communication.
-	The threat you are escaping can observe all unprotected channels.
+	The enemy you are avoiding can observe all unprotected channels.
 	Unsecured transmissions risk immediate compromise.
 
 	All outbound communications must be encrypted before transmission.
