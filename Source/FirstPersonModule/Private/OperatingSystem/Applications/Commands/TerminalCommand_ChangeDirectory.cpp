@@ -15,9 +15,6 @@ FTerminalCommandResult UTerminalCommand_ChangeDirectory::OnCommandExecuted(ATerm
 	}
 	else {
 		FString DirectoryRequested = CommandParameters.Subcommands[0].Subcommand.ToString();
-		if (DirectoryRequested.Right(1) == "/") {
-			DirectoryRequested = DirectoryRequested.LeftChop(1);
-		}
 		AOperatingSystem* OS = Terminal->GetOperatingSystem();
 		FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
 		FString HomeDirectory = OS->GetHomeDirectory();
@@ -26,33 +23,34 @@ FTerminalCommandResult UTerminalCommand_ChangeDirectory::OnCommandExecuted(ATerm
 		bool DirectoryExists = false;
 		FString NewWorkingDirectory;
 		int32 HomeDirectoryLength = HomeDirectory.Len() + 2;
-
-		if (DirectoryRequested.Left(1) == "/") {
-			return FTerminalCommandResult(false, "No such directory: " + DirectoryRequested, false);
-		}
+		
 		if (DirectoryRequested.Contains("/")) {
-
-			//Allows for "straight to home" by typing "cd ~/homedirectory" 
-			if (DirectoryRequested.Left(HomeDirectoryLength) == ("~/" + HomeDirectory)) {
-				if (DirectoryRequested == ("~/" + HomeDirectory)) {
+			FString DirectoryPathPrefix = "";
+			if (DirectoryRequested.Left(HomeDirectoryLength) == ("~/" + HomeDirectory) || DirectoryRequested == "/") {
+				// Allows user to go straight to home if they just type ~/{homedirectory} in CD command
+				if (DirectoryRequested.Len() == HomeDirectoryLength || DirectoryRequested == "/") {
 					OS->SetActiveWorkingDirectory("");
 					return FTerminalCommandResult();
 				}
 				PrefixedHomeDirectory = true;
 			}
+			else {
+				DirectoryPathPrefix = "/";
+			}
 
 			DirectoryRequested.ParseIntoArray(DirectoryRequestedParsing, TEXT("/"), true);
-			FString DirectoryPathBuilding = "";
+			FString DirectoryCount = FString::FromInt(DirectoryRequestedParsing.Num());
 			int32 LastDirectoryNum = DirectoryRequestedParsing.Num() - 1;
-			//Isolate intended directory
 			FString RequestedDirectory = DirectoryRequestedParsing[LastDirectoryNum];
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Looking for directory :" + RequestedDirectory));
+			FString DirectoryPathBuilding = DirectoryPathPrefix + "";
+			
+			if (RequestedDirectory.Left(1) == ".") {
+				RequestedDirectory = RequestedDirectory.RightChop(1);
+			}
+			
 			//Isolate path to intended directory
 			for (int32 i = 0; i < DirectoryRequestedParsing.Num(); i++) {
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("CurrentParse :" + DirectoryRequestedParsing[i]));
-				if (DirectoryRequestedParsing[i] == HomeDirectory || DirectoryRequestedParsing[i] == "~")
-				{
-					DirectoryPathBuilding = "";
+				if ((i == 0 || i == 1) && PrefixedHomeDirectory) {
 					continue;
 				}
 				if (i != LastDirectoryNum) {
@@ -60,14 +58,15 @@ FTerminalCommandResult UTerminalCommand_ChangeDirectory::OnCommandExecuted(ATerm
 				}
 			}
 			DirectoryExists = OS->FileSystemCheckIfFileExists(RequestedDirectory, DirectoryPathBuilding, FOperatingSystemFileType::Directory);
-			GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Check for PATH of " + DirectoryPathBuilding + " and file of " + RequestedDirectory));
 			if (!DirectoryExists) {
 				return FTerminalCommandResult(false, "No such directory: " + DirectoryRequested, false);
 			}
 			else
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Made it to OS SetWorkingDirectory"));
-				OS->SetActiveWorkingDirectory(DirectoryRequested);
+				if (DirectoryPathBuilding == "") {
+					DirectoryPathBuilding = "/";
+				}
+				OS->SetActiveWorkingDirectory(DirectoryPathBuilding + RequestedDirectory);
 				return FTerminalCommandResult();
 			}
 		}
@@ -89,6 +88,9 @@ FTerminalCommandResult UTerminalCommand_ChangeDirectory::OnCommandExecuted(ATerm
 		}
 		else
 		{
+			if (DirectoryRequested.Left(1) == ".") {
+				DirectoryRequested = DirectoryRequested.RightChop(1);
+			}
 			DirectoryExists = OS->FileSystemCheckIfFileExists(DirectoryRequested, ActiveWorkingDirectory, FOperatingSystemFileType::Directory);
 			if (!DirectoryExists) { return FTerminalCommandResult(false, "No such directory: " + DirectoryRequested, false); }
 			else { OS->SetActiveWorkingDirectory("/" + DirectoryRequested); }

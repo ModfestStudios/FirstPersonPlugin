@@ -12,6 +12,33 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnTerminalCommandExecuted, TSubc
 
 
 
+
+USTRUCT(BlueprintType)
+struct FDelayedTerminalMessage
+{
+	GENERATED_BODY()
+public:
+	UPROPERTY(BlueprintReadOnly, Category = "Terminal Message")
+		FString Message;
+	UPROPERTY(BlueprintReadOnly, Category = "Terminal Message")
+		float Delay;
+	UPROPERTY(BlueprintReadOnly, Category = "Terminal Message")
+		float DelayRemaining;
+
+	FDelayedTerminalMessage() 
+	{
+		Message = "No Message Supplied";
+		Delay = 0.0f;
+		DelayRemaining = 0.0f;
+	}
+
+	FDelayedTerminalMessage(FString MessageToPrint, float DelayTime)
+	{
+		Message = MessageToPrint;
+		Delay = DelayTime;
+		DelayRemaining = DelayTime;
+	}
+};
 /**
  * 
  */
@@ -44,10 +71,22 @@ public:
 
 
 	/*list of messages currently on-screen by the terminal*/
+public:
 	UPROPERTY(BlueprintReadOnly, Category = "Application|Terminal")
 		TArray<FString> TerminalMessages;
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
 		TArray<TSubclassOf<class UTerminalCommand>> Commands;
+	
+	/*commands waiting to be executed*/
+	UPROPERTY(BlueprintReadOnly, Category = "Application|Terminal")
+		TArray<FDelayedTerminalMessage> MessageQueue;
+
+protected:
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
+		TArray<FString> CommandHistory;
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Application|Terminal")
+		int32 CommandHistoryIndex = -1; //-1 == no display - user is typing in blank state
+
 
 
 	/*events*/
@@ -64,6 +103,16 @@ public:
 public:
 	ATerminalApplication();
 
+	virtual void Tick(float DeltaTime) override;
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Application|Terminal")
+		bool IsMessageQueued();
+
+protected:
+	virtual void ProcessDelayedMessages(float DeltaTime);
+
+
+public:
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void ExecuteCommand(FString Command);
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
@@ -71,14 +120,50 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void ExecuteCommandObject(class TSubclassOf<UTerminalCommand> Command, FTerminalCommandExecutionParameters CommandParameters);
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
-		virtual void PrintToTerminal(const FString& Message, ETerminalMessageStyle Style = ETerminalMessageStyle::None);
+		virtual void PrintToTerminal(const FString& Message, ETerminalMessageStyle Style = ETerminalMessageStyle::None,float Delay = 0.0f);
 	UFUNCTION(BlueprintCallable, Category= "Application|Terminal")
 		virtual void PrintCommonTerminalResponse(ETerminalCommonMessage MessageResponse = ETerminalCommonMessage::None, FString UserDefinedValue1 = "");
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual bool CheckToolExists(FString ToolName);
+private:
+	/*the function that performs the actual print (called by all public facing PrintToTerminal commands)*/
+	UFUNCTION()
+		virtual void PrintMessage(FString Message);
+public:
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void ClearTerminal();
 	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
 		virtual void RefreshTerminal();
+	
+	//=====================
+	//=======PARSING=======
+	//=====================
+	
+	/*combines quotes into a single entry*/
+	UFUNCTION()
+		virtual void ParseQuotes(TArray<FString>& CommandArray);
+	/*takes the command array and parses out all the commands, subcommands, and flags and updates CommandParamaters with results*/
+	UFUNCTION()
+		virtual void ParseCommands(TArray<FString>& CommandArray, FTerminalCommandExecutionParameters& CommandParameters);
+	
+	//=====================
+	//=======HISTORY=======
+	//=====================
 
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void AddCommandToHistory(FString Command);
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void ResetCommandHistory();
+	/*returns the previous command in order*/
+	UFUNCTION(BlueprintPure, Category = "Application|Terminal")
+		virtual FString GetPreviousCommand();
+	UFUNCTION(BlueprintPure, Category = "Application|Terminal")
+		virtual FString GetNextCommand();
+	/*clears all history*/
+	UFUNCTION(BlueprintCallable, Category = "Application|Terminal")
+		virtual void ClearCommandHistory();
+
+	
 	UFUNCTION(BluePrintCallable)
 		bool BlockedCommand(const FString& Command);
 

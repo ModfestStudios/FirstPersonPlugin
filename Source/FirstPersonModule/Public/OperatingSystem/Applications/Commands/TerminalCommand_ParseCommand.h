@@ -4,16 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "OperatingSystem/TerminalCommand.h"
-#include "TerminalCommand_Exit.generated.h"
+#include "TerminalCommand_ParseCommand.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FIRSTPERSONMODULE_API UTerminalCommand_Exit : public UTerminalCommand
+class FIRSTPERSONMODULE_API UTerminalCommand_ParseCommand : public UTerminalCommand
 {
 	GENERATED_BODY()
 public:
+
+	UTerminalCommand_ParseCommand();
 	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
 	
 };

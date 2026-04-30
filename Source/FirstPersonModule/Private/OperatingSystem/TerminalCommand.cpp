@@ -21,3 +21,17 @@ FTerminalCommandResult UTerminalCommand::OnCommandExecuted(ATerminalApplication*
 {
 	return FTerminalCommandResult();
 }
+
+const FString UTerminalCommand::GetFlagValue(FString Flag, FTerminalCommandExecutionParameters& CommandParameters) const
+{
+	for (FTerminalCommandFlag& CommandFlag : CommandParameters.Flags)
+	{
+		if (CommandFlag == Flag)
+		{
+			return CommandFlag.Value;
+		}
+	}
+
+	return FString();
+}
+
