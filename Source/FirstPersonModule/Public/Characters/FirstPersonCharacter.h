@@ -62,10 +62,56 @@ public:
 protected:
 	/*inventory manager component*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryManagerComponent* InventoryManager;
+		class UPlayerInventoryManagerComponent* InventoryManager;
+
+
+	/*equipment slots*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Undershirt;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Underwear;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Pants;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Shirt;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Headwear;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Jacket;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Shoes;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Glasses;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Backpack;	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Vest;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Mask;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Gloves;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Watch;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Primary;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Secondary;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryAttachmentComponent* Alternative;
+
+
+
+
+
+
+
+
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 		FName InventoryManagerComponentName = "InventoryManagerComponent";
+
+
 
 	/*interactions manager component*/
 protected:
@@ -321,7 +367,7 @@ protected:
 	//=========================
 public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
-		UInventoryManagerComponent* GetInventoryManager() { return InventoryManager; };
+		UPlayerInventoryManagerComponent* GetInventoryManager() { return InventoryManager; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
 		virtual bool HasItemEquipped();
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -331,6 +377,23 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
 		float GetMaxEncumbrance();
 
+	//===========================
+	//=========EQUIPMENT=========
+	//===========================
+public:
+	UFUNCTION()
+		virtual void OnItemEquipped(class AInventoryItem* Item, class UInventoryAttachmentComponent* EquippedComponent);
+	/*returns the first equipment component for the desired itemtype*/
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment")
+		virtual class UInventoryAttachmentComponent* GetEquipmentSlot(TSubclassOf<AInventoryItem> ItemType);
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment")
+		virtual class UInventoryAttachmentComponent* GetEquipmentSlotByID(FName EquipmentID);
+
+public:
+	UFUNCTION()
+		void OnInventoryManagerOpened();
+	UFUNCTION()
+		void OnInventoryManagerClosed();
 
 	//============================
 	//========INTERACTIVES========

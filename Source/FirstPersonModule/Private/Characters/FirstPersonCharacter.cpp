@@ -13,6 +13,18 @@
 /*curves*/
 #include "Curves/CurveFloat.h"
 
+/*clothing*/
+#include "Clothing/Undershirt.h"
+#include "Clothing/Underwear.h"
+#include "Clothing/Pants.h"
+#include "Clothing/Headwear.h"
+#include "Clothing/Glasses.h"
+#include "Clothing/Jacket.h"
+#include "Clothing/Shirt.h"
+#include "Clothing/Shoes.h"
+#include "Clothing/Gloves.h"
+
+
 /*components*/
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
@@ -21,6 +33,13 @@
 /*engine*/
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+
+/*equipment*/
+#include "Equipment/Backpack.h"
+#include "Equipment/Vest.h"
+#include "Equipment/Mask.h"
+#include "Equipment/Watch.h"
+
 
 
 /*framwork*/
@@ -33,7 +52,9 @@
 
 /*inventory*/
 #include "Components/InventoryManagerComponent.h"
+#include "Components/PlayerInventoryManagerComponent.h"
 #include "Components/InventoryItemComponent.h"
+#include "Components/InventoryAttachmentComponent.h"
 #include "Weapons/Weapon.h"
 #include "Weapons/Firearm.h"
 
@@ -121,10 +142,143 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	}
 
 
-	InventoryManager = ObjectInitializer.CreateDefaultSubobject<UInventoryManagerComponent>(this, InventoryManagerComponentName);
+	InventoryManager = ObjectInitializer.CreateDefaultSubobject<UPlayerInventoryManagerComponent>(this, InventoryManagerComponentName);
 	if (InventoryManager)
 	{
+		InventoryManager->bCheckForItemsInVincinityOnTick = true;
+		InventoryManager->bCheckForManagersInVicinityOnTick = true;
+		InventoryManager->SlotCapacity = 0;
+	}
 
+	Undershirt = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Undershirt"));
+	if (Undershirt)
+	{
+		Undershirt->AttachmentName = NSLOCTEXT("Player Character", "UndershirtSlot", "Undershirt");
+		Undershirt->AttachmentID = "Undershirt";
+		Undershirt->AttachmentType = AUndershirt::StaticClass();
+
+	}
+
+	Underwear = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Underwear"));
+	if (Underwear)
+	{
+		Underwear->AttachmentName = NSLOCTEXT("Player Character", "UnderwearSlot", "Underwear");
+		Underwear->AttachmentID = "Underwear";
+		Underwear->AttachmentType = AUnderwear::StaticClass();
+	}
+
+	Pants = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Pants"));
+	if (Pants)
+	{
+		Pants->AttachmentName = NSLOCTEXT("Player Character", "PantsSlot", "Pants");
+		Pants->AttachmentID = "Pants";
+		Pants->AttachmentType = APants::StaticClass();
+	}
+
+	Shirt = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Shirt"));
+	if (Shirt)
+	{
+		Shirt->AttachmentName = NSLOCTEXT("Player Character", "ShirtSlot", "Shirt");
+		Shirt->AttachmentID = "Shirt";
+		Shirt->AttachmentType = AShirt::StaticClass();
+	}
+
+
+	Jacket = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Jacket"));
+	if (Jacket)
+	{
+		Jacket->AttachmentName = NSLOCTEXT("Player Character", "JacketSlot", "Jacket");
+		Jacket->AttachmentID = "Jacket";
+		Jacket->AttachmentType = AJacket::StaticClass();
+	}
+
+	Shoes = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Shoes"));
+	if (Shoes)
+	{
+		Shoes->AttachmentName = NSLOCTEXT("Player Character", "ShoesSlot", "Shoes");
+		Shoes->AttachmentID = "Shoes";
+		Shoes->AttachmentType = AShoes::StaticClass();
+	}
+
+
+	Headwear = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Headwear"));
+	if (Headwear)
+	{
+		Headwear->AttachmentName = NSLOCTEXT("Player Character", "HeadwearSlot", "Headwear");
+		Headwear->AttachmentID = "Headwear";
+		Headwear->AttachmentType = AHeadwear::StaticClass();
+	}
+
+	Backpack = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Backpack"));
+	if (Backpack)
+	{
+		Backpack->AttachmentName = NSLOCTEXT("Player Character", "BackpackSlot", "Backpack");
+		Backpack->AttachmentID = "Backpack";
+		Backpack->AttachmentType = ABackpack::StaticClass();
+	}
+
+	Vest = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Vest"));
+	if (Vest)
+	{
+		Vest->AttachmentName = NSLOCTEXT("Player Character", "VestSlot", "Vest");
+		Vest->AttachmentID = "Vest";
+		Vest->AttachmentType = AVest::StaticClass();
+	}
+
+	Glasses = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Glasses"));
+	if (Glasses)
+	{
+		Glasses->AttachmentName = NSLOCTEXT("Player Character", "GlassesSlot", "Glasses");
+		Glasses->AttachmentID = "Glasses";
+		Glasses->AttachmentType = AGlasses::StaticClass();
+	}
+
+	Mask = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Mask"));
+	if (Mask)
+	{
+		Mask->AttachmentName = NSLOCTEXT("Player Character", "MaskSlot", "Mask");
+		Mask->AttachmentID = "Mask";
+		Mask->AttachmentType = AMask::StaticClass();
+	}
+
+	Gloves = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Gloves"));
+	if (Gloves)
+	{
+		Gloves->AttachmentName = NSLOCTEXT("Player Character", "GlovesSlot", "Gloves");
+		Gloves->AttachmentID = "Gloves";
+		Gloves->AttachmentType = AGloves::StaticClass();
+	}
+
+	Watch = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Watch"));
+	if (Watch)
+	{
+		Watch->AttachmentName = NSLOCTEXT("Player Character", "WatchSlot", "Watch");
+		Watch->AttachmentID = "Watch";
+		Watch->AttachmentType = AWatch::StaticClass();
+	}
+
+	Primary = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Primary"));
+	if (Primary)
+	{
+		Primary->AttachmentName = NSLOCTEXT("Player Character", "PrimarySlot", "Primary");
+		Primary->AttachmentID = "Primary";
+		//Primary->AttachmentType = AWatch::StaticClass();
+	}
+
+	Secondary = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Secondary"));
+	if (Secondary)
+	{
+		Secondary->AttachmentName = NSLOCTEXT("Player Character", "SecondarySlot", "Secondary");
+		Secondary->AttachmentID = "Secondary";
+		//Primary->AttachmentType = AWatch::StaticClass();
+	}
+
+	Alternative = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Alternative"));
+	if (Alternative)
+	{
+		Alternative->AttachmentName = NSLOCTEXT("Player Character", "AlternativeSlot", "Alternative");
+		Alternative->AttachmentID = "Alternative";
+		//Primary->AttachmentType = AWatch::StaticClass();
 	}
 
 	InteractiveManager = ObjectInitializer.CreateDefaultSubobject<UInteractiveManagerComponent>(this, InteractiveManagerComponentName);
@@ -246,7 +400,6 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 
 
 
-
 	
 	PrimaryActorTick.bCanEverTick = true;
 }
@@ -260,6 +413,13 @@ void AFirstPersonCharacter::BeginPlay()
 	OnTakeAnyDamage.AddUniqueDynamic(this, &AFirstPersonCharacter::OnReceiveDamage);
 	OnTakePointDamage.AddUniqueDynamic(this, &AFirstPersonCharacter::OnReceivePointDamage);
 	OnTakeRadialDamage.AddUniqueDynamic(this, &AFirstPersonCharacter::OnReceiveRadialDamage);
+
+	/*bind inventory manager*/
+	if (InventoryManager)
+	{
+		InventoryManager->OnInventoryManagerOpened.AddUniqueDynamic(this, &AFirstPersonCharacter::OnInventoryManagerOpened);
+		InventoryManager->OnInventoryManagerClosed.AddUniqueDynamic(this, &AFirstPersonCharacter::OnInventoryManagerClosed);
+	}
 }
 
 // Called every frame
@@ -669,10 +829,10 @@ void AFirstPersonCharacter::ToggleInventory()
 {
 	if (InventoryManager)
 	{
-		if (InventoryManager->IsInventoryUIOpen())
-			InventoryManager->CloseInventoryUI();
+		if (InventoryManager->IsInventoryWidgetOpen())
+			InventoryManager->CloseInventoryWidget();
 		else
-			InventoryManager->OpenInventoryUI();
+			InventoryManager->OpenInventoryWidget();
 	}
 }
 
@@ -684,6 +844,53 @@ float AFirstPersonCharacter::GetEncumbrance()
 float AFirstPersonCharacter::GetMaxEncumbrance()
 {
 	return MaxEncumbrance;
+}
+
+void AFirstPersonCharacter::OnItemEquipped(AInventoryItem* Item, UInventoryAttachmentComponent* EquippedComponent)
+{
+
+}
+
+UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlot(TSubclassOf<AInventoryItem> ItemType)
+{
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (UInventoryAttachmentComponent* AttachmentComponent = Cast<UInventoryAttachmentComponent>(Component))
+		{
+			if (AttachmentComponent->AttachmentType == ItemType)
+				return AttachmentComponent;
+		}
+	}
+
+	return nullptr;
+}
+
+UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlotByID(FName EquipmentID)
+{
+	for (UActorComponent* Component : GetComponents())
+	{
+		if (UInventoryAttachmentComponent* AttachmentComponent = Cast<UInventoryAttachmentComponent>(Component))
+		{
+			if (AttachmentComponent->AttachmentID == EquipmentID)
+				return AttachmentComponent;
+		}
+	}
+
+	return nullptr;
+}
+
+void AFirstPersonCharacter::OnInventoryManagerOpened()
+{
+	/*hide the player hud*/
+	if (FirstPersonView)	
+		FirstPersonView->HidePlayerHUD();
+	
+}
+
+void AFirstPersonCharacter::OnInventoryManagerClosed()
+{
+	if (FirstPersonView)
+		FirstPersonView->ShowPlayerHUD();
 }
 
 //============================

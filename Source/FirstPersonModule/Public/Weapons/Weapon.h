@@ -19,8 +19,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "First Person")
 		class UFirstPersonItemComponent* FirstPersonComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryItemComponent* ItemComponent;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+	//	class UInventoryItemComponent* ItemComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 		class UInteractiveCollisionComponent* InteractionCollision;

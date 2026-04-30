@@ -11,21 +11,41 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnInventorySpawned, AActor*, Item
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnEquipped, AActor*, Item, UInventoryItemComponent*, ItemComponent, UInventoryManagerComponent*, InventoryManager, AActor*, OwningActor);
 
 
+
+
+
 UCLASS(ClassGroup = (Inventory), AutoExpandCategories = ("Equipping/Unequipping|Equipping"), meta = (BlueprintSpawnableComponent), HideCategories = (Sockets, ComponentTick, ComponentReplication, Activation, Cooking, Collision, AssetUserData))
 class FIRSTPERSONMODULE_API UInventoryItemComponent : public UActorComponent
 {
-	friend class UInventoryManagerComponent;
+	friend class UInventoryManagerComponent;	
+	friend class AInventoryItem;
+
 
 	GENERATED_BODY()
 public:
+
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details")
 		FText ItemName;
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details")
 		FText ItemDescription;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details|Icons")
+		class UMaterialInterface* PrestineItemIcon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details|Icons")
+		class UMaterialInterface* WornItemIcon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details|Icons")
+		class UMaterialInterface* DamagedItemIcon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details|Icons")
+		class UMaterialInterface* BadlyDamageItemIcon;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory Item|Item Details|Icons")
+		class UMaterialInterface* RuinedItemIcon;
+
+
 
 
 public:
+	UPROPERTY(EditAnywhere, Category = "Inventory Item")
+		EItemSize Size;
 	UPROPERTY(EditAnywhere, Category = "Inventory Item")
 		EItemCondition Condition = EItemCondition::Prestine;
 
@@ -65,6 +85,8 @@ public:
 		FIntPoint RegisteredGridKey;
 
 private:
+	UPROPERTY()
+		EItemPresence ItemPresence = EItemPresence::World;
 	/*State of the Item*/
 	UPROPERTY()
 		EItemState ItemState = EItemState::AsPickup;
@@ -102,6 +124,21 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+
+	//=================================
+	//=============DETAILS=============
+	//=================================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item|Details")
+		FText GetItemName() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item|Details")
+		FText GetItemDescription() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item|Details")
+		class UMaterialInterface* GetItemIcon() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item|Details")
+		EItemSize GetItemSize() const;
+
+	
 	//=================================
 	//===============POS===============
 	//=================================
@@ -115,14 +152,19 @@ public:
 	//====================================
 
 public:
-	UFUNCTION(BlueprintPure, Category = "State")
+	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
 		EEquipState GetEquipState() { return EquipState; };
-	UFUNCTION(BlueprintPure, Category = "State")
+	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
 		EItemState GetItemState() { return ItemState; };
+	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
+		EItemPresence GetItemPresence();
 
 private:
 	UFUNCTION()
 		void SetItemState(EItemState NewState);
+	UFUNCTION()
+		void SetItemPresence(EItemPresence NewPresence);
+	
 
 
 	//=================================
@@ -140,20 +182,14 @@ public:
 	UFUNCTION()
 		virtual void EndUnequip();
 
-	////===============================
-	//============PICKUPS==============
-	////===============================
-public:
-	UFUNCTION(BlueprintPure, Category = "Interaction")
-		virtual bool CanPickup();
 
-	/*this function isn't called directly - but called via picking up an item through the InventoryManager*/
+	//===============================
+	//============STORAGE============
+	//===============================
 private:
-	UFUNCTION()
-		virtual void PickedUp(AActor* Instigator, UInventoryManagerComponent* InstigatorInvManager = nullptr);
-	/*event called when dropped on the ground*/
-	UFUNCTION()
-		virtual void OnDropped();
+	//UFUNCTION()
+	//	virtual void NativeOnStoredInsideInventoryManager(class UInventoryManagerComponent* InInventoryManager);
+
 
 
 public:
@@ -165,6 +201,8 @@ public:
 public:
 	UFUNCTION()
 		void UpdateGridKey(FIntPoint NewGridKey);
+	UFUNCTION()
+		virtual void RegisterInventoryItem();
 	UFUNCTION()
 		virtual void RegisterGridLocation();
 	UFUNCTION()
@@ -182,4 +220,14 @@ private:
 		virtual void EnableVisibility();
 	UFUNCTION()
 		virtual void DisableVisibility();
+
+	//==================
+	//====PREDICATES====
+	//==================
+	public:
+
+		static bool SortBySize(const UInventoryItemComponent& ItemA, const UInventoryItemComponent& ItemB)
+		{
+			return ItemA.Size < ItemB.Size;
+		}
 };

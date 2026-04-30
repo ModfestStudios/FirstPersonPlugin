@@ -39,13 +39,9 @@ AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
 
 	/*generate first person mesh*/
 	FirstPersonComponent = ObjectInitializer.CreateDefaultSubobject<UFirstPersonItemComponent>(this, TEXT("FirstPersonComponent"));
-
-
-	ItemComponent = ObjectInitializer.CreateDefaultSubobject<UInventoryItemComponent>(this, TEXT("ItemComp"));
+		
 	if (ItemComponent)
 	{
-		AddOwnedComponent(ItemComponent);
-
 		ItemComponent->bAutoEquip = true;
 	}
 
