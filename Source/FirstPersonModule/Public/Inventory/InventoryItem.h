@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Inventory.h"
+#include "Inventory/Inventory.h"
 #include "GameFramework/Actor.h"
 #include "Interfaces/InventoryItemInterface.h"
 #include "InventoryItem.generated.h"
@@ -16,6 +16,18 @@ class FIRSTPERSONMODULE_API AInventoryItem : public AActor, public IInventoryIte
 public:
 
 
+	//====ATTACHMENTS====
+protected:
+	UPROPERTY()
+		bool bAttached = false;
+
+
+public:
+	FIntPoint RegisteredGridKey;
+
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
+		class UInventoryItemComponent* ItemComponent;
 
 	//=====================================================================================================================================
 	//==============================================================FUNCTIONS==============================================================
@@ -37,5 +49,62 @@ protected:
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
+
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		FText GetItemName();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		UMaterialInterface* GetItemIcon();
+
+	
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		EItemSize GetItemSize();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		EItemPresence GetItemPresence();
+
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		virtual bool CanBePickedUp();
+
+
+	UFUNCTION()
+		virtual void OnItemStored(class AActor* StorageActor);
+	UFUNCTION()
+		virtual void OnItemPickedUp(class AActor* ReceivingActor);
+	UFUNCTION()
+		virtual void OnItemDropped(class AActor* RejectingActor);
+
+
+
+
+
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
+		class UInventoryItemComponent* GetItemComponent();
+
+
+
+
+	//=======================
+	//======ATTACHMENTS======
+	//=======================
+public:
+	/*called whenever an item is attached to us*/
+	UFUNCTION()
+		virtual void OnItemAttached(class AInventoryItem* Item, class UInventoryAttachmentComponent* AttachedComponent);
+
+	//=====================
+	//=======MANAGER=======
+	//=====================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Manager")
+		class UInventoryManagerComponent* GetInventoryManager();
+
+	//====================
+	//========GRID========
+	//====================
+
+	UFUNCTION()
+		void UpdateGridKey(FIntPoint NewGridKey);
 
 };

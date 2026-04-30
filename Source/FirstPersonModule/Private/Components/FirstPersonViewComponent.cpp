@@ -20,6 +20,9 @@
 /*materials*/
 #include "Materials/MaterialInstanceDynamic.h"
 
+/*players*/
+#include "Players/FirstPersonPlayerController.h"
+
 /*utilities*/
 #include "Kismet/GameplayStatics.h"
 #include "UObject/ConstructorHelpers.h"
@@ -462,6 +465,41 @@ void UFirstPersonViewComponent::InitializePlayerHUD(APlayerController* PlayerCon
 			{
 				PlayerHUD->AddToViewport(999);
 			}
+		}
+	}
+}
+
+void UFirstPersonViewComponent::ShowPlayerHUD()
+{
+	if (!GetOwner() || !PlayerHUD)
+		return;
+
+	/*local-pawn check - no need to add widget otherwise*/
+	if (AFirstPersonCharacter* Pawn = Cast<AFirstPersonCharacter>(GetOwner()))
+	{
+		if (!Pawn->IsLocallyControlled())
+			return;
+
+		if (AFirstPersonPlayerController* PC = Pawn->GetController<AFirstPersonPlayerController>())
+		{
+			PlayerHUD->AddToViewport();
+		}
+	}
+}
+
+void UFirstPersonViewComponent::HidePlayerHUD()
+{
+	if (!GetOwner() || !PlayerHUD)
+		return;
+
+	/*local-pawn check - no need to add widget otherwise*/
+	if (AFirstPersonCharacter* Pawn = Cast<AFirstPersonCharacter>(GetOwner()))
+	{
+		if (!Pawn->IsLocallyControlled())
+			return;
+		if (AFirstPersonPlayerController* PC = Pawn->GetController<AFirstPersonPlayerController>())
+		{
+			PlayerHUD->RemoveFromViewport();
 		}
 	}
 }

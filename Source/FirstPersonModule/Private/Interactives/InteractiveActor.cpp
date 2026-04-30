@@ -10,6 +10,7 @@
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/InventoryManagerComponent.h"
 
 
 /*network*/
@@ -26,18 +27,25 @@ void AInteractiveActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Ou
 AInteractiveActor::AInteractiveActor(const FObjectInitializer& ObjectInitializer)
 {
  	
-	Mesh = ObjectInitializer.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("MeshComponent"));
-	if (Mesh)
-	{
-		SetRootComponent(Mesh);
-	}
+	//Mesh = ObjectInitializer.CreateDefaultSubobject<UStaticMeshComponent>(this, TEXT("MeshComponent"));
+	//if (Mesh)
+	//{
+	//	SetRootComponent(Mesh);
+	//}
 
-	InteractiveCollision = ObjectInitializer.CreateDefaultSubobject<UInteractiveCollisionComponent>(this, TEXT("InteractiveComponent"));
-	if (InteractiveCollision)
-	{
-		InteractiveCollision->SetupAttachment(GetRootComponent());
-	}
+	//InventoryManager = ObjectInitializer.CreateDefaultSubobject<UInventoryManagerComponent>(this, TEXT("Inventory Manager"));
+	//if (InventoryManager)
+	//{
 
+	//}
+
+	//InteractiveCollision = ObjectInitializer.CreateDefaultSubobject<UInteractiveCollisionComponent>(this, TEXT("InteractiveComponent"));
+	//if (InteractiveCollision)
+	//{
+	//	InteractiveCollision->SetupAttachment(GetRootComponent());
+	//}
+
+	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = true;
 
 }

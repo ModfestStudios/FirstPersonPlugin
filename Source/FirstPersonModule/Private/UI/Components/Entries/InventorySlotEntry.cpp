@@ -2,7 +2,13 @@
 
 
 #include "UI/Components/Entries/InventorySlotEntry.h"
-#include "Components/InventoryItemComponent.h"
+#include "Inventory/InventoryEquipmentSlot.h"
+
+#include "Characters/FirstPersonCharacter.h"
+
+/*inventory*/
+#include "Components/InventoryManagerComponent.h"
+#include "Components/PlayerInventoryManagerComponent.h"
 
 /*utilities*/
 #include "Blueprint/DragDropOperation.h"
@@ -10,21 +16,35 @@
 #include "InputCoreTypes.h"
 #include "GameFramework/InputSettings.h"
 
-void UInventorySlotEntry::InitializeInventorySlot(UInventoryItemComponent* ItemComponent)
-{
-    if (!ItemComponent)
-        return;
 
-    InventoryItem = ItemComponent;
-    ItemActor = ItemComponent->GetOwner();
+
+
+bool UInventorySlotEntry::IsItemEquipped()
+{
+    if (!EquipmentSlot)
+        return false;
+    else
+        return EquipmentSlot->IsItemEquipped();
 }
 
-FText UInventorySlotEntry::GetItemName()
+void UInventorySlotEntry::SetEquipmentSlot(UInventoryEquipmentSlot* NewEquipmentSlot)
 {
-    if (InventoryItem)
-        return InventoryItem->ItemName;
+    EquipmentSlot = NewEquipmentSlot;
+}
 
-    return FText();
+void UInventorySlotEntry::NativeOnInitialized()
+{
+    /*auto-*/
+    if (bAutoInitializeSlot && !EquipmentSlotID.IsNone())
+    {
+        /*if a first person character*/
+        if (AFirstPersonCharacter* Char = GetOwningPlayerPawn<AFirstPersonCharacter>())
+        {
+            EquipmentSlot = Char->GetInventoryManager()->GetEquipmentSlot(EquipmentSlotID);
+        }
+    }
+
+    Super::NativeOnInitialized();
 }
 
 FReply UInventorySlotEntry::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
@@ -51,7 +71,8 @@ void UInventorySlotEntry::NativeOnDragLeave(const FDragDropEvent& InDragDropEven
 
 void UInventorySlotEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
-    InitializeInventorySlot(Cast<UInventoryItemComponent>(ListItemObject));
+    if (ListItemObject->IsA<UInventoryEquipmentSlot>())
+        SetEquipmentSlot(Cast<UInventoryEquipmentSlot>(ListItemObject));
 
     Execute_OnListItemObjectSet(Cast<UObject>(this), ListItemObject);
 }
