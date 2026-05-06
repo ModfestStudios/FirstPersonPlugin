@@ -145,7 +145,7 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	InventoryManager = ObjectInitializer.CreateDefaultSubobject<UPlayerInventoryManagerComponent>(this, InventoryManagerComponentName);
 	if (InventoryManager)
 	{
-		InventoryManager->bCheckForItemsInVincinityOnTick = true;
+		InventoryManager->bCheckForItemsInVicinityOnTick = true;
 		InventoryManager->bCheckForManagersInVicinityOnTick = true;
 		InventoryManager->SlotCapacity = 0;
 	}
@@ -421,6 +421,35 @@ void AFirstPersonCharacter::BeginPlay()
 		InventoryManager->OnInventoryManagerClosed.AddUniqueDynamic(this, &AFirstPersonCharacter::OnInventoryManagerClosed);
 	}
 }
+
+
+
+void AFirstPersonCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	if (GetInventoryManager())
+		GetInventoryManager()->OnOwnerPossessed(NewController);
+}
+
+void AFirstPersonCharacter::UnPossessed()
+{
+	Super::UnPossessed();
+
+	if (GetInventoryManager())
+		GetInventoryManager()->OnOwnerUnPossessed();		
+}
+
+void AFirstPersonCharacter::NotifyControllerChanged()
+{
+	Super::NotifyControllerChanged(); //caches the old controller in "PreviousController" variable
+
+	if (IsLocallyControlled())
+	{
+
+	}
+}
+
 
 // Called every frame
 void AFirstPersonCharacter::Tick(float DeltaTime)

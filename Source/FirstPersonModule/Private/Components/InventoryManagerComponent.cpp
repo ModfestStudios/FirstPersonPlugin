@@ -134,11 +134,45 @@ void UInventoryManagerComponent::BeginPlay()
 void UInventoryManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+		
+	if (AFirstPersonCharacter* OwningChar = GetOwner<AFirstPersonCharacter>())
+	{
+		if (OwningChar->IsLocallyControlled() || GetNetMode() < NM_Client)
+		{
+			if (bCheckForItemsInVicinityOnTick)
+				UpdateInventoryItemsInVicinity();
+			if (bCheckForManagersInVicinityOnTick)
+				UpdateInventoryManagersInVicinity();
+		}
+	}
+}
 
-	if (bCheckForItemsInVincinityOnTick)
-		UpdateInventoryItemsInVicinity();
-	if (bCheckForManagersInVicinityOnTick)
-		UpdateInventoryManagersInVicinity();
+void UInventoryManagerComponent::OnOwnerPossessed(AController* NewController)
+{
+	if (!NewController)
+		return;
+
+	if (NewController->IsLocalPlayerController())
+	{
+		UInventoryManagerComponent* DefaultInventoryManager = GetOwner()->GetClass()->GetDefaultObject<AActor>()->GetComponentByClass<UInventoryManagerComponent>();
+		bool bDefaultItemCheck = DefaultInventoryManager ? DefaultInventoryManager->bCheckForItemsInVicinityOnTick : false;
+		bool bDefaultManagerCheck = DefaultInventoryManager ? DefaultInventoryManager->bCheckForManagersInVicinityOnTick : false;
+		
+		bCheckForItemsInVicinityOnTick = bDefaultItemCheck;
+		bCheckForManagersInVicinityOnTick = bDefaultManagerCheck;
+	}
+}
+
+void UInventoryManagerComponent::OnOwnerUnPossessed()
+{	
+	if (AFirstPersonCharacter* OwningChar = GetOwner<AFirstPersonCharacter>())
+	{
+		if (OwningChar->IsLocallyControlled())
+		{
+			bCheckForItemsInVicinityOnTick = false;
+			bCheckForManagersInVicinityOnTick = false;
+		}
+	}
 }
 
 

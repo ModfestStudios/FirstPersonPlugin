@@ -263,11 +263,14 @@ public:
 		virtual void ToggleDebugGrid();
 	UFUNCTION(BlueprintCallable, Category = "Inventory Subsystem")
 		virtual void ToggleDebugTable(const FVector& Location);
-private:
+public:
 	UFUNCTION()
 		void DrawDebugGrid();
 	UFUNCTION()
 		void DrawDebugDataTable(const FVector& Location);
+	UFUNCTION(BlueprintCallable, Category = "Inventory Subsystem|Debugging")
+		FInventoryGridDebugData GetDebugGridDataForLocation(const FVector& Location);
+
 
 
 

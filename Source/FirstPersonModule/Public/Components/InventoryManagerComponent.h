@@ -19,6 +19,7 @@ UCLASS(ClassGroup = (Inventory), meta = (BlueprintSpawnableComponent), HideCateg
 class FIRSTPERSONMODULE_API UInventoryManagerComponent : public UActorComponent
 {
 	friend class UInventoryItemComponent;
+	
 
 	GENERATED_BODY()
 public:
@@ -111,7 +112,7 @@ protected:
 public:
 	/*enables tick-based item vicinity checking*/
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory|Vicinity")
-		bool bCheckForItemsInVincinityOnTick = false;
+		bool bCheckForItemsInVicinityOnTick = false;
 	UPROPERTY(EditDefaultsOnly, Category = "Inventory|Vicinity")
 		bool bCheckForManagersInVicinityOnTick = false;
 
@@ -143,7 +144,7 @@ protected:
 
 public:
 	/*the current registered Grid Key*/
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Grid")
 		FIntPoint RegisteredGridKey;
 
 
@@ -208,6 +209,14 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
+public:
+	UFUNCTION()
+		virtual void OnOwnerPossessed(class AController* NewController);
+	UFUNCTION()
+		virtual void OnOwnerUnPossessed();
+
+
 
 	//=====================================
 	//==============INVENTORY==============
