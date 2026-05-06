@@ -355,7 +355,7 @@ void UInventorySubsystem::UpdateInventoryGridEntry(UInventoryManagerComponent* I
 
 	/*remove any old references*/
 	if (GridKey != OldGridKey && InventoryGrid.Contains(OldGridKey))
-		RemoveInventoryGridEntry(GridKey, InventoryManager);
+		RemoveInventoryGridEntry(OldGridKey, InventoryManager);
 
 	/*update gridkey*/
 	InventoryManager->UpdateGridKey(GridKey);
@@ -383,7 +383,7 @@ void UInventorySubsystem::UpdateInventoryGridEntry(AInventoryItem* InventoryItem
 	GridEntry.InventoryItems.AddUnique(InventoryItem);
 
 	if (GridKey != OldGridKey && InventoryGrid.Contains(OldGridKey))
-		RemoveInventoryGridEntry(GridKey, InventoryItem);
+		RemoveInventoryGridEntry(OldGridKey, InventoryItem);
 
 	InventoryItem->UpdateGridKey(GridKey);
 }
@@ -647,6 +647,31 @@ void UInventorySubsystem::DrawDebugDataTable(const FVector& Location)
 	}
 
 	GEngine->AddOnScreenDebugMessage(1, 10.0f, FColor::Emerald, DebugText);
+}
+
+FInventoryGridDebugData UInventorySubsystem::GetDebugGridDataForLocation(const FVector& Location)
+{
+	
+	FInventoryGridDebugData DebugData;
+	DebugData.GridKey = GetGridKey(Location);
+	
+	FInventoryGridEntry* GridEntry = InventoryGrid.Find(DebugData.GridKey);
+
+	for (TWeakObjectPtr<UInventoryManagerComponent> WeakManagerPtr : GridEntry->Managers)
+	{
+		if (UInventoryManagerComponent* ManagerEntry = WeakManagerPtr.IsValid() ? WeakManagerPtr.Get() : nullptr)
+		{
+			FInventoryGridEntryDebugData DebugEntry;
+			DebugEntry.Name = ManagerEntry->GetFullName();
+			DebugEntry.Class = ManagerEntry->GetClass();
+			DebugEntry.Location = ManagerEntry->GetOwner()->GetActorLocation();
+			DebugEntry.Distance = FVector::Distance(Location, ManagerEntry->GetOwner()->GetActorLocation());
+
+			DebugData.Entries.Add(DebugEntry);
+		}
+	}
+
+	return DebugData;
 }
 
 

@@ -15,6 +15,46 @@ static const uint8 INVENTORY_SLOT_SIZE_MD = 2;
 static const uint8 INVENTORY_SLOT_SIZE_LG = 4;
 static const uint8 INVENTORY_SLOT_SIZE_XLG = 8;
 
+USTRUCT(BlueprintType)
+struct FInventoryGridEntryDebugData
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(BlueprintReadOnly)
+		FString Name;
+	UPROPERTY(BlueprintReadOnly)
+		FVector Location;
+	UPROPERTY(BlueprintReadOnly)
+		UClass* Class;
+	UPROPERTY(BlueprintReadOnly)
+		float Distance;
+
+
+	FInventoryGridEntryDebugData()
+	{
+		Name = "Unknown";
+		Location = FVector(0);
+		Class = nullptr;
+		Distance = 0.0f;
+	}
+
+};
+
+USTRUCT(BlueprintType)
+struct FInventoryGridDebugData
+{
+	GENERATED_BODY()
+public:
+
+	UPROPERTY(BlueprintReadOnly)
+		FIntPoint GridKey;
+	UPROPERTY(BlueprintReadOnly)
+		TArray<FInventoryGridEntryDebugData> Entries;
+
+	FInventoryGridDebugData() {}
+};
+
 UENUM(BlueprintType)
 enum class EItemPresence : uint8
 {
@@ -38,7 +78,7 @@ struct FInventoryManagerVicinityCheckParameters
 public:
 
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadWrite)
 		TArray<AActor*> IgnoredActors;
 
 	FInventoryManagerVicinityCheckParameters() {}
