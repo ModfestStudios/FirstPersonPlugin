@@ -42,15 +42,15 @@ private:
 
 public:
 	/*Primary Weapon - must implement PrimaryWeaponInterface*/
-	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnablePrimaryWeapon", EditConditionHides, MustImplement = "PrimaryWeaponInterface", DisplayName = "Primary Weapon"))
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnablePrimaryWeapon", EditConditionHides, MustImplement = "/Script/FirstPersonModule.PrimaryWeaponInterface", DisplayName = "Primary Weapon"))
 		TSubclassOf<class AInventoryItem> DefaultPrimary;
 	/*Primary Weapon - must implement SecondaryWeaponInterface*/
-	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnableSecondaryWeapon", EditConditionHides, MustImplement = "SecondaryWeaponInterface", DisplayName = "Secondary Weapon"))
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnableSecondaryWeapon", EditConditionHides, MustImplement = "/Script/FirstPersonModule.SecondaryWeaponInterface", DisplayName = "Secondary Weapon"))
 		TSubclassOf<class AInventoryItem> DefaultSecondary;
 	/*Primary Weapon - must implement AlternativeWeaponInterface*/
-	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnableAlternativeWeapon", EditConditionHides, MustImplement = "AlternativeWeaponInterface", DisplayName = "Alternative Weapon"))
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (EditCondition = "bEnableAlternativeWeapon", EditConditionHides, MustImplement = "/Script/FirstPersonModule.AlternativeWeaponInterface", DisplayName = "Alternative Weapon"))
 		TSubclassOf<class AInventoryItem> DefaultAlternative;
-	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (MustImplement = "InventoryItemInterface", DisplayName = "Inventory", TitleProperty = "DisplayName"))
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (MustImplement = "/Script/FirstPersonModule.InventoryItemInterface", DisplayName = "Inventory", TitleProperty = "DisplayName"))
 		TArray<FInventoryItemSpawnParams> DefaultItems;
 
 	UPROPERTY(EditAnywhere, Category = "Inventory")

@@ -18,9 +18,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Loadout")
 		class AInventoryLoadout* Loadout;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Loadout", meta = (MustImplement = "PrimaryWeaponInterface"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Loadout", meta = (MustImplement = "/Script/FirstPersonModule.PrimaryWeaponInterface"))
 		TArray<TSubclassOf<AActor>> PrimaryWeaponsList;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Loadout", meta = (MustImplement = "SecondaryWeaponInterface"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Loadout", meta = (MustImplement = "/Script/FirstPersonModule.SecondaryWeaponInterface"))
 		TArray<TSubclassOf<AActor>> SecondaryWeaponsList;
 
 	
