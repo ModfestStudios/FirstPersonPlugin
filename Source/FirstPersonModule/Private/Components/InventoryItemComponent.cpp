@@ -3,6 +3,7 @@
 
 #include "Components/InventoryItemComponent.h"
 #include "Components/InventoryManagerComponent.h"
+#include "Inventory/InventoryItem.h"
 //#include "Events/ItemEvent.h"
 
 /*interface*/
@@ -19,6 +20,7 @@
 
 /*subsystems*/
 #include "Subsystems/LootSubsystem.h"
+#include "Subsystems/InventorySubsystem.h"
 
 /*replication*/
 #include "Net/UnrealNetwork.h"
@@ -49,9 +51,42 @@ void UInventoryItemComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	/*if we do not have an Inventory Manager assigned - then we're an item that's been spawned/dropped in the world. Register ourselves*/
-	if (!InventoryManager)
-		RegisterGridLocation();
+	RegisterInventoryItem();
+}
+
+FText UInventoryItemComponent::GetItemName() const
+{
+	return ItemName;
+}
+
+FText UInventoryItemComponent::GetItemDescription() const
+{
+	return ItemDescription;
+}
+
+UMaterialInterface* UInventoryItemComponent::GetItemIcon() const
+{
+	switch (Condition)
+	{
+		case EItemCondition::Prestine:
+			return PrestineItemIcon;
+		case EItemCondition::Worn:
+			return WornItemIcon;
+		case EItemCondition::Damaged:
+			return DamagedItemIcon;
+		case EItemCondition::BadlyDamaged:
+			return BadlyDamageItemIcon;
+		case EItemCondition::Ruined:
+			return RuinedItemIcon;
+		default:
+			return PrestineItemIcon;
+	}
+
+}
+
+EItemSize UInventoryItemComponent::GetItemSize() const
+{
+	return Size;
 }
 
 bool UInventoryItemComponent::IsSellable()
@@ -59,10 +94,27 @@ bool UInventoryItemComponent::IsSellable()
 	return bSellableItem;
 }
 
+//====================================
+//===============STATES===============
+//====================================
+
+EItemPresence UInventoryItemComponent::GetItemPresence()
+{
+	return ItemPresence;
+}
+
+
+void UInventoryItemComponent::SetItemPresence(EItemPresence NewPresence)
+{
+	ItemPresence = NewPresence;
+}
+
 
 //=================================
 //============EQUIPPING============
 //=================================
+
+
 
 void UInventoryItemComponent::SetItemState(EItemState NewState)
 {
@@ -73,6 +125,8 @@ void UInventoryItemComponent::SetItemState(EItemState NewState)
 	PreviousItemState = ItemState;
 	ItemState = NewState;
 }
+
+
 
 /*BeginEquip() - Called by the InventoryManager as a generic entry for any Inventory Item to provide an easy universal way across different Actor-types to receive
 * equipping notifications without needing to extend from a base case
@@ -100,7 +154,7 @@ void UInventoryItemComponent::EndEquip()
 {
 	EquipState = EEquipState::Equipped;
 	ItemState = EItemState::InUse;
-	InventoryManager->OnEquipFinished(GetOwner());
+	InventoryManager->OnEquipFinished(Cast<AInventoryItem>(GetOwner()));
 
 	if (OnEquipEnd.IsBound())
 		OnEquipEnd.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
@@ -123,41 +177,48 @@ void UInventoryItemComponent::BeginUnequip()
 void UInventoryItemComponent::EndUnequip()
 {
 	EquipState = EEquipState::NONE;
-	InventoryManager->OnUnequipFinished(GetOwner());
+	InventoryManager->OnUnequipFinished(Cast<AInventoryItem>(GetOwner()));
 
 
 	if (OnUnequipEnd.IsBound())
 		OnUnequipEnd.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
 
 }
+//
+//bool UInventoryItemComponent::CanBePickedUp()
+//{
+//	if (GetItemPresence() != EItemPresence::World)
+//		return false;	
+//
+//	/*return false otherwise*/
+//	return true;
+//}
+//
+//void UInventoryItemComponent::PickedUp(AActor* Instigator, UInventoryManagerComponent* InstigatorInvManager)
+//{
+//	if (GetOwner()->Implements<UInventoryItemInterface>())
+//		IInventoryItemInterface::Execute_OnPickedUp(GetOwner());
+//
+//	/*notify loot subsystem we've been picked up*/
+//	UnregisterGridLocation();
+//
+//	/*send notification*/
+//	if (OnPickedUp.IsBound())
+//		OnPickedUp.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
+//}
+//
+//void UInventoryItemComponent::OnDropped()
+//{
+//	/*notify Loot Subsystem where we are*/
+//	RegisterGridLocation();
+//}
 
-bool UInventoryItemComponent::CanPickup()
-{
-	if (ItemState == EItemState::AsPickup)
-		return true;
-
-	/*return false otherwise*/
-	return false;
-}
-
-void UInventoryItemComponent::PickedUp(AActor* Instigator, UInventoryManagerComponent* InstigatorInvManager)
-{
-	if (GetOwner()->Implements<UInventoryItemInterface>())
-		IInventoryItemInterface::Execute_OnPickedUp(GetOwner());
-
-	/*notify loot subsystem we've been picked up*/
-	UnregisterGridLocation();
-
-	/*send notification*/
-	if (OnPickedUp.IsBound())
-		OnPickedUp.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
-}
-
-void UInventoryItemComponent::OnDropped()
-{
-	/*notify Loot Subsystem where we are*/
-	RegisterGridLocation();
-}
+//void UInventoryItemComponent::NativeOnStoredInsideInventoryManager(UInventoryManagerComponent* InInventoryManager)
+//{	
+//	SetItemPresence(EItemPresence::Storage);
+//
+//
+//}
 
 
 AActor* UInventoryItemComponent::GetOwningActor()
@@ -175,13 +236,21 @@ void UInventoryItemComponent::UpdateGridKey(FIntPoint NewGridKey)
 	RegisteredGridKey = NewGridKey;
 }
 
+void UInventoryItemComponent::RegisterInventoryItem()
+{
+	if (AInventoryItem* OwningItem = GetOwner<AInventoryItem>())
+	{
+		/*notify the Loot Subsystem so that it can track us*/
+		if (UInventorySubsystem* ISS = GetWorld()->GetSubsystem<UInventorySubsystem>())
+		{
+			ISS->RegisterInventoryItem(OwningItem);
+		}
+	}
+}
+
 void UInventoryItemComponent::RegisterGridLocation()
 {
-	/*notify the Loot Subsystem so that it can track us*/
-	if (ULootSubsystem* LootSubsystem = GetWorld()->GetSubsystem<ULootSubsystem>())
-	{
-		LootSubsystem->RegisterDroppedItem(this);
-	}
+
 }
 
 void UInventoryItemComponent::UnregisterGridLocation()

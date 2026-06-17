@@ -7,33 +7,52 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/IUserObjectListEntry.h"
+#include "Components/InventoryManagerComponent.h"
 #include "InventorySlotEntry.generated.h"
+
+
+/// <summary>
+/// @TODO: I believe I just need to delete htis. THis was converted to "InventoryEquipmentSlot" to be consistent with naming conventions
+/// </summary>
+
+struct FInventoryEquipmentSlot;
 
 /**
  * 
  */
-UCLASS(abstract)
+UCLASS(abstract, meta = (DisplayName = "InventoryEquipmentSlotEntry"))
 class FIRSTPERSONMODULE_API UInventorySlotEntry : public UUserWidget, public IUserObjectListEntry
 {
 	GENERATED_BODY()
 public:
 
-	/*the item we represent*/
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item")
-		class UInventoryItemComponent* InventoryItem;
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory Item")
-		class AActor* ItemActor;
+	///*the item we represent*/
+	//UPROPERTY(BlueprintReadOnly, Category = "Inventory Item")
+	//	class UInventoryItemComponent* InventoryItem;
+	//UPROPERTY(BlueprintReadOnly, Category = "Inventory Item")
+	//	class AActor* ItemActor;
 
-
+	/*if enabled - will automatically grab the matching Equipment Slot from the owning Inventory Manager*/
+	UPROPERTY(EditAnywhere, Category = "Equipment Slot")
+		bool bAutoInitializeSlot = true;
+	UPROPERTY(EditAnywhere, Category = "Equipment Slot")
+		FName EquipmentSlotID;
+	UPROPERTY()
+		class UInventoryEquipmentSlot* EquipmentSlot;
 
 	//=======================================================================================================================================================
 	//=======================================================================FUNCTIONS=======================================================================
 	//=======================================================================================================================================================
-	UFUNCTION()
-		virtual void InitializeInventorySlot(class UInventoryItemComponent* ItemComponent);
+	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment Slot")
+		virtual bool IsItemEquipped();
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
-		FText GetItemName();
+	UFUNCTION(BlueprintCallable, Category = "Equipment Slot")
+		virtual void SetEquipmentSlot(class UInventoryEquipmentSlot* NewEquipmentSlot);
+
+
+
+	virtual void NativeOnInitialized() override;
 
 	/*drag and drop functionality*/
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;

@@ -26,10 +26,12 @@ protected:
 
 public:
 	/*components*/
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
-		class UStaticMeshComponent* Mesh;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
-		class UInteractiveCollisionComponent* InteractiveCollision;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	//	class UStaticMeshComponent* Mesh;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	//	class UInteractiveCollisionComponent* InteractiveCollision;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	//	class UInventoryManagerComponent* InventoryManager;
 
 
 

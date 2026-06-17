@@ -64,6 +64,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Elevator|Destinations")
 		class UElevatorDestinationComponent* StartingDestinationComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	class UStaticMeshComponent* Mesh;
+
 	///========================================================================================================================
 	//========================================================FUNCTIONS========================================================
 	///========================================================================================================================

@@ -138,5 +138,15 @@ public:
 
 	UFUNCTION(Server, Unreliable)
 		void Server_UpdateLevelLoadPercent(float NewPercent);
-	
+
+
+	//=============================
+	//==========DEBUGGING==========
+	//=============================
+public:
+	UFUNCTION(BlueprintCallable, Exec)
+		virtual void DebugInventoryGrid();
+	UFUNCTION(BlueprintCallable, Exec)
+		virtual void DebugInventoryVicinity();
+
 };

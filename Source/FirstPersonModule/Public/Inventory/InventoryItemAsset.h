@@ -19,7 +19,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item")
 		FText Name;
-	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item", meta=(MustImplement = InventoryItemInterface))
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item", meta=(MustImplement = "/Script/FirstPersonModule.InventoryItemInterface"))
 		TSoftClassPtr<class AActor> ItemClass;
 
 

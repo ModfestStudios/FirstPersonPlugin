@@ -8,144 +8,169 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
 {
 
     if (Terminal) {
-        //TODO: Research: Any scenario where currentUser or OS fails to grab?
         bool fileExists = true;
         AOperatingSystem* OS = Terminal->GetOperatingSystem();
         FString currentUser = OS->GetCurrentUser();
         FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
         FString HomeDirectory = OS->GetHomeDirectory();
 
-        //Checks if player deleted their tool
-        FOperatingSystemFiles FileResult;
-
-        FileResult = OS->FileSystemGetFile("", "", "Tool:qrscanner");
-
-        if (FileResult.Name == "") {
+        bool ToolExists = Terminal->CheckToolExists("qrscanner");
+        if (!ToolExists) {
             Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::CommandNotFound, "qrscanner");
             return FTerminalCommandResult();
         }
-
-        //TODO: These flags use : parse versus "command" after flag; true linx would be --auth-key username_here where current design is --auth-key:username_here
+        
         bool flagExport = false;
-        bool flagAuthKey = false;
+        bool flagAuthUser = false;
         bool flagListDevices = false;
         bool flagDevice = false;
         bool fileExtension = false;
         bool fourthWall = false;
-        TArray<FString> commandExportSplit;
         FString commandExport;
-        TArray<FString> commandAuthKeySplit;
-        TArray<FString> commandDeviceSplit;
         if (CommandParameters.Flags.Num() < 1) {
             Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
+            Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::UseHelp);
             return FTerminalCommandResult();
         }
-        for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
-            FString currentParameter = CommandParameters.Flags[i];
-            if (currentParameter == "--help") {
+
+        for (FTerminalCommandFlag& Flag : CommandParameters.Flags)
+        {
+            if (Flag.Flag == "help")
+            {
                 Terminal->PrintToTerminal(getHelpText());
                 return FTerminalCommandResult();
             }
-            if (currentParameter.Left(11) == "--auth-user") {
-                currentParameter.ParseIntoArray(commandAuthKeySplit, TEXT(":"), true);
-                if (commandAuthKeySplit[1].Equals(currentUser, ESearchCase::CaseSensitive)) {
-                    flagAuthKey = true;
-                }
+            if (Flag.Flag == "auth-user")
+            {
+                if (Flag.Value == currentUser.ToLower())
+                    flagAuthUser = true;
+
             }
-            if (currentParameter.Left(8) == "--export") {
-                commandExport = currentParameter;
-                currentParameter.ParseIntoArray(commandExportSplit, TEXT(":"), true);
-                fileExists = OS->FileSystemCheckIfFileExists(commandExportSplit[1], ActiveWorkingDirectory, FOperatingSystemFileType::File);
+            if (Flag.Flag == "export")
+            {
+                commandExport = Flag.Value;
+                fileExists = OS->FileSystemCheckIfFileExists(commandExport, "/Keys", FOperatingSystemFileType::File);
                 flagExport = true;
             }
-            if (currentParameter == "--list-devices") {
-                flagListDevices = true;
-            }
-            if (currentParameter.Left(8) == "--device") {
-                currentParameter.ParseIntoArray(commandDeviceSplit, TEXT(":"), true);
+            if (Flag.Flag == "device")
+            {
                 flagDevice = true;
             }
-            if (currentParameter.Left(12) == "--fourthwall") {
+            if (Flag.Flag == "list-devices")
+            {
+                flagListDevices = true;
+            }
+            if (Flag.Flag == "fourthwall")
+            {
                 fourthWall = true;
             }
         }
 
-        // TODO: Need to bake in delays/loading animations into this function
         if (flagListDevices) {
             Terminal->PrintToTerminal(listDevices());
             return FTerminalCommandResult();
         }
 
-        if (!flagAuthKey) {
-            Terminal->PrintToTerminal("Invalid or missing authorized user key: know who you are",ETerminalMessageStyle::Error);
+        Terminal->PrintToTerminal("Checking user authorizatiohn...", ETerminalMessageStyle::Status);
+        if (!flagAuthUser) {
+            Terminal->PrintToTerminal("Invalid or missing authorized user: know who you are",ETerminalMessageStyle::Error, 1.5);
             return FTerminalCommandResult();
         }
         else {
-            Terminal->PrintToTerminal("Authorized user key accepted", ETerminalMessageStyle::OK);
-        }
-
-        if (flagDevice) {
-            if (commandDeviceSplit.Num() != 2) {
-                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
-                return FTerminalCommandResult();
-            }
-            Terminal->PrintToTerminal("Initiating deviceID[" + commandDeviceSplit[1] + "]...", ETerminalMessageStyle::Status);
-            if (commandDeviceSplit[1] != "5") {
-                Terminal->PrintToTerminal("Unable to initiate deviceID[" + commandDeviceSplit[1] + "]", ETerminalMessageStyle::Error);
-                return FTerminalCommandResult();
-            }
-            else {
-                Terminal->PrintToTerminal("Device successfully initiated", ETerminalMessageStyle::OK);
-                Terminal->PrintToTerminal("Waiting for QR code to scan ...", ETerminalMessageStyle::Status);
-                //TODO: This is where the program/game should stop in terminal so user can scan their arm / show animation
-                //TODO: When the scan completes, proceed to next line of code
-                Terminal->PrintToTerminal("QR code detected", ETerminalMessageStyle::OK);
-                Terminal->PrintToTerminal("Processing QR data...", ETerminalMessageStyle::Status);
-                Terminal->PrintToTerminal("QR decoded", ETerminalMessageStyle::OK);
-                //TODO: Want to have an image load here to shows a QR code in the terminal screen with meta data under it (I can do terminal prints for meta data ; just need a way to load an image)
-                Terminal->PrintToTerminal("User key detected in QR data", ETerminalMessageStyle::OK);
-                Terminal->PrintToTerminal(privateKeyShow());
-            }
+            Terminal->PrintToTerminal("Authorized user accepted", ETerminalMessageStyle::OK,1.5);
         }
 
         if (!flagDevice) {
-            Terminal->PrintToTerminal("No camera defined.", ETerminalMessageStyle::Error);
+            Terminal->PrintToTerminal("No camera device ID defined.", ETerminalMessageStyle::Error);
             return FTerminalCommandResult();
         }
 
-        if (flagExport) {
-            if (commandExportSplit[1].Contains("/") || commandExportSplit.Num() != 2) {
-                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxFormat, commandExport);
+        if (flagDevice) 
+        {
+            FString DeviceID = GetFlagValue("device",CommandParameters);
+            Terminal->PrintToTerminal("Checking device validity...", ETerminalMessageStyle::Status);
+            if (DeviceID.IsEmpty())
+            {
+                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength);
                 return FTerminalCommandResult();
             }
+
+            Terminal->PrintToTerminal("Initiating deviceID[" + DeviceID + "]...", ETerminalMessageStyle::Status, 0.5);
+
+            if (DeviceID != "5")
+            {
+                Terminal->PrintToTerminal("Unable to initiate deviceID[" + DeviceID + "]", ETerminalMessageStyle::Error, 0.5);
+                return FTerminalCommandResult();
+            }
+
             else {
+                Terminal->PrintToTerminal("Device successfully initiated", ETerminalMessageStyle::OK, 0.5);
+                //TODO: This is where the program/game should stop in terminal so user can scan their arm/show animation; currently delayed for 3 seconds to mock scanning
+                Terminal->PrintToTerminal("Waiting for QR code to scan ...", ETerminalMessageStyle::Status);
+                //TODO: When the scan completes, proceed to next line of code
+                Terminal->PrintToTerminal("QR code detected", ETerminalMessageStyle::OK, 3.5);
+                Terminal->PrintToTerminal("Processing data...", ETerminalMessageStyle::Status, 1.5);
+                Terminal->PrintToTerminal("QR decoded", ETerminalMessageStyle::OK, 0.5);
+                Terminal->PrintToTerminal("User key detected in QR data", ETerminalMessageStyle::OK, 0.5);
+                Terminal->PrintToTerminal("Preparing key for display", ETerminalMessageStyle::Status);
+                Terminal->PrintToTerminal(privateKeyShow(), ETerminalMessageStyle::None, 2.5);
+            }
+        }
+
+        if (flagExport) 
+        {
+            FString FileName = GetFlagValue("export", CommandParameters);
+
+            if (FileName.Contains("/"))
+            {
+                Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxFormat, FileName);
+                return FTerminalCommandResult();
+            }
+
+            else 
+            {
                 Terminal->PrintToTerminal("Processing file export request ... ", ETerminalMessageStyle::Status);
-                if (fileExists) {
-                    Terminal->PrintToTerminal("Unable to export.  File " + commandExportSplit[1] + " already exists.", ETerminalMessageStyle::Error);
+                if (fileExists) 
+                {
+                    Terminal->PrintToTerminal("Unable to export.  File ~/" + HomeDirectory + "/Keys/" + FileName + " already exists.", ETerminalMessageStyle::Error, 0.5);
                     goto CheckFourth;
                 }
-                Terminal->PrintToTerminal("Exporting to file " + commandExportSplit[1], ETerminalMessageStyle::Status);
-                if (OS) {
-                    //TODO: Need to check real PGP key file size in linux and permissions
-                    OS->FileSystemAddFile((commandExportSplit[1] + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
+                FOperatingSystemFiles ExistingPrivateKeyFile = OS->FileSystemGetFile("", "", "PlayerPrivateKey");
+
+                if (ExistingPrivateKeyFile.UDF1 == "PlayerPrivateKey") {
+                    Terminal->PrintToTerminal("Detected existing private key ~/" + HomeDirectory + ExistingPrivateKeyFile.Path + "/" + ExistingPrivateKeyFile.Name, ETerminalMessageStyle::Status, 0.5);
+                    Terminal->PrintToTerminal("Removing existing key from system...", ETerminalMessageStyle::Status, 0.2);
+                    OS->FileSystemDeleteFile(ExistingPrivateKeyFile.Name, ExistingPrivateKeyFile.Path, FOperatingSystemFileType::File);
+                    Terminal->PrintToTerminal("Existing private key successfully removed", ETerminalMessageStyle::OK, 0.5);
                 }
-                Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + commandExportSplit[1] + ".asc", ETerminalMessageStyle::OK);
+                
+                Terminal->PrintToTerminal("Exporting to file " + FileName, ETerminalMessageStyle::Status, 0.5);
+                
+                if (OS) 
+                {
+                    //TODO: Need to check real PGP key file size in linux and permissions
+                    //TODO: need to check if exists as not to duplicate 
+                    OS->FileSystemAddFile((FileName + ".asc"), FDateTime::Now(), "/Keys", 436, "rx-xx-rf", FOperatingSystemFileType::File, false, "PlayerPrivateKey");
+                }
+                Terminal->PrintToTerminal("Successfully exported private key to ~/" + HomeDirectory + "/Keys/" + FileName + ".asc", ETerminalMessageStyle::OK, 1.5);
             }
             
         }
 
     CheckFourth:
-        //TODO: Need a way to "write" this file to the system and record a global variable that this created file is the signature file (used outside of qrscanner); likely "UDF" array value to keep simple
-        if (fourthWall) {
+        if (fourthWall) 
+        {
             //TODO: Need to update this message to make sense for ARG quest; this is placeholder
             //TODO: Also have the ability to grab more about their system to "freak the user out" as it shows more about them (card entered in Trello)
+            //TODO: Need to consider animation here that freaks player out as breaking 4th wall (blinking desktop, showing system info, character in game reacts to it, etc..)
             Terminal->PrintToTerminal("Requested to break the fourth wall ... ", ETerminalMessageStyle::Status);
             FString RealUsername = OS->GetRealWorldUsername();
             FString KeyContent = privateKeyShow();
-            Terminal->PrintToTerminal("O_o ... are you ready, " + RealUsername + "?", ETerminalMessageStyle::Status);
+            Terminal->PrintToTerminal("O_o ... are you ready, <User>" + RealUsername + "</>?", ETerminalMessageStyle::Status, 3.0);
             //TODO: onion is duck duck go for now; key is fake; need to make this real
             FString ARGExport = OS->ExportARGFile("thebreadcrumb", KeyContent + "\n\nIt's all a lie: duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion");
-            Terminal->PrintToTerminal("Breadcrumb has been dropped at: " + ARGExport, ETerminalMessageStyle::OK);
+            Terminal->PrintToTerminal("You opened a door that can't be closed... your system has been tapped...", ETerminalMessageStyle::None);
+            Terminal->PrintToTerminal("Breadcrumb has been dropped at: " + ARGExport, ETerminalMessageStyle::OK, 1.5);
         }
 
     }
@@ -156,15 +181,14 @@ FTerminalCommandResult UTerminalCommand_qrscanner::OnCommandExecuted(ATerminalAp
 FString UTerminalCommand_qrscanner::getHelpText() const {
     return TEXT(R"HELP(
 NAME
-    qrscanner - command line terminal (CLI) qr code scanner
+    qrscanner :: command line terminal (CLI) qr code scanner
 
 SYNOPSIS
     qrscanner [OPTIONS]
 
 DESCRIPTION
     command line terminal (CLI) based qr code scanner
-    enables camera(s) for low reslution scanning of qr codes
-    application requires sudo permissions to run
+    enables low-resolution camera scanning of qr codes
 
 OPTIONS
     --help
@@ -173,13 +197,13 @@ OPTIONS
     --list-devices
         Shows a list of connected and compatible cameras and [deviceID] value
 
-    --auth-user:[Authorized User]
+    --auth-user [Authorized User]
         Authorized user ID is required; know who you are
 
-    --device:[deviceID]
+    --device [deviceID]
         The [deviceID] to scan code with; must be a compatible camera
 
-    --export:[file]
+    --export [file]
         Exports QR data to a specified file; required to use key with other tools
 
     --fourthwall
@@ -187,7 +211,7 @@ OPTIONS
 
 EXAMPLE
 
-    qrscanner --auth-user:abc123 --device:2 --export:myexportfile
+    qrscanner --auth-user abc123 --device 2 --export examplefilename
 
 )HELP");
 }

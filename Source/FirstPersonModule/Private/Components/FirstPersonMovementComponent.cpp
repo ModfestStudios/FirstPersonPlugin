@@ -16,6 +16,8 @@
 
 UFirstPersonMovementComponent::UFirstPersonMovementComponent()
 {
+	MaxWalkSpeed = 280.0f;
+
 	//Crouch
 	NavAgentProps.bCanCrouch = true;
 	/*network stuff*/

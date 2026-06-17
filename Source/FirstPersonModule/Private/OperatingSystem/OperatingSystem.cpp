@@ -32,8 +32,7 @@ void AOperatingSystem::InitializeFromTerminal(ATerminalSystem* Terminal)
 //=====BOOT=====
 //==============
 void AOperatingSystem::Boot()
-{
-	
+{	
 	if (SystemState == EOperatingSystemMainState::PoweredOff)
 		BeginBootSequence();
 }
@@ -154,10 +153,11 @@ bool AOperatingSystem::FileSystemCheckIfFileExists(const FString& Name, const FS
 	bool checkFileResult = false;
 	FString NameClean = Name;
 
-
+	/* Should not do this here - removing for testing/validation
 	if (Name.StartsWith(".")) {
 		NameClean = Name.RightChop(1);
 	}
+	*/
 
 	for (int32 i = SystemFiles.Num() - 1; i >= 0; i--)
 	{
@@ -231,24 +231,20 @@ void AOperatingSystem::BeginPlay()
 	//TODO: For now this is just the first OS experience call; intend is to change this to be a trigger based on "phase" of game so the OS can evolve from a structure/tools perspective
 	FileSystemAddFile("Keys", FDateTime(2026, 4, 3), "", 0, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
 	FileSystemAddFile("Tools", FDateTime(2026, 4, 3), "", 34589, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
-	FileSystemAddFile("helloworld", FDateTime(2026, 4, 3), "", 11420, "-r--r--r--", FOperatingSystemFileType::File, false, "Tool:helloworld");
-	FileSystemAddFile("helloworld.sig", FDateTime(2026, 4, 3), "", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
-	FileSystemAddFile("winningsequence", FDateTime(2026, 4, 3), "", 0, "-rwxr-xr--", FOperatingSystemFileType::Directory, true);
+	FileSystemAddFile("helloworld", FDateTime(2026, 4, 3), "/Tools", 11420, "-r--r--r--", FOperatingSystemFileType::File, false, "Tool:helloworld");
+	FileSystemAddFile("helloworld.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
+	FileSystemAddFile("winningsequence", FDateTime(2026, 4, 3), "", 0, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
 	GenerateLotteryFiles();
 	//TODO: Winning Sequence identified file
 	//The game can randomize ths number (if needed) and place this in, the tag at the end is what determines it is in fact the right winning sequence number
 	FileSystemAddFile("07-19-32-43-51-14", FDateTime(2019, 3, 25), "/winningsequence", 0, "-r--r--r--", FOperatingSystemFileType::File, false,"DIG-004:winningsequence");
 
-	//DEBUG: Used for testing children of children directories and files
-	//FileSystemAddFile("Test", FDateTime(2026, 4, 3), "/Tools", 34589, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
-	//FileSystemAddFile("Test2", FDateTime(2026, 4, 3), "/Tools/Test", 34589, "-rwxr-xr--", FOperatingSystemFileType::Directory, false);
-
 	//TODO: Need to determine naming for key; are we going with rabbits or another, etc.. 
 	FileSystemAddFile("lambda5_public.asc", FDateTime(2026, 4, 3), "/Keys", 436, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Lambda5PublicKey");
 	FileSystemAddFile("qrscanner", FDateTime(2026, 4, 3), "/Tools", 22237, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Tool:qrscanner");
-	FileSystemAddFile("qrscanner.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
+	FileSystemAddFile("qrscanner.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
 	FileSystemAddFile("gpg", FDateTime(2026, 4, 3), "/Tools", 12352, "-rwxr-xr--", FOperatingSystemFileType::File, false, "Tool:gpg");
-	FileSystemAddFile("gpg.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true);
+	FileSystemAddFile("gpg.sig", FDateTime(2026, 4, 3), "/Tools", 232, "-r--r--r--", FOperatingSystemFileType::File, true, "AuthenticSignature:L5");
 
 	FString KeypadFilePath = "/openthenoor";
 	FileSystemAddFile(KeypadFilePath.RightChop(1), FDateTime(2009, 3, 14), "", 76175, "-rwxr-xr--", FOperatingSystemFileType::Directory, true);

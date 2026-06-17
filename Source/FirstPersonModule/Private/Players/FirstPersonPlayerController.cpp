@@ -6,6 +6,7 @@
 #include "Characters/FirstPersonCharacter.h"
 #include "Components/FirstPersonViewComponent.h"
 #include "Components/InventoryManagerComponent.h"
+#include "Components/PlayerInventoryManagerComponent.h"
 #include "GameModes/FirstPersonGame.h"
 #include "GameFramework/SpectatorPawn.h"
 
@@ -27,6 +28,7 @@
 #include "Subsystems/GameMasterSubsystem.h"
 #include "Subsystems/ServerSubsystem.h"
 #include "Subsystems/MapSubsystem.h"
+#include "Subsystems/InventorySubsystem.h"
 
 /*ui*/
 #include "UMG.h"
@@ -254,6 +256,7 @@ void AFirstPersonPlayerController::CloseServerInfoWidget()
 		ServerInfoWidget->RemoveFromParent();
 }
 
+
 bool AFirstPersonPlayerController::ServerSelectNextMap_Validate(UMapAsset* RequestedMap)
 {
 	return true;
@@ -293,4 +296,32 @@ void AFirstPersonPlayerController::Server_UpdateLevelLoadPercent_Implementation(
 
 	if (PS)
 		PS->LevelInstanceLoadPercent = NewPercent;
+}
+
+
+
+//=============================
+//==========DEBUGGING==========
+//=============================
+
+void AFirstPersonPlayerController::DebugInventoryGrid()
+{
+	if (GetWorld())
+	{
+		if (UInventorySubsystem* ISS = GetWorld()->GetSubsystem<UInventorySubsystem>())
+		{
+			ISS->ToggleDebugGrid();
+		}
+	}
+}
+
+void AFirstPersonPlayerController::DebugInventoryVicinity()
+{
+	if (GetWorld())
+	{
+		if (UInventorySubsystem* ISS = GetWorld()->GetSubsystem<UInventorySubsystem>())
+		{
+			ISS->ToggleDebugTable(GetPawn() ? GetPawn()->GetActorLocation() : FVector(0,0,0));
+		}
+	}
 }

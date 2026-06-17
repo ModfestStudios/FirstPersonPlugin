@@ -7,6 +7,7 @@
 #include "Characters/FirstPersonCharacter.h"
 #include "Weapons/Weapon.h"
 #include "Components/InventoryManagerComponent.h"
+#include "Components/PlayerInventoryManagerComponent.h"
 
 
 

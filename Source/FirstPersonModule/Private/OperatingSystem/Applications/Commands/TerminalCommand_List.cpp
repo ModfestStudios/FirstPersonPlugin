@@ -24,7 +24,31 @@ FTerminalCommandResult UTerminalCommand_List::OnCommandExecuted(ATerminalApplica
 		FString ActiveWorkingDirectory = OS->GetActiveWorkingDirectory();
 		bool IsRootFile = false;
 
-		for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
+		for (FTerminalCommandFlag& Flag : CommandParameters.Flags)
+		{
+			if (Flag == "help")
+			{
+				Terminal->PrintToTerminal(getHelpText());
+				return FTerminalCommandResult();
+			}
+
+			if (Flag == "art")
+			{
+				ShowHidden = true;
+			}
+
+			if (Flag == "ls")
+			{
+				SortBySize = true;
+			}
+
+			if (Flag == "t")
+			{
+				SortByDate = true;
+			}
+		}
+
+		/*for (int32 i = 0; i < CommandParameters.Flags.Num(); i++) {
 			CurrentFlag = CommandParameters.Flags[i];
 			if (CurrentFlag == "--help") {
 				Terminal->PrintToTerminal(getHelpText());
@@ -40,10 +64,10 @@ FTerminalCommandResult UTerminalCommand_List::OnCommandExecuted(ATerminalApplica
 				SortByDate = true;
 			}
 
-		}
+		}*/
 
 		if (SortBySize && SortByDate) {
-			Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, " -t and -lS not compatible");
+			Terminal->PrintCommonTerminalResponse(ETerminalCommonMessage::SyntaxLength, " -t and -lS not compatible together");
 			return FTerminalCommandResult();
 		}
 

@@ -17,5 +17,9 @@ public:
 	virtual FTerminalCommandResult OnCommandExecuted(class ATerminalApplication* Terminal, FTerminalCommandExecutionParameters CommandParameters) override;
 
 	UTerminalCommand_gpg();
+
+private:
+	FString getHelpText() const;
+	FString getAboutText() const;
 	
 };

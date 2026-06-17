@@ -373,6 +373,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI")
 		virtual void InitializePlayerHUD(APlayerController* PlayerController);
 
+	UFUNCTION(BlueprintCallable, Category = "UI")
+		virtual void ShowPlayerHUD();
+	UFUNCTION(BlueprintCallable, Category = "UI")
+		virtual void HidePlayerHUD();
+
 	/*returns the Widget instance of the HUD*/
 	UFUNCTION(BlueprintPure, Category = "HUD")
 		virtual UUserWidget* GetPlayerHUD();
