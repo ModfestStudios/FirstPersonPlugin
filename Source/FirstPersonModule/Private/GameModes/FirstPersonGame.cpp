@@ -39,7 +39,7 @@ AFirstPersonGame::AFirstPersonGame()
 	PlayerStateClass = AFirstPersonPlayerState::StaticClass();
 	GameStateClass = AFirstPersonGameState::StaticClass();
 
-	bUseSeamlessTravel = true;	
+	bUseSeamlessTravel = true;
 
 	static ConstructorHelpers::FClassFinder<UUserWidget>  DefaultEscapeMenuWidgetRef(TEXT("/FirstPersonModule/UI/Blueprints/BP_DefaultEscapeMenu"));
 	if (DefaultEscapeMenuWidgetRef.Succeeded())
@@ -51,23 +51,68 @@ AFirstPersonGame::AFirstPersonGame()
 
 }
 
+void AFirstPersonGame::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
+{
+	Super::InitGame(MapName, Options, ErrorMessage);
+
+	InitSpectatorLocations();
+}
+
+void AFirstPersonGame::InitGameState()
+{
+	Super::InitGameState();
+}
+
+void AFirstPersonGame::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+}
+
+APlayerController* AFirstPersonGame::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	return Super::Login(NewPlayer, InRemoteRole, Portal, Options, UniqueId, ErrorMessage);
+}
+
+void AFirstPersonGame::PostLogin(APlayerController* NewPlayer)
+{
+	Super::PostLogin(NewPlayer);
+
+	if (AFirstPersonPlayerController* PC = Cast<AFirstPersonPlayerController>(NewPlayer))
+	{
+		PC->InitializeEscapeMenuWidget(EscapeMenuWidgetClass);
+		PC->InitializeServerInfoWidget(ServerInfoWidgetClass);
+	}
+
+
+}
+
+void AFirstPersonGame::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
+}
+
 void AFirstPersonGame::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	//Super::HandleStartingNewPlayer_Implementation(NewPlayer); //we're overriding the parent call entirely
+
+	AFirstPersonPlayerController* PC = Cast<AFirstPersonPlayerController>(NewPlayer);
 
 	/*safety check*/
 	if (!NewPlayer)
 		return;
 
+
+
 	/*if the player should have a pawn immedietely - spawn them*/
 	if (!bStartPlayersAsSpectators && !MustSpectate(NewPlayer) && PlayerCanRestart(NewPlayer))
 	{
-		/*create a default character info for player*/
-		ACharacterInfo* CharInfo = SpawnCharacterInfoForPlayer(NewPlayer);
-		if (AFirstPersonPlayerState* PlayerState = NewPlayer->GetPlayerState<AFirstPersonPlayerState>())
-		{
-			PlayerState->SetCharacterInfo(CharInfo);
-		}
+		///*create a default character info for player*/
+		//ACharacterInfo* CharInfo = SpawnCharacterInfoForPlayer(NewPlayer);
+
+		//if (AFirstPersonPlayerState* PlayerState = NewPlayer->GetPlayerState<AFirstPersonPlayerState>())
+		//{
+		//	PlayerState->SetCharacterInfo(CharInfo);
+		//}
 
 		// Otherwise spawn their pawn immediately
 		RestartPlayer(NewPlayer);
@@ -76,9 +121,18 @@ void AFirstPersonGame::HandleStartingNewPlayer_Implementation(APlayerController*
 		NewPlayer->SetInputMode(FInputModeGameOnly::FInputModeGameOnly());
 		NewPlayer->bShowMouseCursor = false;
 	}
-	else
+	if (bStartPlayersAsSpectators && bStartPlayersWithSpectatorPawn)
 	{
+		SpawnAndPossessSpectatorPawn(PC);
+	}
+	else
+	{	
+		
+	}
 
+	if (bShowLobbyOnJoin && LobbyWidgetClass)
+	{
+		PC->InitializeLobbyWidget(LobbyWidgetClass, true);
 	}
 }
 
@@ -94,6 +148,47 @@ void AFirstPersonGame::RestartPlayer(AController* NewPlayer)
 		//PlayerPawn->
 	}
 
+}
+
+void AFirstPersonGame::OnPlayerReadyStateChanged(AFirstPersonPlayerController* Player, bool bReady)
+{	
+	if(AllPlayersReady())
+		OnAllPlayersReadied();
+
+	/*call blueprint version*/
+	BP_OnPlayerReadyStateChanged(Player, bReady);
+}
+
+void AFirstPersonGame::OnAllPlayersReadied()
+{
+
+	/*call blueprint version*/
+	BP_OnAllPlayersReadied();
+}
+
+bool AFirstPersonGame::AllPlayersReady()
+{	
+	if (AFirstPersonGameState* GS = GetGameState<AFirstPersonGameState>())
+	{
+		return GS->AllPlayersReady();
+	}
+
+	/*no game-state available yet, so players are not ready*/
+	else
+		return false;
+}
+
+
+int32 AFirstPersonGame::GetNumPlayers()
+{
+	return Super::GetNumPlayers();
+	//return int32();
+}
+
+int32 AFirstPersonGame::GetNumSpectators()
+{
+	return Super::GetNumSpectators();
+	//return int32();
 }
 
 TArray<class AFirstPersonPlayerController*> AFirstPersonGame::GetAllPlayers()
@@ -149,18 +244,85 @@ void AFirstPersonGame::OnPlayerDeath(AFirstPersonCharacter* Character, AActor* D
 	}
 }
 
-void AFirstPersonGame::PostLogin(APlayerController* NewPlayer)
-{
-	Super::PostLogin(NewPlayer);
+//==========================
+//========SPECTATORS========
+//==========================
 
-	if (AFirstPersonPlayerController* PC = Cast<AFirstPersonPlayerController>(NewPlayer))
+void AFirstPersonGame::InitSpectatorLocations()
+{
+	SpectatorSpawnLocations.Empty();
+
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 	{
-		PC->InitializeEscapeMenuWidget(EscapeMenuWidgetClass);
-		PC->InitializeServerInfoWidget(ServerInfoWidgetClass);
+		AActor* FoundActor = nullptr;
+		if (It->ActorHasTag(SpectatorSpawnTag))
+		{
+			FoundActor = *It;
+
+			if (FoundActor)
+				SpectatorSpawnLocations.AddUnique(FoundActor);
+		}
+	}
+}
+
+AActor* AFirstPersonGame::FindSpectatorSpawnLocation(AFirstPersonPlayerController* Player)
+{
+	if (SpectatorSpawnLocations.Num() < 1)
+		return nullptr;
+
+	int32 RandIndex = FMath::RandRange(0, SpectatorSpawnLocations.Num() - 1);
+	AActor* SpectatorSpawn = SpectatorSpawnLocations[RandIndex];
+
+	return SpectatorSpawn;
+}
+
+void AFirstPersonGame::MoveSpectatorToLocation(AFirstPersonPlayerController* Player, AActor* LocationRef)
+{
+	if (Player && LocationRef)
+	{
+		if (APawn* PlayerPawn = Player->GetPawn())
+		{
+			PlayerPawn->TeleportTo(LocationRef->GetActorLocation(), LocationRef->GetActorRotation(), false, true);
+			Player->SetControlRotation(LocationRef->GetActorRotation());
+		}
+		else
+		{
+			FViewTargetTransitionParams TransitionParams;			
+			Player->SetViewTarget(LocationRef, TransitionParams);
+		}
+	}	
+}
+
+void AFirstPersonGame::SpawnAndPossessSpectatorPawn(AFirstPersonPlayerController* Player)
+{
+	/*if they already have a pawn - then bail out*/
+	if (!Player || Player->GetPawn())
+	{
+		return;
 	}
 
+	/*init*/
+	AActor* SpawnPoint = bUseSpectatorSpawns ? FindSpectatorSpawnLocation(Player) : FindPlayerStart(Player);
+	const FTransform SpawnTransform = SpawnPoint ? SpawnPoint->GetActorTransform() : FTransform::Identity;
 
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = Player;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	/*spawn*/
+	APawn* SpectatorPawn = GetWorld()->SpawnActor<APawn>(SpectatorClass,SpawnTransform,SpawnParams);
+
+	if (!SpectatorPawn)
+	{
+		return;
+	}
+
+	Player->Possess(SpectatorPawn);
+	Player->SetControlRotation(SpawnTransform.Rotator());
+	Player->ClientSetRotation(SpawnTransform.Rotator(), true);
 }
+
+
 
 ACharacterInfo* AFirstPersonGame::SpawnCharacterInfoForPlayer(APlayerController* Player)
 {

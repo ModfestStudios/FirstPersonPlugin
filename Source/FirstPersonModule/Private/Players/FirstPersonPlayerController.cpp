@@ -40,8 +40,15 @@
 /*network*/
 #include "Online.h"
 #include "OnlineSubsystem.h"
-
-
+#include "Net/UnrealNetwork.h"
+//
+//void AFirstPersonPlayerController::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+//{
+//	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+//
+//	DOREPLIFETIME(AFirstPersonPlayerController, LobbyWidgetClass);
+//	DOREPLIFETIME(AFirstPersonPlayerController, bAddLobbyToViewportOnInit);
+//}
 
 
 AFirstPersonPlayerController::AFirstPersonPlayerController()
@@ -128,6 +135,20 @@ void AFirstPersonPlayerController::AcknowledgePossession(APawn* P)
 
 
 
+void AFirstPersonPlayerController::SetPlayerReady(bool bIsReady)
+{
+	if (AFirstPersonPlayerState* PS = GetPlayerState<AFirstPersonPlayerState>())
+		PS->SetPlayerReady(bIsReady);
+}
+
+bool AFirstPersonPlayerController::IsPlayerReady()
+{
+	if (AFirstPersonPlayerState* PS = GetPlayerState<AFirstPersonPlayerState>())
+		return PS->IsPlayerReady();
+	else
+		return false;
+}
+
 void AFirstPersonPlayerController::EnterSpectatorMode()
 {
 	if (GetNetMode() == NM_Client)
@@ -154,6 +175,75 @@ void AFirstPersonPlayerController::EnterSpectatorMode()
 		Possess(NewSpectatorPawn);
 
 }
+
+//========================================
+//===============LOBBY MENU===============
+//========================================
+
+void AFirstPersonPlayerController::OnRep_LobbyWidgetClass()
+{	
+	//InitializeLobbyWidget(LobbyWidgetClass, bAddLobbyToViewportOnInit);
+}
+
+void AFirstPersonPlayerController::InitializeLobbyWidget(TSubclassOf<class UUserWidget> WidgetClass, bool bAddToViewport)
+{	
+	/*mark the class - which will replicate to client and they'll do the same thing on their end when they get initialized*/
+	//LobbyWidgetClass = WidgetClass;
+	//bAddLobbyToViewportOnInit = bAddToViewport;
+
+	/*if client - setup widget locally*/
+	if (IsLocalController() && WidgetClass)
+	{
+		LobbyWidget = CreateWidget<UUserWidget>(this, WidgetClass);
+
+		if(bAddToViewport)
+			OpenLobbyWidget();
+	}
+
+	///*if server - have the server push to client*/
+	else if (!IsLocalController() && GetNetMode() < NM_Client)
+		Client_InitializeLobbyWidget(WidgetClass, bAddToViewport);
+}
+
+void AFirstPersonPlayerController::Client_InitializeLobbyWidget_Implementation(TSubclassOf<class UUserWidget> WidgetClass, bool bAddToViewport)
+{
+	InitializeLobbyWidget(WidgetClass, bAddToViewport);
+}
+
+void AFirstPersonPlayerController::OpenLobbyWidget()
+{
+	if (LobbyWidget && LobbyWidget->IsInViewport() == false)
+	{
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(LobbyWidget->TakeWidget());
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
+
+		LobbyWidget->AddToViewport();
+	}
+}
+
+void AFirstPersonPlayerController::CloseLobbyWidget()
+{
+	if (LobbyWidget && LobbyWidget->IsInViewport())
+	{
+		bShowMouseCursor = false;
+		SetInputMode(FInputModeGameOnly());
+
+		LobbyWidget->RemoveFromParent();	
+	}
+}
+
+void AFirstPersonPlayerController::Client_CloseLobbyWidget_Implementation()
+{
+	CloseLobbyWidget();
+}
+
+//=========================================
+//===============ESCAPE MENU===============
+//=========================================
 
 void AFirstPersonPlayerController::InitializeEscapeMenuWidget(TSubclassOf<class UUserWidget> WidgetClass)
 {

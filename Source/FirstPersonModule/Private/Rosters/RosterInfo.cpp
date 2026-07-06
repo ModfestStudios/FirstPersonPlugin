@@ -4,6 +4,9 @@
 #include "Rosters/RosterInfo.h"
 #include "Characters/CharacterInfo.h"
 
+/*players*/
+#include "Players/FirstPersonPlayerState.h"
+
 /*engine*/
 #include "Engine/GameInstance.h"
 
@@ -13,6 +16,8 @@
 ARosterInfo::ARosterInfo()
 {
 	bReplicates = true;
+	bAlwaysRelevant = true;
+	bOnlyRelevantToOwner = false;	
 }
 
 void ARosterInfo::AddTeamMember(ACharacterInfo* Member)
@@ -72,6 +77,37 @@ TArray<class ACharacterInfo*> ARosterInfo::GetTeamMembers()
 	return TeamMembers;
 }
 
+TArray<class AFirstPersonPlayerState*> ARosterInfo::GetPlayers()
+{
+	return Players;
+}
+
+void ARosterInfo::AddPlayer(AFirstPersonPlayerState* Player)
+{
+	if (!Players.Contains(Player))
+	{
+		Players.Add(Player);
+		Player->SetRosterInfo(this);
+
+		NotifyPlayerAdded(Player);
+	}	
+}
+
+void ARosterInfo::RemovePlayer(AFirstPersonPlayerState* Player)
+{
+	if (Players.Contains(Player))
+	{
+		Players.Remove(Player);
+
+		NotifyPlayerRemoved(Player);
+	}
+}
+
+bool ARosterInfo::HasPlayer(AFirstPersonPlayerState* Player)
+{
+	return Players.Contains(Player);
+}
+
 UMissionSubsystem* ARosterInfo::GetMissionSubsystem()
 {
 	if (MissionSubsystem == nullptr)
@@ -90,4 +126,16 @@ void ARosterInfo::NotifyTeamMemberRemoved(class ACharacterInfo* RemovedTeamMembe
 {
 	if (OnTeamMemberRemoved.IsBound())
 		OnTeamMemberRemoved.Broadcast(RemovedTeamMember);
+}
+
+void ARosterInfo::NotifyPlayerAdded(AFirstPersonPlayerState* Player)
+{
+	if(OnPlayerAdded.IsBound())
+		OnPlayerAdded.Broadcast(Player);
+}
+
+void ARosterInfo::NotifyPlayerRemoved(AFirstPersonPlayerState* Player)
+{
+	if(OnPlayerRemoved.IsBound())
+		OnPlayerRemoved.Broadcast(Player);
 }
