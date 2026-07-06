@@ -6,6 +6,9 @@
 #include "GameFramework/GameStateBase.h"
 #include "FirstPersonGameState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerReadyStateChanged, class AFirstPersonPlayerState*, PlayerState, bool, bIsReady);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerJoins, class AFirstPersonPlayerState*, PlayerState);
+
 /**
  * 
  */
@@ -49,6 +52,19 @@ private:
 
 
 
+	//======================
+	//========EVENTS========
+	//======================
+public:
+	UPROPERTY(BlueprintAssignable)
+		FOnPlayerReadyStateChanged OnPlayerReadyStateChanged;
+	UPROPERTY(BlueprintAssignable)
+		FOnPlayerJoins OnPlayerJoins;
+	UPROPERTY(BlueprintAssignable)
+		FOnPlayerJoins OnPlayerLeaves;
+
+
+
 	//=====================================================================================================================================
 	//==============================================================FUNCTIONS==============================================================
 	//=====================================================================================================================================
@@ -70,6 +86,24 @@ protected:
 public:
 	UFUNCTION()
 		void OnRep_CSSViewTargetChanged();
+
+	//===============================
+	//============PLAYERS============
+	//===============================
+	UFUNCTION()
+		virtual void NativeOnPlayerReadyStateChanged(class AFirstPersonPlayerState* PlayerState, bool bIsReady);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Players", meta = (DisplayName="OnPlayerReadyStateChanged"))
+		void BP_OnPlayerReadyStateChanged(class AFirstPersonPlayerState* PlayerState, bool bIsReady);
+	UFUNCTION(BlueprintPure, Category = "Players")
+		bool AllPlayersReady();	
+	
+	/** Add PlayerState to the PlayerArray */
+	virtual void AddPlayerState(APlayerState* PlayerState) override;
+
+	/** Remove PlayerState from the PlayerArray. */
+	virtual void RemovePlayerState(APlayerState* PlayerState) override;
+
+
 
 
 

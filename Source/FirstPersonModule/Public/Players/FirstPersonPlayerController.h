@@ -34,13 +34,28 @@ public:
 
 	/*ui*/
 public:
+	/*the widget for game-modes that utilize lobbies - typically shown first thing when a player joins*/
+	UPROPERTY(BlueprintReadOnly, Category = "UI")
+		class UUserWidget* LobbyWidget;
+	//UPROPERTY(Replicated, ReplicatedUsing = "OnRep_LobbyWidgetClass")
+	//	TSubclassOf<UUserWidget> LobbyWidgetClass;
+	//UPROPERTY(Replicated, ReplicatedUsing = "OnRep_LobbyWidgetClass")
+	//	bool bAddLobbyToViewportOnInit = false;
+
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 		class UUserWidget* EscapeMenuWidget;
+	
+	
 	/*server info screen*/
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 		class UUserWidget* ServerInfoWidget;
+
+
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 		class UUserWidget* LoadoutWidget;
+
+
+	
 
 
 	//===============================================================================================================
@@ -69,12 +84,38 @@ public:
 //		virtual void DisableVoiceChat();
 
 	//=================================
+	//===========READY STATE===========
+	//=================================
+	UFUNCTION(BlueprintCallable, Category = "Player State|Ready State")
+		void SetPlayerReady(bool bIsReady);
+	UFUNCTION(BlueprintCallable, Category = "Player State|Ready State")
+		bool IsPlayerReady();
+
+
+	//=================================
 	//============SPECTATOR============
 	//=================================
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Spectator")
 	virtual void EnterSpectatorMode();
+
+	//========================================
+	//===============LOBBY MENU===============
+	//========================================
+public:
+	UFUNCTION()
+		virtual void OnRep_LobbyWidgetClass();
+	UFUNCTION(BlueprintCallable, Category = "UI")
+		virtual void InitializeLobbyWidget(TSubclassOf<class UUserWidget> WidgetClass, bool bAddToViewport);
+	UFUNCTION(Client, Reliable)
+		virtual void Client_InitializeLobbyWidget(TSubclassOf<class UUserWidget> WidgetClass, bool bAddToViewport);
+	UFUNCTION()
+		virtual void OpenLobbyWidget();
+	UFUNCTION()
+		virtual void CloseLobbyWidget();
+	UFUNCTION(Client, Reliable)
+		virtual void Client_CloseLobbyWidget();
 
 	//=========================================
 	//===============ESCAPE MENU===============
@@ -99,6 +140,7 @@ public:
 		virtual void OpenLoadoutWidget();
 	UFUNCTION(BlueprintCallable, Category = "UI")
 		virtual void CloseLoadoutWidget();
+	
 
 
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Loadout")

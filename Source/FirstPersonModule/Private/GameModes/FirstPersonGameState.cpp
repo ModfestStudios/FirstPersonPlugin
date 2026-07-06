@@ -90,6 +90,67 @@ void AFirstPersonGameState::OnRep_CSSViewTargetChanged()
 	}
 }
 
+//===============================
+//============PLAYERS============
+//===============================
+
+void AFirstPersonGameState::NativeOnPlayerReadyStateChanged(AFirstPersonPlayerState* PlayerState, bool bIsReady)
+{
+	/*call blueprint version*/
+	BP_OnPlayerReadyStateChanged(PlayerState, bIsReady);
+
+	/*notify listeners*/
+	if(OnPlayerReadyStateChanged.IsBound())
+		OnPlayerReadyStateChanged.Broadcast(PlayerState, bIsReady);
+}
+
+bool AFirstPersonGameState::AllPlayersReady()
+{
+	/*ensure we have players in our game*/
+	if (PlayerArray.Num() <= 0)
+		return false;
+
+	/*just a quick sanity check that needs flagged on to ensure there's at least one valid FirstPersonPlayerState that exists*/
+	bool bHasEligiblePlayer = false;
+
+	/*check all players - and return not-ready if even a single player is not ready*/
+	for (APlayerState* PlayerState : PlayerArray)
+	{
+		AFirstPersonPlayerState* PS = Cast<AFirstPersonPlayerState>(PlayerState);
+		if (!PS)
+			continue;
+
+		/*ignore non-player spectators*/
+		if (PS->IsOnlyASpectator())
+			continue;
+
+		bHasEligiblePlayer = true; 
+
+		/*return false if this player is not ready - otherwise check next*/
+		if (!PS->IsPlayerReady())
+			return false;
+	}
+
+	/*if we never run into a scenario where a player is NOT ready, we assume everyone is ready*/	
+	return bHasEligiblePlayer;
+}
+
+void AFirstPersonGameState::AddPlayerState(APlayerState* PlayerState)
+{
+	Super::AddPlayerState(PlayerState);
+
+	if(OnPlayerJoins.IsBound())
+		OnPlayerJoins.Broadcast(Cast<AFirstPersonPlayerState>(PlayerState));
+}
+
+void AFirstPersonGameState::RemovePlayerState(APlayerState* PlayerState)
+{
+	Super::RemovePlayerState(PlayerState);
+
+	if (OnPlayerLeaves.IsBound())
+		OnPlayerLeaves.Broadcast(Cast<AFirstPersonPlayerState>(PlayerState));
+}
+
 
 
 //=================================
