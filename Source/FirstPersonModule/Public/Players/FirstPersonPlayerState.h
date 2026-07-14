@@ -6,7 +6,9 @@
 #include "GameFramework/PlayerState.h"
 #include "FirstPersonPlayerState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAssignedRosterChanged,AFirstPersonPlayerState*, PlayerState,class ARosterInfo*, NewRoster);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnReadyStateChanged, AFirstPersonPlayerState*, PlayerState, bool, bReady);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLoadoutChanged, AFirstPersonPlayerState*, PlayerState, class AInventoryLoadout*, PlayerLoadout);
 
 /**
  * 
@@ -26,14 +28,14 @@ private:
 private:
 	
 	/*the roster this player is assigned to*/
-	UPROPERTY()
+	UPROPERTY(Replicated, ReplicatedUsing="OnRep_AssignedRoster")
 		class ARosterInfo* AssignedRoster; 
 	/*the character state this player has ownerhship of*/
 	UPROPERTY()
 		class ACharacterInfo* CharacterInfo;
 
-public:
-	UPROPERTY()
+private:
+	UPROPERTY(Replicated, ReplicatedUsing = "OnRep_Loadout")
 		class AInventoryLoadout* Loadout;
 
 public:
@@ -47,7 +49,11 @@ public:
 	/*EVENTS*/
 public:
 	UPROPERTY(BlueprintAssignable)
+		FOnAssignedRosterChanged OnAssignedRosterChanged;
+	UPROPERTY(BlueprintAssignable)
 		FOnReadyStateChanged OnReadyStateChanged;
+	UPROPERTY(BlueprintAssignable)
+		FOnLoadoutChanged OnLoadoutChanged;
 	
 
 
@@ -71,15 +77,43 @@ public:
 		virtual void OnRep_PlayerReadyStateChanged();
 
 
+//==========================
+//==========ROSTER==========
+//==========================
+public:
 	UFUNCTION()
 		bool IsAssignedToRoster();
 
+protected:
+	UFUNCTION()
+		virtual void OnRep_AssignedRoster();
 public:
-
-	UFUNCTION(BlueprintCallable, Category = "Player State|Character")
-		virtual void SetCharacterInfo(class ACharacterInfo* NewCharacterInfo);
 	UFUNCTION(BlueprintCallable, Category = "Player State|Roster")
 		virtual void SetRosterInfo(class ARosterInfo* NewRosterInfo);
+	UFUNCTION()
+		virtual void NotifyAssignedRosterChanged();
+
+//=============================
+//==========CHARACTER==========
+//=============================
+public:
+	UFUNCTION(BlueprintCallable, Category = "Player State|Character")
+		virtual void SetCharacterInfo(class ACharacterInfo* NewCharacterInfo);
+
+//=========================
+//=========LOADOUT=========
+//=========================
+public:
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+		AInventoryLoadout* GetLoadout();
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+		virtual void SetLoadout(class AInventoryLoadout* NewLoadout);
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+		virtual void ClearLoadout();
+	UFUNCTION()
+		virtual void NotifyLoadoutChanged();
+	UFUNCTION()
+		virtual void OnRep_Loadout();
 	
 
 };

@@ -24,9 +24,17 @@ public:
 	/*if enabled - will show the lobby widget when players join*/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Lobby")
 		bool bShowLobbyOnJoin = false;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Classes")
 		TSubclassOf<class UGameLobbyWidget> LobbyWidgetClass;
+
+
+		/*if enabled - will automatically create an Inventory Loadout instance for the Player State*/
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Players|Loadout")
+		bool bInitializePlayerLoadoutOnLogin = false;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Classes")
+		TSubclassOf<class AInventoryLoadout> InventoryLoadoutClass;
+
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Classes")
 		TSubclassOf<UUserWidget> EscapeMenuWidgetClass;
 
@@ -39,11 +47,11 @@ public:
 		TSubclassOf<class ACharacterInfo> CharacterInfoClass;
 
 
-	UPROPERTY(EditAnywhere, Category = "Spectators")
+	UPROPERTY(EditAnywhere, Category = "Players|Spectators")
 	bool bStartPlayersWithSpectatorPawn = true;
-	UPROPERTY(EditAnywhere, Category = "Spectators")
+	UPROPERTY(EditAnywhere, Category = "Players|Spectators")
 		bool bUseSpectatorSpawns = true;
-	UPROPERTY(VisibleAnywhere, Category = "Spectators")
+	UPROPERTY(VisibleAnywhere, Category = "Players|Spectators")
 		FName SpectatorSpawnTag = FName("SpectatorSpawn");
 
 	UPROPERTY()

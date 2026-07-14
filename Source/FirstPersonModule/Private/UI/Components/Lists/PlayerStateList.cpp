@@ -24,6 +24,7 @@ void UPlayerStateList::InitializeBindings()
 {
 	if (AFirstPersonGameState* GS = GetWorld()->GetGameState<AFirstPersonGameState>())
 	{
+		GS->OnPlayerAssignedRosterChanged.AddDynamic(this,&UPlayerStateList::OnPlayerAssignedRosterChanged);
 		GS->OnPlayerReadyStateChanged.AddDynamic(this, &UPlayerStateList::OnPlayerReadyStateChanged);
 		GS->OnPlayerJoins.AddDynamic(this, &UPlayerStateList::OnPlayerJoins);
 		GS->OnPlayerLeaves.AddDynamic(this, &UPlayerStateList::OnPlayerLeaves);
@@ -48,6 +49,11 @@ void UPlayerStateList::OnPlayerListInitialized()
 	BP_OnPlayerListInitialized();
 }
 
+void UPlayerStateList::OnPlayerAssignedRosterChanged(AFirstPersonPlayerState* PlayerState, ARosterInfo* AssignedRoster)
+{
+	BP_OnPlayerAssignedRosterChanged(PlayerState, AssignedRoster);
+}
+
 void UPlayerStateList::OnPlayerReadyStateChanged(AFirstPersonPlayerState* PlayerState, bool bIsReady)
 {
 	
@@ -65,4 +71,17 @@ void UPlayerStateList::OnPlayerLeaves(AFirstPersonPlayerState* PlayerState)
 {
 
 	BP_OnPlayerLeaves(PlayerState);
+}
+
+void UPlayerStateList::NativeDestruct()
+{	
+	if (AFirstPersonGameState* GS = GetWorld()->GetGameState<AFirstPersonGameState>())
+	{
+		GS->OnPlayerAssignedRosterChanged.RemoveDynamic(this,&UPlayerStateList::OnPlayerAssignedRosterChanged);
+		GS->OnPlayerReadyStateChanged.RemoveDynamic(this, &UPlayerStateList::BP_OnPlayerReadyStateChanged);
+		GS->OnPlayerJoins.RemoveDynamic(this, &UPlayerStateList::OnPlayerJoins);
+		GS->OnPlayerLeaves.RemoveDynamic(this, &UPlayerStateList::OnPlayerLeaves);
+	}
+	
+	Super::NativeDestruct();
 }

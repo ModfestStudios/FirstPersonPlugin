@@ -286,7 +286,7 @@ void ATerminalApplication::ParseQuotes(TArray<FString>& CommandArray)
 
 			// Remove consumed entries
 			const int32 NumToRemove = EndIndex - i;
-			CommandArray.RemoveAt(i + 1, NumToRemove, true);
+			CommandArray.RemoveAt(i + 1, NumToRemove, EAllowShrinking::Yes);
 		}
 	}
 }

@@ -6,6 +6,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "FirstPersonGameState.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerAssignedRosterChanged, class AFirstPersonPlayerState*, PlayerState, class ARosterInfo*, AssignedRoster);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerReadyStateChanged, class AFirstPersonPlayerState*, PlayerState, bool, bIsReady);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerJoins, class AFirstPersonPlayerState*, PlayerState);
 
@@ -57,6 +58,8 @@ private:
 	//======================
 public:
 	UPROPERTY(BlueprintAssignable)
+		FOnPlayerAssignedRosterChanged OnPlayerAssignedRosterChanged;
+	UPROPERTY(BlueprintAssignable)
 		FOnPlayerReadyStateChanged OnPlayerReadyStateChanged;
 	UPROPERTY(BlueprintAssignable)
 		FOnPlayerJoins OnPlayerJoins;
@@ -92,10 +95,15 @@ public:
 	//===============================
 	UFUNCTION()
 		virtual void NativeOnPlayerReadyStateChanged(class AFirstPersonPlayerState* PlayerState, bool bIsReady);
-	UFUNCTION(BlueprintImplementableEvent, Category = "Players", meta = (DisplayName="OnPlayerReadyStateChanged"))
+	UFUNCTION(BlueprintImplementableEvent, Category = "Players", meta = (DisplayName="On Player Ready State Changed"))
 		void BP_OnPlayerReadyStateChanged(class AFirstPersonPlayerState* PlayerState, bool bIsReady);
 	UFUNCTION(BlueprintPure, Category = "Players")
 		bool AllPlayersReady();	
+
+	UFUNCTION()
+		virtual void NativeOnPlayerAssignedRosterChanged(class AFirstPersonPlayerState* PlayerState, class ARosterInfo* AssignedRoster);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Players", meta = (DisplayName = "On Player Assigned Roster Changed"))
+		void BP_OnPlayerAssignedRosterChanged(class AFirstPersonPlayerState* PlayerState, class ARosterInfo* AssignedRoster);
 	
 	/** Add PlayerState to the PlayerArray */
 	virtual void AddPlayerState(APlayerState* PlayerState) override;

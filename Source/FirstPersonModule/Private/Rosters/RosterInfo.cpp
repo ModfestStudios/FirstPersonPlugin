@@ -13,6 +13,19 @@
 /*subsystems*/
 #include "Subsystems/MissionSubsystem.h"
 
+/*network*/
+#include "Net/UnrealNetwork.h"
+
+
+void ARosterInfo::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ARosterInfo, Players);
+	DOREPLIFETIME(ARosterInfo, TeamMembers);
+}
+
+
 ARosterInfo::ARosterInfo()
 {
 	bReplicates = true;

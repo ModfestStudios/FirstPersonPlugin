@@ -24,13 +24,19 @@ public:
 
 	
 	virtual void NativeConstruct() override;
+	
+
 	virtual void InitializeBindings();
 	UFUNCTION()
 		virtual void OnPlayerListInitialized();
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player States", meta = (DisplayName = "On Player List Initialized"))
 		void BP_OnPlayerListInitialized();
 
-
+	
+	UFUNCTION()
+		virtual void OnPlayerAssignedRosterChanged(class AFirstPersonPlayerState* PlayerState, class ARosterInfo* AssignedRoster);
+	UFUNCTION(BlueprintImplementableEvent, Category = "Player State", meta = (DisplayName = "On Player Assigned Roster Changed"))
+		void BP_OnPlayerAssignedRosterChanged(class AFirstPersonPlayerState* PlayerState, class ARosterInfo* AssignedRoster);
 	UFUNCTION()
 		virtual void OnPlayerReadyStateChanged(class AFirstPersonPlayerState* PlayerState, bool bIsReady);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player States", meta = (DisplayName="On Player Ready State Changed"))
@@ -47,5 +53,9 @@ public:
 		virtual void OnPlayerLeaves(class AFirstPersonPlayerState* PlayerState);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Player States", meta = (DisplayName = "On Player Leaves"))
 		void BP_OnPlayerLeaves(class AFirstPersonPlayerState* PlayerState);
+
+
+
+	virtual void NativeDestruct() override;
 
 };

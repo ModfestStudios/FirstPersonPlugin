@@ -192,7 +192,7 @@ private:
 protected:
 	//view height from center of root component we'll place the First Person View
 	UPROPERTY(EditDefaultsOnly, Category = "View")
-		float ViewHeight = 80.0f;
+		float ViewHeight = 88.0f;
 	/*pushes the whole scene forward/backward during placement*/
 	UPROPERTY(EditDefaultsOnly, Category = "View")
 		float ViewForwardOffset = 0.0f;
