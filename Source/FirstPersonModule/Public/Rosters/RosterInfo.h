@@ -34,9 +34,9 @@ public:
 
 
 private:
-	UPROPERTY()
+	UPROPERTY(Replicated)
 		TArray<class ACharacterInfo*> TeamMembers;
-	UPROPERTY()
+	UPROPERTY(Replicated)
 		TArray<class AFirstPersonPlayerState*> Players;
 
 	UPROPERTY()

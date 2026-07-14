@@ -297,7 +297,7 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	{
 		static ConstructorHelpers::FObjectFinder<USkeletalMesh> DefaultPlayerMeshRef(TEXT("/FirstPersonModule/Characters/Mesh/MaleMannequin_Quin"));
 		if (DefaultPlayerMeshRef.Succeeded())
-			GetMesh()->SkeletalMesh = DefaultPlayerMeshRef.Object;
+			GetMesh()->SetSkeletalMesh(DefaultPlayerMeshRef.Object);
 
 		GetMesh()->SetRelativeLocation(FVector(0, 0, -90));
 		GetMesh()->bOwnerNoSee = true;

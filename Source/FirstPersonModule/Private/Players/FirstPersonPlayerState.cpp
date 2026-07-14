@@ -18,6 +18,9 @@ void AFirstPersonPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AFirstPersonPlayerState, bReady);
+	DOREPLIFETIME(AFirstPersonPlayerState, AssignedRoster);
+	DOREPLIFETIME(AFirstPersonPlayerState, Loadout);
+
 	DOREPLIFETIME(AFirstPersonPlayerState, bLevelInstanceLoading);
 	DOREPLIFETIME_CONDITION(AFirstPersonPlayerState, LevelInstanceLoadPercent, COND_SkipOwner);
 }
@@ -71,6 +74,11 @@ void AFirstPersonPlayerState::NotifyReadyStateChanged()
 		OnReadyStateChanged.Broadcast(this, bReady);
 }
 
+
+//==========================
+//==========ROSTER==========
+//==========================
+
 void AFirstPersonPlayerState::OnRep_PlayerReadyStateChanged()
 {
 	/*broadcast notifications*/
@@ -96,6 +104,39 @@ void AFirstPersonPlayerState::Server_SetPlayerReady_Implementation(bool bIsReady
 	NotifyReadyStateChanged();
 }
 
+void AFirstPersonPlayerState::OnRep_AssignedRoster()
+{
+	NotifyAssignedRosterChanged();
+}
+
+
+
+void AFirstPersonPlayerState::SetRosterInfo(ARosterInfo* NewRosterInfo)
+{
+	AssignedRoster = NewRosterInfo;
+
+	/*raise the bat signal*/
+	NotifyAssignedRosterChanged();
+}
+
+void AFirstPersonPlayerState::NotifyAssignedRosterChanged()
+{
+	/*notify gamestate (we notify GS for clients mostly, but we also notify GM so game-play logic can be easily ran from the change*/
+	if (AFirstPersonGameState* GS = GetWorld()->GetGameState<AFirstPersonGameState>())
+	{
+		GS->NativeOnPlayerAssignedRosterChanged(this, AssignedRoster);
+	}
+
+	/*notify anyone listening*/
+	if (OnReadyStateChanged.IsBound())
+		OnReadyStateChanged.Broadcast(this, bReady);
+
+}
+
+//=============================
+//==========CHARACTER==========
+//=============================
+
 void AFirstPersonPlayerState::SetCharacterInfo(ACharacterInfo* NewCharacterInfo)
 {
 	if (!NewCharacterInfo)
@@ -104,7 +145,31 @@ void AFirstPersonPlayerState::SetCharacterInfo(ACharacterInfo* NewCharacterInfo)
 	CharacterInfo = NewCharacterInfo;
 }
 
-void AFirstPersonPlayerState::SetRosterInfo(ARosterInfo* NewRosterInfo)
+AInventoryLoadout* AFirstPersonPlayerState::GetLoadout()
 {
-	AssignedRoster = NewRosterInfo;
+	return Loadout;
+}
+
+void AFirstPersonPlayerState::SetLoadout(AInventoryLoadout* NewLoadout)
+{
+	Loadout = NewLoadout;
+	NotifyLoadoutChanged();
+}
+
+void AFirstPersonPlayerState::ClearLoadout()
+{
+	Loadout = nullptr;
+	NotifyLoadoutChanged();
+}
+
+void AFirstPersonPlayerState::NotifyLoadoutChanged()
+{
+	
+	if(OnLoadoutChanged.IsBound())
+		OnLoadoutChanged.Broadcast(this,Loadout);
+}
+
+void AFirstPersonPlayerState::OnRep_Loadout()
+{
+	NotifyLoadoutChanged();
 }

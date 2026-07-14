@@ -14,6 +14,9 @@
 /*engine*/
 #include "Engine/GameInstance.h"
 
+/*inventory*/
+#include "Inventory/InventoryLoadout.h"
+
 /*maps*/
 #include "Maps/MapAsset.h"
 
@@ -38,6 +41,7 @@ AFirstPersonGame::AFirstPersonGame()
 	PlayerControllerClass = AFirstPersonPlayerController::StaticClass();
 	PlayerStateClass = AFirstPersonPlayerState::StaticClass();
 	GameStateClass = AFirstPersonGameState::StaticClass();
+	InventoryLoadoutClass = AInventoryLoadout::StaticClass();
 
 	bUseSeamlessTravel = true;
 
@@ -81,9 +85,23 @@ void AFirstPersonGame::PostLogin(APlayerController* NewPlayer)
 	{
 		PC->InitializeEscapeMenuWidget(EscapeMenuWidgetClass);
 		PC->InitializeServerInfoWidget(ServerInfoWidgetClass);
+
+		if (AFirstPersonPlayerState* PS = PC->GetPlayerState<AFirstPersonPlayerState>())
+		{
+			/*creates the Loadout for the player*/
+			if (bInitializePlayerLoadoutOnLogin == true)
+			{
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = PC;
+				TSubclassOf<AInventoryLoadout> LoadoutClass = IsValid(InventoryLoadoutClass) ? InventoryLoadoutClass.Get() : AInventoryLoadout::StaticClass();
+
+				AInventoryLoadout* PlayerLoadout = GetWorld()->SpawnActor<AInventoryLoadout>(LoadoutClass,SpawnParams);
+
+				if(PlayerLoadout)
+					PS->SetLoadout(PlayerLoadout);
+			}
+		}
 	}
-
-
 }
 
 void AFirstPersonGame::Logout(AController* Exiting)

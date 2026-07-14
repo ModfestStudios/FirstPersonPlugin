@@ -301,7 +301,7 @@ AInventoryLoadout* AFirstPersonPlayerController::GetLoadoutInfo()
 {
 	if (AFirstPersonPlayerState* PS = GetPlayerState<AFirstPersonPlayerState>())
 	{
-		return PS->Loadout;
+		return PS->GetLoadout();
 	}
 	else
 		return nullptr;

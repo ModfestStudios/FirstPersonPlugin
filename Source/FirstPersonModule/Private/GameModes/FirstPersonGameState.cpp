@@ -135,6 +135,17 @@ bool AFirstPersonGameState::AllPlayersReady()
 	return bHasEligiblePlayer;
 }
 
+void AFirstPersonGameState::NativeOnPlayerAssignedRosterChanged(AFirstPersonPlayerState* PlayerState, ARosterInfo* AssignedRoster)
+{
+
+	/*trigger Blueprint version*/
+	BP_OnPlayerAssignedRosterChanged(PlayerState, AssignedRoster);
+
+	/*notify listeners*/
+	if(OnPlayerAssignedRosterChanged.IsBound())
+		OnPlayerAssignedRosterChanged.Broadcast(PlayerState, AssignedRoster);
+}
+
 void AFirstPersonGameState::AddPlayerState(APlayerState* PlayerState)
 {
 	Super::AddPlayerState(PlayerState);
