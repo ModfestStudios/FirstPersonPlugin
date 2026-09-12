@@ -101,6 +101,12 @@ protected:
 		class UInventoryAttachmentComponent* Alternative;
 
 
+	/*AI*/
+private:
+	UPROPERTY(VisibleAnywhere, Category = "AI")
+		class UBehaviorComponent* BehaviorComponent;
+	UPROPERTY(VisibleAnywhere, Category = "AI")
+		class USensesComponent* SensesComponent;
 
 
 
@@ -376,6 +382,8 @@ public:
 		UPlayerInventoryManagerComponent* GetInventoryManager() { return InventoryManager; };
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
 		virtual bool HasItemEquipped();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
+		virtual class AInventoryItem* GetEquippedItem();
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 		void ToggleInventory();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory")
@@ -414,9 +422,22 @@ protected:
 		virtual void EndInteraction();
 
 
+	//=======================
+	//========ATTACKS========
+	//=======================
+public:
+	UFUNCTION(BlueprintCallable, Category = "Attacking")
+		virtual void Attack(class UAttackAsset* Attack);
+	UFUNCTION(BlueprintCallable, Category = "Attacking")
+		virtual bool CanPerformAttack(class UAttackAsset* Attack);
+protected:
+	UFUNCTION()
+		virtual void PerformAttacK(class UAttackAsset* Attack);
+
+
 
 	//=========================
-	//========WEAPONS========
+	//========WEAPONS==========
 	//=========================
 public:
 	UFUNCTION()
@@ -474,4 +495,13 @@ private:
 	//==========================
 	UFUNCTION()
 		class AFirstPersonPlayerController* GetFirstPersonController();
+
+	//========================
+	//=============AI=========
+	//========================
+public:
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "AI")
+		class UBehaviorComponent* GetBehaviorComponent();
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "AI")
+		class USensesComponent* GetSensesComponent();
 };

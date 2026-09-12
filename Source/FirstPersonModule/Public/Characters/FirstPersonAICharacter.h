@@ -15,11 +15,7 @@ class FIRSTPERSONMODULE_API AFirstPersonAICharacter : public AFirstPersonCharact
 	GENERATED_BODY()
 public:
 
-private:
-	UPROPERTY(VisibleAnywhere, Category = "AI")
-		class UBehaviorComponent* BehaviorComponent;
-	UPROPERTY(VisibleAnywhere, Category = "AI")
-		class USensesComponent* SensesComponent;
+
 
 
 	//=============================================================================================================================

@@ -33,7 +33,7 @@ void UInventoryManagerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UInventoryManagerComponent, CurrentlyEquipped);
+	DOREPLIFETIME(UInventoryManagerComponent, EquippedItem);
 	DOREPLIFETIME(UInventoryManagerComponent, PrimaryWeapon);
 	DOREPLIFETIME(UInventoryManagerComponent, SecondaryWeapon);
 	DOREPLIFETIME(UInventoryManagerComponent, AlternativeWeapon);
@@ -315,9 +315,9 @@ void UInventoryManagerComponent::ClearInventory()
 
 }
 
-AInventoryItem* UInventoryManagerComponent::GetCurrentlyEquippedItem()
+AInventoryItem* UInventoryManagerComponent::GetEquippedItem()
 {
-	return CurrentlyEquipped;
+	return EquippedItem;
 }
 
 
@@ -408,14 +408,14 @@ void UInventoryManagerComponent::Equip(AInventoryItem* Item)
 	RegisterItem(Item);
 
 	/*if we already have the item equipped - go ahead and auto-unequip it*/
-	if (Item == CurrentlyEquipped)
+	if (Item == EquippedItem)
 	{
-		Unequip(CurrentlyEquipped);
+		Unequip(EquippedItem);
 		return;
 	}
 
 	/*unequip anything we already have first*/
-	if (CurrentlyEquipped != nullptr)
+	if (EquippedItem != nullptr)
 	{
 		PendingEquip = Item;
 		Unequip(Item);
@@ -447,18 +447,18 @@ void UInventoryManagerComponent::OnEquipFinished(AInventoryItem* Item)
 	if (Item == nullptr)
 		return;
 
-	CurrentlyEquipped = Item;
+	EquippedItem = Item;
 	PendingEquip = nullptr;
 
 	/*event/delegate notifications*/
-	if (CurrentlyEquipped != nullptr && OnItemEquipped.IsBound()) // any item
-		OnItemEquipped.Broadcast(CurrentlyEquipped);
-	if (CurrentlyEquipped != nullptr && CurrentlyEquipped == PrimaryWeapon && OnPrimaryEquipped.IsBound()) //primary weapon
-		OnPrimaryEquipped.Broadcast(CurrentlyEquipped);
-	if (CurrentlyEquipped != nullptr && CurrentlyEquipped == SecondaryWeapon && OnSecondaryEquipped.IsBound()) //secondary weapon
-		OnSecondaryEquipped.Broadcast(CurrentlyEquipped);
-	if (CurrentlyEquipped != nullptr && CurrentlyEquipped == AlternativeWeapon && OnAlternativeEquipped.IsBound()) //alternative wepaon
-		OnAlternativeEquipped.Broadcast(CurrentlyEquipped);
+	if (EquippedItem != nullptr && OnItemEquipped.IsBound()) // any item
+		OnItemEquipped.Broadcast(EquippedItem);
+	if (EquippedItem != nullptr && EquippedItem == PrimaryWeapon && OnPrimaryEquipped.IsBound()) //primary weapon
+		OnPrimaryEquipped.Broadcast(EquippedItem);
+	if (EquippedItem != nullptr && EquippedItem == SecondaryWeapon && OnSecondaryEquipped.IsBound()) //secondary weapon
+		OnSecondaryEquipped.Broadcast(EquippedItem);
+	if (EquippedItem != nullptr && EquippedItem == AlternativeWeapon && OnAlternativeEquipped.IsBound()) //alternative wepaon
+		OnAlternativeEquipped.Broadcast(EquippedItem);
 }
 
 void UInventoryManagerComponent::Unequip(AInventoryItem* Item)
@@ -475,7 +475,7 @@ void UInventoryManagerComponent::Unequip(AInventoryItem* Item)
 
 void UInventoryManagerComponent::OnUnequipFinished(AInventoryItem* Item)
 {
-	CurrentlyEquipped = nullptr;
+	EquippedItem = nullptr;
 
 	/*if we're waiting to equip anything - go ahead*/
 	if (PendingEquip)

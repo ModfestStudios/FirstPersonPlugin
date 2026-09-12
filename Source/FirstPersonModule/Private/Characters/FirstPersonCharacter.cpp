@@ -29,6 +29,8 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/VitalsComponent.h"
+#include "Components/BehaviorComponent.h"
+#include "Components/SensesComponent.h"
 
 /*engine*/
 #include "Engine/GameInstance.h"
@@ -53,6 +55,7 @@
 /*inventory*/
 #include "Components/InventoryManagerComponent.h"
 #include "Components/PlayerInventoryManagerComponent.h"
+#include "Inventory/InventoryItem.h"
 #include "Components/InventoryItemComponent.h"
 #include "Components/InventoryAttachmentComponent.h"
 #include "Weapons/Weapon.h"
@@ -83,6 +86,9 @@
 /*subsystems*/
 #include "Subsystems/GameMasterSubsystem.h"
 #include "Subsystems/CharacterSubsystem.h"
+#include "Subsystems/AIBehaviorSubsystem.h"
+#include "Subsystems/CombatSubsystem.h"
+
 
 /*network*/
 #include "Net/UnrealNetwork.h"
@@ -281,6 +287,18 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		//Primary->AttachmentType = AWatch::StaticClass();
 	}
 
+	BehaviorComponent = ObjectInitializer.CreateDefaultSubobject<UBehaviorComponent>(this, FName("Behavior Component"));
+	if (BehaviorComponent)
+	{
+
+	}
+
+	SensesComponent = ObjectInitializer.CreateDefaultSubobject<USensesComponent>(this, FName("Senses Component"));
+	if (SensesComponent)
+	{
+		SensesComponent->PrimaryComponentTick.bStartWithTickEnabled = false;
+	}
+
 	InteractiveManager = ObjectInitializer.CreateDefaultSubobject<UInteractiveManagerComponent>(this, InteractiveManagerComponentName);
 	if (InteractiveManager)
 	{
@@ -420,6 +438,9 @@ void AFirstPersonCharacter::BeginPlay()
 		InventoryManager->OnInventoryManagerOpened.AddUniqueDynamic(this, &AFirstPersonCharacter::OnInventoryManagerOpened);
 		InventoryManager->OnInventoryManagerClosed.AddUniqueDynamic(this, &AFirstPersonCharacter::OnInventoryManagerClosed);
 	}
+
+	if(UAIBehaviorSubsystem* BSS = GetWorld()->GetSubsystem<UAIBehaviorSubsystem>())
+		BSS->RegisterActor(this);
 }
 
 
@@ -632,6 +653,16 @@ bool AFirstPersonCharacter::CanMoveCamera()
 AFirstPersonPlayerController* AFirstPersonCharacter::GetFirstPersonController()
 {
 	return Cast<AFirstPersonPlayerController>(GetController());
+}
+
+UBehaviorComponent* AFirstPersonCharacter::GetBehaviorComponent()
+{
+	return BehaviorComponent;
+}
+
+USensesComponent* AFirstPersonCharacter::GetSensesComponent()
+{
+	return SensesComponent;
 }
 
 //========================
@@ -847,11 +878,22 @@ bool AFirstPersonCharacter::HasItemEquipped()
 {
 	if (InventoryManager)
 	{
-		if (IsValid(InventoryManager->GetCurrentlyEquippedItem()))
+		if (IsValid(InventoryManager->GetEquippedItem()))
 			return true;
 	}
 
 	return false;
+}
+
+AInventoryItem* AFirstPersonCharacter::GetEquippedItem()
+{
+	if (IsValid(InventoryManager))
+	{
+		if(AInventoryItem* Item = InventoryManager->GetEquippedItem())
+			return IsValid(Item) ? Item : nullptr;
+	}
+
+	return nullptr;
 }
 
 void AFirstPersonCharacter::ToggleInventory()
@@ -943,11 +985,44 @@ void AFirstPersonCharacter::EndInteraction()
 	}
 }
 
+
+
+//=======================
+//========ATTACKS========
+//=======================
+
+void AFirstPersonCharacter::Attack(UAttackAsset* Attack)
+{
+	if(!Attack)
+		return;
+
+	if (UCombatSubsystem* CSS = GetWorld()->GetSubsystem<UCombatSubsystem>())
+	{
+		CSS->InitiateAttack(Attack,this);
+	}
+}
+
+bool AFirstPersonCharacter::CanPerformAttack(UAttackAsset* Attack)
+{
+	return false;
+}
+
+void AFirstPersonCharacter::PerformAttacK(UAttackAsset* Attack)
+{
+
+}
+
+
+
+//=========================
+//========WEAPONS==========
+//=========================
+
 void AFirstPersonCharacter::BeginFire()
 {
 	if (InventoryManager)
 	{
-		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetCurrentlyEquippedItem()))
+		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
 			Firearm->BeginFire();
 	}
 }
@@ -956,7 +1031,7 @@ void AFirstPersonCharacter::EndFire()
 {
 	if (InventoryManager)
 	{
-		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetCurrentlyEquippedItem()))
+		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
 			Firearm->EndFire();
 	}
 }
@@ -965,7 +1040,7 @@ bool AFirstPersonCharacter::HasWeaponEquipped()
 {
 	if (InventoryManager)
 	{
-		if (AActor* InHand = InventoryManager->GetCurrentlyEquippedItem())
+		if (AActor* InHand = InventoryManager->GetEquippedItem())
 		{
 			if (InHand->IsA<AWeapon>())
 				return true;

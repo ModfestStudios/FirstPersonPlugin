@@ -4,7 +4,7 @@
 #include "UI/Widgets/PlayerHUDWidget.h"
 
 #include "Characters/FirstPersonCharacter.h"
-
+#include "Inventory/InventoryItem.h"
 #include "Components/InteractiveManagerComponent.h"
 
 
@@ -28,4 +28,25 @@ void UPlayerHUDWidget::OnInteractiveHoverStateChanged(AActor* Interactive, AActo
 	else
 		BP_OnInteractiveUnhovered(Interactive);
 
+}
+
+
+
+
+FText UPlayerHUDWidget::GetInHandItemName()
+{
+	if (AFirstPersonCharacter* Character = GetOwningFirstPersonCharacter())
+	{
+		if(AInventoryItem* Item = Character->GetEquippedItem())
+			return Item->GetItemName();
+	}
+
+	return FText();
+}
+
+
+
+AFirstPersonCharacter* UPlayerHUDWidget::GetOwningFirstPersonCharacter()
+{
+	return GetOwningPlayerPawn<AFirstPersonCharacter>();
 }

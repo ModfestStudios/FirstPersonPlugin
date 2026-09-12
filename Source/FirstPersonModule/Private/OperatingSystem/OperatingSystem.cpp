@@ -20,10 +20,10 @@ void AOperatingSystem::InitializeFromTerminal(ATerminalSystem* Terminal)
 	
 	if (Terminal)
 	{
-		Widget = Terminal->GetOperatingSystemWidget();
+		Widget = Terminal->GetTerminalWidget();
 
 		if (Widget)
-			Widget->OperatingSystem = this;
+			Widget->InitializeWidget(this);
 	}
 }
 

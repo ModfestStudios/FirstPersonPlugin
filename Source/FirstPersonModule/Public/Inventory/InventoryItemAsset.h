@@ -21,9 +21,6 @@ public:
 		FText Name;
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Inventory Item", meta=(MustImplement = "/Script/FirstPersonModule.InventoryItemInterface"))
 		TSoftClassPtr<class AActor> ItemClass;
-
-
-
 	
 
 	

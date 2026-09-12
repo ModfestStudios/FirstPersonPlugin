@@ -29,16 +29,29 @@ private:
 	//=============================================================FUNCTIONS=============================================================
 	//===================================================================================================================================
 public:
-	AFirstPersonAIController();
+	AFirstPersonAIController(const FObjectInitializer& ObjectInitializer);
 
 	virtual void BeginPlay() override;
+
+
+	//============================
+	//==========ATTACKS===========
+	//============================
+public:
+	virtual void Attack(class UAttackAsset* Attack);
+
+
 
 	//===========================
 	//==========TARGETS==========
 	//===========================
 public:
 	UFUNCTION(BlueprintCallable, Category = "Targets")
+		virtual bool HasTarget();
+	UFUNCTION(BlueprintCallable, Category = "Targets")
 		virtual void SetTarget(AActor* NewTarget);
+	UFUNCTION(BlueprintCallable, Category = "Targets")
+		virtual AActor* GetTarget() const;
 
 	//=========================
 	//=========THREATS=========
@@ -48,6 +61,21 @@ public:
 		virtual AActor* GetClosestThreat();
 	UFUNCTION(BlueprintCallable, Category = "Threats")
 		virtual AActor* GetHighestThreat();
+	UFUNCTION(BlueprintCallable, Category = "Threats")
+		virtual AActor* GetLowestThreat();
+
+
+	//====================
+	//========PAWN========	
+	//====================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn")
+		class AFirstPersonCharacter* GetFirstPersonCharacter();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Senses")
+		class USensesComponent* GetPawnSensesComponent();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Behavior")
+		class UBehaviorComponent* GetPawnBehaviorComponent();
+
 
 	
 };

@@ -56,15 +56,20 @@ public:
 	/*components*/
 	UPROPERTY()
 		class UCameraComponent* Camera;
-	/*the widget component that controls/renders the UMG portion*/
+	/*the widget component that controls/renders the UMG Widget onto the Terminal in the world*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
 		class UWidgetComponent* WidgetComponent;
+	/*the widget instance that's created for the user when the access the widget (client only)*/
+	UPROPERTY()
+		class UOperatingSystemWidget* ViewportWidget;
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
-		class UStaticMeshComponent* Mesh;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
-		class UInteractiveCollisionComponent* InteractiveCollision;
+	/*UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+		class UStaticMeshComponent* Mesh;*/
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	//	class UInteractiveCollisionComponent* InteractiveCollision;
+	/*UPROPERTY(VisibleAnywhere, blueprintReadOnly, Category = "Interaction")
+		class UInteractiveComponent* InteractiveComponent;*/
 // 
 	//===================================================================================================================================================================================================
 	//=============================================================================================FUNCTIONS=============================================================================================
@@ -98,8 +103,14 @@ public:
 	//=====================
 	//=====INTERACTION=====
 	//=====================
+	virtual void NativeOnInteractionBegins(class AFirstPersonCharacter* User, const class UInteractiveAction* Action) override;
+	
 
-	virtual void OnInteraction(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action) override;
+	UFUNCTION(BlueprintCallable, Category = "Terminal System")
+		virtual void EnterTerminal(class AFirstPersonCharacter* User);
+	UFUNCTION(BlueprintCallable, Category = "Terminal System")
+		virtual void ExitTerminal(class AFirstPersonCharacter* User);
+	
 
 	//================
 	//=====CAMERA=====
@@ -116,12 +127,17 @@ public:
 	//========UI========
 	//==================
 public:
+	/*returns the world widget used by the physical terminal*/
 	UFUNCTION(BlueprintPure, Category = "Terminal System|UI")
-		class UOperatingSystemWidget* GetOperatingSystemWidget();
+		class UOperatingSystemWidget* GetTerminalWidget();
+	/*returns the widget that the user interacts with when accessing the terminal*/
+	UFUNCTION(BlueprintPure, Category = "Terminal System|UI")
+		class UOperatingSystemWidget* GetViewportWidget();
+
 protected:
 	/*initializes the Widget Component and creates a Dynamic Material to render it onto the mesh with*/
 	UFUNCTION()
-		void InitializeWidgetDisplay();
+		void InitializeTerminalWidgetDisplay();
 	UFUNCTION()
 		void RefreshRenderTarget();
 

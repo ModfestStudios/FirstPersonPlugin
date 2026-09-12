@@ -39,4 +39,19 @@ protected:
 
 
 
+
+
+public:
+	UFUNCTION(BlueprintPure, Blueprintcallable, Category = "Inventory")
+		FText GetInHandItemName();
+
+
+
+//=========================
+//========UTILITIES========
+//=========================
+public:
+	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Player")
+		class AFirstPersonCharacter* GetOwningFirstPersonCharacter();
+
 };

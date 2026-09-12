@@ -6,13 +6,13 @@
 #include "Components/ActorComponent.h"
 #include "UObject/UnrealType.h"
 #include "CollisionShape.h"
-
+#include "Interactives/Interactives.h"
 #include "Engine/CollisionProfile.h"
 #include "Characters/FirstPersonCharacter.h"
+#include "Interactives/InteractiveAction.h"
 #include "InteractiveManagerComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteraction, AFirstPersonCharacter*, User);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractiveHoverChange, AFirstPersonCharacter*, User, bool, bHovered);
+
 
 UENUM()
 enum class EInteractiveTraceType : uint8
@@ -51,7 +51,8 @@ public:
 UCLASS(ClassGroup = (Interactions), meta = (BlueprintSpawnableComponent), meta=(RestrictedToClasses="AFirstPersonCharacter"))
 class FIRSTPERSONMODULE_API UInteractiveManagerComponent : public UActorComponent
 {
-	friend class UInteractiveCollisionComponent;
+	friend class UInteractiveComponent;
+	friend class UInteractiveComponent;
 
 	GENERATED_BODY()
 public:
@@ -75,12 +76,14 @@ public:
 private:
 	/*all possible interactions near us*/
 	UPROPERTY()
-		TArray<class UInteractiveCollisionComponent*> Interactives;
+		TArray<class UInteractiveComponent*> Interactives;
 	UPROPERTY()
-		TArray<class UInteractiveCollisionComponent*> TracedInteractives;
+		TArray<class UInteractiveComponent*> TracedInteractives;
 	/*the current interaction we're using actively*/
 	UPROPERTY()
-		class UInteractiveCollisionComponent* ActiveInteraction;
+		class UInteractiveComponent* CurrentInteractive;
+	UPROPERTY()
+		class UInteractiveAction* CurrentInteractiveAction;
 
 
 	/*events/delegates*/
@@ -122,12 +125,12 @@ public:
 
 protected:
 	UFUNCTION()
-		virtual bool BeginInteraction(class UInteractiveCollisionComponent* Interactive);
+		virtual bool BeginInteraction(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
 	/*client request to server to interact with object*/
 	UFUNCTION(Reliable, Server, WithValidation)
-		virtual void ServerRequestInteract(class UInteractiveCollisionComponent* Interactive);
+		virtual void ServerRequestInteract(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
 	UFUNCTION()
-		virtual void EndInteraction(class UInteractiveCollisionComponent* Interactive);
+		virtual void EndInteraction(class UInteractiveComponent* Interactive);
 
 	//============================================
 	//===========INTERACTIVES MANAGEMENT===========
@@ -136,11 +139,11 @@ protected:
 	UFUNCTION()
 		virtual void CalcInteractives();
 	UFUNCTION()
-		virtual bool IsInteractive(class UInteractiveCollisionComponent* Interactive);
+		virtual bool IsInteractive(class UInteractiveComponent* Interactive);
 	UFUNCTION()
-		virtual void AddInteractive(class UInteractiveCollisionComponent*& Interactive);
+		virtual void AddInteractive(class UInteractiveComponent*& Interactive);
 	UFUNCTION()
-		virtual void RemoveInteractive(class UInteractiveCollisionComponent*& Interactive);
+		virtual void RemoveInteractive(class UInteractiveComponent*& Interactive);
 	UFUNCTION()
 		virtual void ClearInteractives();
 	UFUNCTION()
@@ -148,15 +151,15 @@ protected:
 	UFUNCTION()
 		virtual void UpdateActiveInteractiveStatus();
 	UFUNCTION()
-		virtual void NotifyInteractiveOfHover(class UInteractiveCollisionComponent*& Interactive);
+		virtual void NotifyInteractiveOfHover(class UInteractiveComponent*& Interactive);
 	UFUNCTION()
-		virtual void NotifyInteractiveOfUnhover(class UInteractiveCollisionComponent*& Interactive);
+		virtual void NotifyInteractiveOfUnhover(class UInteractiveComponent*& Interactive);
 public:
 	UFUNCTION()
 		virtual void ReceiveDeniedInteraction(AActor* DeniedActor);
 public:
 	UFUNCTION(BlueprintPure, Category = "Interactives")
-		UInteractiveCollisionComponent* GetCurrentInteractive();
+		UInteractiveComponent* GetCurrentInteractive();
 	UFUNCTION(BlueprintPure, Category = "Interactives")
 		AActor* GetCurrentInteractiveOwner();
 	UFUNCTION(BlueprintPure, Category = "Interactives")
@@ -186,6 +189,8 @@ protected:
 	//===========UTILITIES===========
 	//===============================
 
+	UFUNCTION()
+		class UInteractiveComponent* GetInteractiveComponentFromHit(const FHitResult& HitResult) const;
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Utilities")
 		class AFirstPersonCharacter* GetCharacterOwner() const;
 	

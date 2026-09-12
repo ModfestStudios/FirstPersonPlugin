@@ -11,6 +11,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Animations/FirstPersonAnimInstance.h"
 #include "FirstPersonArmsAnimInstance.generated.h"
 
 UENUM(BlueprintType)
@@ -37,7 +38,7 @@ enum class EAnimState_MovementState : uint8
  *
  */
 UCLASS(abstract)
-class FIRSTPERSONMODULE_API UFirstPersonArmsAnimInstance : public UAnimInstance
+class FIRSTPERSONMODULE_API UFirstPersonArmsAnimInstance : public UFirstPersonAnimInstance
 {
 	GENERATED_BODY()
 protected:

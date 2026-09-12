@@ -47,8 +47,6 @@ private:
 	//	TWeakObjectPtr<class UInventoryItemSlot> SelectedInventorySlot;
 
 
-	
-
 private:
 	UPROPERTY()
 		class UInventoryItemAsset* HoveredItemAsset;

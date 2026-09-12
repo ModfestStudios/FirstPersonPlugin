@@ -54,7 +54,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Inventory Item|Point of Sale")
 		bool bSellableItem = false;
 	UPROPERTY(EditAnywhere, Category = "Inventory Item|Point of Sale", meta = (EditCondition = "bSellableItem", EditConditionHides))
-		float MSRP = 9.99;
+		float MSRP = 9.99f;
 
 
 	/*reference to inventory manager when assigned*/

@@ -28,6 +28,10 @@ EBTNodeResult::Type UBTTask_SetTarget::ExecuteTask(UBehaviorTreeComponent& Owner
 	{
 		NewTarget = AIController->GetHighestThreat();
 	}
+	if (SetTargetTo == ESetTargetType::LowestThreat)
+	{
+		NewTarget = AIController->GetLowestThreat();
+	}	
 	if (SetTargetTo == ESetTargetType::BlackboardKey)
 	{
 		if (UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent())
@@ -38,6 +42,13 @@ EBTNodeResult::Type UBTTask_SetTarget::ExecuteTask(UBehaviorTreeComponent& Owner
 	if (NewTarget)
 	{
 		AIController->SetTarget(NewTarget);
+
+		if (SetTargetTo != ESetTargetType::BlackboardKey && bSetTargetToBlackboardKey)
+		{
+			if(UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent())
+				BlackboardComp->SetValueAsObject(BlackboardKey.SelectedKeyName,NewTarget);
+		}
+
 		return EBTNodeResult::Succeeded;
 	}
 	else
@@ -47,6 +58,15 @@ EBTNodeResult::Type UBTTask_SetTarget::ExecuteTask(UBehaviorTreeComponent& Owner
 
 FString UBTTask_SetTarget::GetStaticDescription() const
 {
-	
+	if(SetTargetTo == ESetTargetType::ClosestThreat)
+		return FString("Closest Threat");
+	if(SetTargetTo == ESetTargetType::HighestThreat)
+		return FString("Highest Threat");
+	if (SetTargetTo == ESetTargetType::LowestThreat)
+		return FString("Lowest Threat");
+	if(SetTargetTo == ESetTargetType::BlackboardKey)
+		return FString("Blackboard Key");
+
+
 	return FString();
 }

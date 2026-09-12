@@ -28,7 +28,7 @@ public:
 protected:
 	/*what's currently active for this manager*/
 	UPROPERTY(Replicated)
-		class AInventoryItem* CurrentlyEquipped;
+		class AInventoryItem* EquippedItem;
 	UPROPERTY(Replicated)
 		class AInventoryItem* PrimaryWeapon;
 	UPROPERTY(Replicated)
@@ -240,7 +240,7 @@ public:
 		virtual void ClearInventory();
 public:
 	UFUNCTION(BlueprintPure, Category = "Inventory")
-		class AInventoryItem* GetCurrentlyEquippedItem();
+		class AInventoryItem* GetEquippedItem();
 
 	//======================================
 	//===============VICINITY===============
