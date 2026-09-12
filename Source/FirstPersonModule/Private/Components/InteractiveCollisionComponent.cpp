@@ -94,8 +94,8 @@ bool UInteractiveCollisionComponent::IsInteractionAvailable(AFirstPersonCharacte
 		return false;
 
 	/*if our owner (actor) is using the InteractiveActorInterface let them override the results*/
-	if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
-		return Cast<IInteractiveActorInterface>(GetOwner())->Execute_IsInteractionAvailable(GetOwner(), User, this, Action);
+	//if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
+	//	return Cast<IInteractiveActorInterface>(GetOwner())->Execute_IsInteractionAvailable(GetOwner(), User, this, Action);
 
 	return bIsInteractive;
 }
@@ -126,8 +126,8 @@ bool UInteractiveCollisionComponent::BeginInteraction(AFirstPersonCharacter* Use
 		OnInteractionStarted.Broadcast(User, Action);
 
 	/*if our owner (actor) is using the InteractiveActorInterface notify them of the interaction*/
-	if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
-		Cast<IInteractiveActorInterface>(GetOwner())->OnInteraction(User, this, Action);
+	//if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
+	//	Cast<IInteractiveActorInterface>(GetOwner())->OnInteraction(User, this, Action);
 
 
 	/*if a custom function is declared in the Blueprint - try to call that function on our owner*/
@@ -152,8 +152,8 @@ void UInteractiveCollisionComponent::CancelInteraction(AFirstPersonCharacter* Us
 	RemoveActiveUser(User);
 
 	/*if our owner (actor) is using the InteractiveActorInterface notify them of the interaction*/
-	if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
-		Cast<IInteractiveActorInterface>(GetOwner())->Execute_OnInteractionCanceled(GetOwner(),User, this, Action);
+	//if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
+	//	Cast<IInteractiveActorInterface>(GetOwner())->Execute_OnInteractionCanceled(GetOwner(),User, this, Action);
 
 	/*Interaction Canceled*/
 	//if (OnInteractionCanceled.IsBound())
@@ -165,8 +165,8 @@ void UInteractiveCollisionComponent::CompleteInteraction(AFirstPersonCharacter* 
 	RemoveActiveUser(User);
 
 	/*if our owner (actor) is using the InteractiveActorInterface notify them of the interaction*/
-	if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
-		Cast<IInteractiveActorInterface>(GetOwner())->Execute_OnInteractionCompleted(GetOwner(),User, this, Action);
+	//if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
+	//	Cast<IInteractiveActorInterface>(GetOwner())->Execute_OnInteractionCompleted(GetOwner(),User, this, Action);
 
 	/*interaction completed*/
 	//if (OnInteractionCompleted.IsBound())
@@ -254,7 +254,7 @@ void UInteractiveCollisionComponent::CallOwnerFunctionByName(const FName Functio
 	FInteractionEventParams Params;
 	Params.Action = Action;
 	Params.User = User;
-	Params.CollisionComponent = this;
+	//Params.CollisionComponent = this;
 
 	GetOwner()->ProcessEvent(Function, &Params);
 }

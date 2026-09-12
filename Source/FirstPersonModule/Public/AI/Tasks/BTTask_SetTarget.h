@@ -3,16 +3,18 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Combat/Combat.h"
 #include "BehaviorTree/Tasks/BTTask_BlackboardBase.h"
 #include "BTTask_SetTarget.generated.h"
 
-UENUM()
-enum class ESetTargetType : uint8
-{
-	ClosestThreat,
-	HighestThreat,	
-	BlackboardKey
-};
+//UENUM()
+//enum class ESetTargetType : uint8
+//{
+//	ClosestThreat,
+//	HighestThreat,
+//	LowestThreat,
+//	BlackboardKey
+//};
 
 /**
  * 
@@ -26,6 +28,8 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Targetting")
 		ESetTargetType SetTargetTo;
+	UPROPERTY(EditAnywhere, Category = "Blackboard", meta = (EditCondition = "SetTargetTo != ESetTargetType::BlackboardKey"))
+		bool bSetTargetToBlackboardKey;
 
 
 	//=============================================================================================================================

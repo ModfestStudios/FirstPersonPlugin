@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "Animations/FirstPersonAnimInstance.h"
 #include "Characters/FirstPersonCharacter.h"
 #include "ThirdPersonAnimInstance.generated.h"
 
@@ -11,7 +12,7 @@
  * 
  */
 UCLASS()
-class FIRSTPERSONMODULE_API UThirdPersonAnimInstance : public UAnimInstance
+class FIRSTPERSONMODULE_API UThirdPersonAnimInstance : public UFirstPersonAnimInstance
 {
 	GENERATED_BODY()
 public:

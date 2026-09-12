@@ -3,54 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Interactives/Interactives.h"
 #include "Components/BoxComponent.h"
 #include "Components/InteractiveManagerComponent.h"
 #include "Interactives/InteractiveAction.h"
 #include "Interfaces/InteractiveShapeInterface.h"
 #include "InteractiveCollisionComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FInteractionAction, class AFirstPersonCharacter*, User, const class UInteractiveAction*, Action);
 
-USTRUCT(BlueprintType)
-struct FInteractiveActionCall
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-		TSubclassOf<UInteractiveAction> Action;
-	/*if filled - will automatically call the blueprint or C++ with matching function name on the owning actor when activated. Note: Use FInteractionEventParams as a parameter of the function to get references to Action and InteractiveCollisionComponent passed in. MUST BE A UFUNCTION() for C++ to work*/
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
-		FName FunctionToCall;
-};
-
-USTRUCT(BlueprintType)
-struct FInteractionEventParams
-{
-	GENERATED_BODY()
-public:
-
-	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
-		const UInteractiveAction* Action;
-	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
-		const class AFirstPersonCharacter* User;
-	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
-		UInteractiveCollisionComponent* CollisionComponent;
-
-	FInteractionEventParams()
-		: Action(nullptr), User(nullptr), CollisionComponent(nullptr) {}
-};
-
-
-UENUM(BlueprintType)
-enum class EInteractionType : uint8
-{
-	//instantly complete the action
-	Instant,
-	//time-based trigger
-	Duration,
-	//begins interaction and waits to be canceled/completed externally
-	Manual
-};
 
 /**
  *
@@ -104,9 +64,9 @@ public:
 	//	FOnInteraction OnInteractionDenied;
 
 	UPROPERTY(BlueprintAssignable)
-		FOnInteraction OnInteractiveHovered;
+		FInteractionHover OnInteractiveHovered;
 	UPROPERTY(BlueprintAssignable)
-		FOnInteraction OnInteractiveUnhovered;
+		FInteractionHover OnInteractiveUnhovered;
 
 	//=================================================================================================
 	//============================================FUNCTIONS============================================

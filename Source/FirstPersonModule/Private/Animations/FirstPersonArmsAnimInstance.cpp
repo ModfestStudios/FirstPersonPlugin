@@ -41,7 +41,7 @@ void UFirstPersonArmsAnimInstance::UpdateInventoryStates()
 	{
 		if (UInventoryManagerComponent* InvManager = GetFirstPersonCharacter()->GetInventoryManager())
 		{
-			CurrentlyEquippedItem = InvManager->GetCurrentlyEquippedItem();
+			CurrentlyEquippedItem = InvManager->GetEquippedItem();
 		}
 	}
 }

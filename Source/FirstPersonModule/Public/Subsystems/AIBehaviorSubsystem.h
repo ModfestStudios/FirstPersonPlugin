@@ -16,7 +16,10 @@ class FIRSTPERSONMODULE_API UAIBehaviorSubsystem : public UWorldSubsystem
 public:
 
 
+
 	/*lists*/
+	UPROPERTY()
+		TSet<AActor*> RegisteredActors;
 	UPROPERTY()
 		TArray<class AFirstPersonAIController*> AIControllers;
 	UPROPERTY()
@@ -28,13 +31,13 @@ public:
 	//=================================================================================================================================
 
 
-
-
-
-
-
-
 public:
+	UFUNCTION()
+		virtual void RegisterActor(AActor* Actor);
+	UFUNCTION()
+		virtual void UnregisterActor(AActor* Actor);
+	UFUNCTION(BlueprintCallable, Category = "Registration")
+		const TSet<AActor*>& GetRegisteredActors() const;
 	UFUNCTION()
 		virtual void RegisterAIController(class AFirstPersonAIController* Controller);
 	UFUNCTION()

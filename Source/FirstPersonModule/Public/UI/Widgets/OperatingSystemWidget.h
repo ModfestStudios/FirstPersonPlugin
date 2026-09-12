@@ -17,6 +17,10 @@ class FIRSTPERSONMODULE_API UOperatingSystemWidget : public UUserWidget
 {
 	GENERATED_BODY()
 public:
+
+
+
+protected:
 	/*the operating system this widget is rendering*/
 	UPROPERTY(BlueprintReadOnly, Category = "Operating System")
 		class AOperatingSystem* OperatingSystem;	
@@ -28,6 +32,10 @@ public:
 	//=============================================================================================================================================
 public:
 	UOperatingSystemWidget(const FObjectInitializer& ObjectInitializer);
+
+	/*function used to initialize the widget based on the Operating System passed in*/
+	UFUNCTION(BlueprintCallable, Category = "Operating System")
+		virtual void InitializeWidget(class AOperatingSystem* OS);
 
 	/*returns the world-placed terminal that's hosting the operating system (if exists at all)*/
 	UFUNCTION(BlueprintPure, Category = "Operating System")

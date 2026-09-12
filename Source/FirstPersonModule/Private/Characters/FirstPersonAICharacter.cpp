@@ -11,17 +11,7 @@
 AFirstPersonAICharacter::AFirstPersonAICharacter(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
-	BehaviorComponent = ObjectInitializer.CreateDefaultSubobject<UBehaviorComponent>(this, FName("Behavior Component"));
-	if (BehaviorComponent)
-	{
 
-	}
-
-	SensesComponent = ObjectInitializer.CreateDefaultSubobject<USensesComponent>(this, FName("Senses Component"));
-	if (SensesComponent)
-	{
-
-	}
 	
 	AIControllerClass = AFirstPersonAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;

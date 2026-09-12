@@ -16,11 +16,30 @@ class FIRSTPERSONMODULE_API UPushButtonComponent : public UInteractiveComponent
 public:
 
 
+	UPROPERTY(EditAnywhere, Category = "Push Button")
+		class UStaticMesh* BaseMesh;
+	UPROPERTY(EditAnywhere, Category = "Push Button")
+		FTransform BaseMeshTransform;
+	UPROPERTY(EditAnywhere, Category = "Push Button")
+		class UStaticMesh* ButtonMesh;
+	UPROPERTY(EditAnywhere, Category = "Push Button")
+		FTransform ButtonMeshTransform;
+
+	UPROPERTY()
+		class UStaticMeshComponent* BaseMeshComponent;
+	UPROPERTY()
+		class UStaticMeshComponent* ButtonMeshComponent;
+	
+
 	//=========================================================================================================================
 	//========================================================FUNCTIONS========================================================
 	//=========================================================================================================================
 
 	UPushButtonComponent();
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 	
 	UFUNCTION(BlueprintCallable, Category = "Push Button")
 		void PushButton();
@@ -36,6 +55,10 @@ protected:
 	/*[Server/Clients] blueprint event that's called whenever the button is pressed*/
 	UFUNCTION(BlueprintImplementableEvent, Category = "Push Button", meta = (DisplayName="OnButtonPush"))
 		void BP_OnButtonPush();
+
+
+	virtual UStaticMeshComponent* GetHoverStaticMesh() override;
+
 
 	
 };

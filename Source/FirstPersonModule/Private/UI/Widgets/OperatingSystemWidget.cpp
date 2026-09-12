@@ -6,7 +6,12 @@
 UOperatingSystemWidget::UOperatingSystemWidget(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
-	bIsFocusable = true;
+	SetIsFocusable(true);
+}
+
+void UOperatingSystemWidget::InitializeWidget(AOperatingSystem* OS)
+{
+	OperatingSystem = OS;
 }
 
 ATerminalSystem* UOperatingSystemWidget::GetTerminalSystem()

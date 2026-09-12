@@ -24,8 +24,8 @@ public:
 		class UPushButtonComponent* PushButton;
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
-		class UStaticMeshComponent* Mesh;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
+	//	class UStaticMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
 		class UInteractiveCollisionComponent* InteractiveCollision;
 

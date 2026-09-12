@@ -89,7 +89,7 @@ void ATerminalSystem::StartupTerminal()
 			}
 		}
 
-		InitializeWidgetDisplay();
+		InitializeTerminalWidgetDisplay();
 
 		/*skips the boot sequences if it's meant to be loaded at game start*/
 		if (bBootOnBeginPlay)
@@ -122,27 +122,44 @@ void ATerminalSystem::ShutdownTerminal()
 
 }
 
-void ATerminalSystem::OnInteraction(AFirstPersonCharacter* User, UInteractiveCollisionComponent* InteractiveComponent, const UInteractiveAction* Action)
+void ATerminalSystem::NativeOnInteractionBegins(AFirstPersonCharacter* User, const UInteractiveAction* Action)
 {
-	Super::OnInteraction(User,InteractiveComponent,Action);
+	Super::NativeOnInteractionBegins(User, Action);
 
+	EnterTerminal(User);	
+}
+
+void ATerminalSystem::EnterTerminal(AFirstPersonCharacter* User)
+{
 	if (AFirstPersonPlayerController* PC = User->GetController<AFirstPersonPlayerController>())
 	{
+		PC->SetInputMode(FInputModeUIOnly::FInputModeUIOnly());
+
 		/*animate camera towards terminal*/
-		SetPlayerViewToCamera(PC);
+		SetPlayerViewToCamera(PC);		
 
 		/*create and pullup the widget for the player to interact with*/
 		GetWorld()->GetTimerManager().SetTimer(
 			WidgetAddHandle,
 			FTimerDelegate::CreateLambda([this, PC]()
-				{
-					AddWidgetToViewport(PC);
-				}),
+		{
+			AddWidgetToViewport(PC);
+		}),
 			CameraBlendTime + .30f,
 			false
 		);
 	}
 }
+
+void ATerminalSystem::ExitTerminal(AFirstPersonCharacter* User)
+{
+	if(AFirstPersonPlayerController* PC = User->GetController<AFirstPersonPlayerController>())
+	{
+		RemoveWidgetFromViewport(PC);
+		RestorePlayerView(PC);
+	}
+}
+
 
 void ATerminalSystem::SetPlayerViewToCamera(AFirstPersonPlayerController* Player)
 {
@@ -153,26 +170,27 @@ void ATerminalSystem::SetPlayerViewToCamera(AFirstPersonPlayerController* Player
 void ATerminalSystem::RestorePlayerView(AFirstPersonPlayerController* Player)
 {
 	if (Player && Player->GetViewTarget() == this)
-		Player->SetViewTargetWithBlend(Player->GetPawn(), CameraBlendTime, EViewTargetBlendFunction::VTBlend_EaseIn);
-		
+		Player->SetViewTargetWithBlend(Player->GetPawn(), CameraBlendTime, EViewTargetBlendFunction::VTBlend_EaseIn);		
 }
-
-
 
 
 
 //==================
 //========UI========
 //==================
-UOperatingSystemWidget* ATerminalSystem::GetOperatingSystemWidget()
+UOperatingSystemWidget* ATerminalSystem::GetTerminalWidget()
 {
 	return Cast<UOperatingSystemWidget>(WidgetComponent->GetWidget());
 }
 
-
-void ATerminalSystem::InitializeWidgetDisplay()
+UOperatingSystemWidget* ATerminalSystem::GetViewportWidget()
 {
+	return ViewportWidget;
+}
 
+
+void ATerminalSystem::InitializeTerminalWidgetDisplay()
+{
 	/*create the material instance we can use during gameplay*/
 	if (Mesh != nullptr && ScreenMaterial != nullptr && DynamicScreenMaterial == nullptr)
 	{
@@ -205,24 +223,51 @@ void ATerminalSystem::AddWidgetToViewport(AFirstPersonPlayerController* Player)
 	if (GetWorld()->GetTimerManager().IsTimerActive(WidgetAddHandle))
 		GetWorld()->GetTimerManager().ClearTimer(WidgetAddHandle);
 
-	if (GetOperatingSystemWidget())
+	/*safety check*/
+	if(!Player)
+		return;
+
+	if (!GetViewportWidget())
 	{
-		GetOperatingSystemWidget()->AddToViewport();
-		Player->SetInputMode(FInputModeUIOnly::FInputModeUIOnly());		
-		GetOperatingSystemWidget()->SetFocus();
+		UClass* WidgetClass = WidgetComponent->GetWidgetClass();
+
+		if (!WidgetClass || !WidgetClass->IsChildOf(UOperatingSystemWidget::StaticClass()))
+		{
+			UE_LOG(LogTemp,Warning,TEXT("!!!%s::AddWidgetToViewport() - WIDGET COMPONENT WIDGET CLASS IS MISSING OR NOT EXTENDING UOperatingSystemWidget!!!"), *GetName());
+			return;
+		}
+
+		ViewportWidget = CreateWidget<UOperatingSystemWidget>(Player,WidgetClass, FName("OperatingSystemWidget"));
+		
+		if(GetViewportWidget())
+			GetViewportWidget()->InitializeWidget(OperatingSystem);
+	}
+
+	
+	if (GetViewportWidget())
+	{
+		GetViewportWidget()->AddToViewport(10);
+
+		FInputModeUIOnly InputMode;
+		InputMode.SetWidgetToFocus(ViewportWidget->TakeWidget());		
+		Player->SetInputMode(InputMode);
+		GetViewportWidget()->SetKeyboardFocus();		
+		//GetViewportWidget()->SetFocus();
 		Player->bShowMouseCursor = true;
 	}
 }
 
 void ATerminalSystem::RemoveWidgetFromViewport(AFirstPersonPlayerController* Player)
 {
-	if (GetOperatingSystemWidget() && Player)
-	{
-		GetOperatingSystemWidget()->RemoveFromViewport();
-		Player->SetInputMode(FInputModeGameOnly::FInputModeGameOnly());
-		Player->bShowMouseCursor = false;
-	}
+	if(!Player)
+		return;
 
-	RestorePlayerView(Player);
+	if (GetViewportWidget())
+	{
+		GetViewportWidget()->RemoveFromParent();
+	}	
+
+	Player->SetInputMode(FInputModeGameOnly());
+	Player->bShowMouseCursor = false;
 }
 

@@ -2,8 +2,15 @@
 
 
 #include "Components/InteractiveManagerComponent.h"
+
+/*components*/
+#include "Components/InteractiveComponent.h"
 #include "Components/InteractiveCollisionComponent.h"
+
+/*camera*/
 #include "Camera/CameraComponent.h"
+
+/*interfaces*/
 #include "Interfaces/InteractiveShapeInterface.h"
 
 /*engine*/
@@ -39,9 +46,11 @@ void UInteractiveManagerComponent::TickComponent(float DeltaTime, ELevelTick Tic
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	/*perform trace*/
+	/*perform trace to see what's infront of us*/
 	TraceForInteractives();
+	/*calculate what's usable*/
 	CalcInteractives();
+	/**/
 	UpdateActiveInteractiveStatus();
 }
 
@@ -52,13 +61,13 @@ void UInteractiveManagerComponent::TickComponent(float DeltaTime, ELevelTick Tic
 void UInteractiveManagerComponent::Interact()
 {
 	if (IsValid(GetCurrentInteractive()))
-		BeginInteraction(GetCurrentInteractive());
+		BeginInteraction(GetCurrentInteractive(), CurrentInteractiveAction);
 }
 
 void UInteractiveManagerComponent::StopInteraction()
 {
 	if (IsInteracting())
-		EndInteraction(ActiveInteraction);
+		EndInteraction(CurrentInteractive);
 }
 
 const TArray<FText> UInteractiveManagerComponent::GetInteractiveActions()
@@ -70,7 +79,7 @@ const TArray<FText> UInteractiveManagerComponent::GetInteractiveActions()
 }
 
 
-bool UInteractiveManagerComponent::BeginInteraction(UInteractiveCollisionComponent* Interactive)
+bool UInteractiveManagerComponent::BeginInteraction(UInteractiveComponent* Interactive, const class UInteractiveAction* Action)
 {
 	/*safety check*/
 	if (!Interactive)
@@ -78,47 +87,49 @@ bool UInteractiveManagerComponent::BeginInteraction(UInteractiveCollisionCompone
 
 	/*initialize*/
 	bool bInteractionSuccessful = false;
+
 	/*attempt interaction*/
 	if (IsInteractive(Interactive))
 	{
 		/*clients need to request to interact*/
 		if (GetNetMode() == NM_Client)
 		{
-			ServerRequestInteract(Interactive);			
+			ServerRequestInteract(Interactive, Action);			
 			//return true;
 		}
-
-		bInteractionSuccessful = Interactive->BeginInteraction(GetCharacterOwner());
+		
+		Interactive->BeginInteraction(GetCharacterOwner(), Action);
+		bInteractionSuccessful = true;
 	}
 
 	/*broadcast results*/
 	if (bInteractionSuccessful) {
 
-		ActiveInteraction = Interactive;
+		CurrentInteractive = Interactive;
 		return true;
 	}
 	else
 	{
-		/*broadcast failure*/
-		if (OnInteractionDenied.IsBound())
-			OnInteractionDenied.Broadcast(GetCharacterOwner());
+		///*broadcast failure*/
+		//if (OnInteractionDenied.IsBound())
+		//	OnInteractionDenied.Broadcast(GetCharacterOwner());
 
 		return false;
 	}
 }
 
-bool UInteractiveManagerComponent::ServerRequestInteract_Validate(UInteractiveCollisionComponent* Interactive)
+bool UInteractiveManagerComponent::ServerRequestInteract_Validate(UInteractiveComponent* Interactive, const UInteractiveAction* Action)
 {
 	return true;
 }
 
 /*ServerRequestInteract() - client requesting the server to let them begin interacting with this item*/
-void UInteractiveManagerComponent::ServerRequestInteract_Implementation(UInteractiveCollisionComponent* Interactive)
+void UInteractiveManagerComponent::ServerRequestInteract_Implementation(UInteractiveComponent* Interactive, const UInteractiveAction* Action)
 {
-	BeginInteraction(Interactive);
+	BeginInteraction(Interactive, Action);
 }
 
-void UInteractiveManagerComponent::EndInteraction(UInteractiveCollisionComponent* Interactive)
+void UInteractiveManagerComponent::EndInteraction(UInteractiveComponent* Interactive)
 {
 	if (!Interactive)
 		return;
@@ -135,10 +146,10 @@ void UInteractiveManagerComponent::EndInteraction(UInteractiveCollisionComponent
 
 void UInteractiveManagerComponent::CalcInteractives()
 {
-	TArray<UInteractiveCollisionComponent*> ToRemove = Interactives;
+	TArray<UInteractiveComponent*> ToRemove = Interactives;
 
 	// Add new interactives from traced results
-	for (UInteractiveCollisionComponent* TracedInteractive : TracedInteractives)
+	for (UInteractiveComponent* TracedInteractive : TracedInteractives)
 	{
 		if (!Interactives.Contains(TracedInteractive))
 		{
@@ -151,7 +162,7 @@ void UInteractiveManagerComponent::CalcInteractives()
 
 	/*cleanup no-longer valid interactives*/
 	// Safely remove interactives that are no longer valid
-	ToRemove.RemoveAll([&](UInteractiveCollisionComponent* Interactive)
+	ToRemove.RemoveAll([&](UInteractiveComponent* Interactive)
 		{
 			RemoveInteractive(Interactive);
 			NotifyInteractiveOfUnhover(Interactive);
@@ -159,7 +170,7 @@ void UInteractiveManagerComponent::CalcInteractives()
 		});
 }
 
-bool UInteractiveManagerComponent::IsInteractive(UInteractiveCollisionComponent* Interactive)
+bool UInteractiveManagerComponent::IsInteractive(UInteractiveComponent* Interactive)
 {
 	/*check for valid interfacing implementation*/
 	if (!Interactive)
@@ -173,12 +184,12 @@ bool UInteractiveManagerComponent::IsInteractive(UInteractiveCollisionComponent*
 	return true;
 }
 
-void UInteractiveManagerComponent::AddInteractive(UInteractiveCollisionComponent*& Interactive)
+void UInteractiveManagerComponent::AddInteractive(UInteractiveComponent*& Interactive)
 {
 	Interactives.AddUnique(Interactive);
 }
 
-void UInteractiveManagerComponent::RemoveInteractive(UInteractiveCollisionComponent*& Interactive)
+void UInteractiveManagerComponent::RemoveInteractive(UInteractiveComponent*& Interactive)
 {
 	Interactives.Remove(Interactive);
 }
@@ -190,25 +201,25 @@ void UInteractiveManagerComponent::ClearInteractives()
 
 void UInteractiveManagerComponent::ClearActiveInteraction()
 {
-	ActiveInteraction = nullptr;
+	CurrentInteractive = nullptr;
 }
 
 void UInteractiveManagerComponent::UpdateActiveInteractiveStatus()
 {
 	if (IsActiveInteractionComplete())
-		ActiveInteraction = nullptr;
+		CurrentInteractive = nullptr;
 }
 
-void UInteractiveManagerComponent::NotifyInteractiveOfHover(UInteractiveCollisionComponent*& Interactive)
+void UInteractiveManagerComponent::NotifyInteractiveOfHover(UInteractiveComponent*& Interactive)
 {
 	if (IsInteractive(Interactive))
-		Interactive->OnHoverBegin(GetCharacterOwner());
+		Interactive->NativeOnHovered(GetCharacterOwner());
 }
 
-void UInteractiveManagerComponent::NotifyInteractiveOfUnhover(UInteractiveCollisionComponent*& Interactive)
+void UInteractiveManagerComponent::NotifyInteractiveOfUnhover(UInteractiveComponent*& Interactive)
 {
 	if (IsInteractive(Interactive))
-		Interactive->OnHoverEnd(GetCharacterOwner());
+		Interactive->NativeOnUnhovered(GetCharacterOwner());
 }
 
 void UInteractiveManagerComponent::ReceiveDeniedInteraction(AActor* DeniedActor)
@@ -217,7 +228,7 @@ void UInteractiveManagerComponent::ReceiveDeniedInteraction(AActor* DeniedActor)
 	//	OnInteractionDenied.Broadcast(DeniedActor, GetOwner());
 }
 
-UInteractiveCollisionComponent* UInteractiveManagerComponent::GetCurrentInteractive()
+UInteractiveComponent* UInteractiveManagerComponent::GetCurrentInteractive()
 {
 	if (Interactives.Num() <= 0)
 		return nullptr;
@@ -245,6 +256,7 @@ void UInteractiveManagerComponent::TraceForInteractives()
 	/*run only for locally controlled characters to save on performance*/
 	if(GetCharacterOwner()->IsLocallyControlled())
 		{
+
 			/*clear previous list of traced objects*/
 			TracedInteractives.Empty();
 
@@ -258,28 +270,38 @@ void UInteractiveManagerComponent::TraceForInteractives()
 				/*loop through hit results*/
 				for (auto HitResult : HitResults)
 				{
-					if (UInteractiveCollisionComponent* HitComp = Cast< UInteractiveCollisionComponent>(HitResult.GetComponent()))
+
+					if (UInteractiveComponent* InteractiveComponent = GetInteractiveComponentFromHit(HitResult))
 					{
 						/*if this interactive component is currently not interactable - skip it and move onto the next component*/
-						if(!IsInteractive(HitComp))
+						if(!IsInteractive(InteractiveComponent))
 							continue;
 
-						TracedInteractives.AddUnique(HitComp);
+						TracedInteractives.AddUnique(InteractiveComponent);
 
 						/*debugging*/
-#if WITH_EDITOR
-						if (bDebugTrace)
+						#if WITH_EDITOR
+						if (bDebugTrace) 
+						{
 							DrawDebugSphere(GetWorld(), HitResult.Location, ProbeSize, 12, FColor::Cyan, false, 0.5f);
-#endif
+							UE_LOG(LogTemp, Warning, TEXT("\t Interactive Check: %s"), *GetNameSafe(InteractiveComponent));
+						}
+							
+
+						#endif
 
 					}
 					else
 					{
 						/*debugging*/
-#if WITH_EDITOR
+					#if WITH_EDITOR
 						if (bDebugTrace)
+						{
+							UE_LOG(LogTemp, Warning, TEXT("\t Interactive Check: %s"), *GetNameSafe(HitResult.GetComponent()));
 							DrawDebugSphere(GetWorld(), HitResult.Location, ProbeSize, 12, FColor::Red, false, 0.5f);
-#endif
+						}
+							
+					#endif
 					}
 				}
 			}
@@ -385,11 +407,11 @@ ECollisionChannel UInteractiveManagerComponent::GetTraceChannel()
 bool UInteractiveManagerComponent::IsActiveInteractionComplete()
 {
 	/*safety check*/
-	if (ActiveInteraction == nullptr)
+	if (CurrentInteractive == nullptr)
 		return true;
 
 	/*initialize & check*/
-	IInteractiveShapeInterface* Interactive = Cast<IInteractiveShapeInterface>(ActiveInteraction);
+	IInteractiveShapeInterface* Interactive = Cast<IInteractiveShapeInterface>(CurrentInteractive);
 	if (Interactive == nullptr)
 		return false;
 
@@ -401,12 +423,28 @@ bool UInteractiveManagerComponent::IsActiveInteractionComplete()
 
 bool UInteractiveManagerComponent::IsInteracting()
 {
-	if (IsValid(ActiveInteraction))
+	if (IsValid(CurrentInteractive))
 		return true;
 
 	return false;
 }
 
+
+UInteractiveComponent* UInteractiveManagerComponent::GetInteractiveComponentFromHit(const FHitResult& HitResult) const
+{
+	USceneComponent* CurrentComp = HitResult.GetComponent();
+
+	/*attempt to return an Interactive Component from the parent hierarchy*/
+	while (CurrentComp)
+	{
+		if(UInteractiveComponent* InteractiveComp = Cast<UInteractiveComponent>(CurrentComp))
+			return InteractiveComp;
+
+		CurrentComp = CurrentComp->GetAttachParent();
+	}
+
+	return nullptr;
+}
 
 AFirstPersonCharacter* UInteractiveManagerComponent::GetCharacterOwner() const
 {

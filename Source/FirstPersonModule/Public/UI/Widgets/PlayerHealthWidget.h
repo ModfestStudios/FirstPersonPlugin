@@ -25,33 +25,33 @@ public:
 	//=====================================================================================================================================================
 
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Healthy"))
-		FLinearColor HealthColorHealthy = FLinearColor::FLinearColor(0.046776, 0.578125, 0.093811, 1.000000);
+		FLinearColor HealthColorHealthy = FLinearColor::FLinearColor(0.046776f, 0.578125f, 0.093811f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Scuffed"))
-		FLinearColor HealthColorScuffed = FLinearColor::FLinearColor(0.499294, 0.666667, 0.158582, 1.000000);
+		FLinearColor HealthColorScuffed = FLinearColor::FLinearColor(0.499294f, 0.666667f, 0.158582f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Hurt"))
-		FLinearColor HealthColorHurting = FLinearColor::FLinearColor(0.951584, 0.989583, 0.095146, 1.000000);
+		FLinearColor HealthColorHurting = FLinearColor::FLinearColor(0.951584f, 0.989583f, 0.095146f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Injured"))
-		FLinearColor HealthColorInjured = FLinearColor::FLinearColor(0.989583, 0.535449, 0.103501, 1.000000);
+		FLinearColor HealthColorInjured = FLinearColor::FLinearColor(0.989583f, 0.535449f, 0.103501f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Severe"))
-		FLinearColor HealthColorSevere = FLinearColor::FLinearColor(1.0, 0.535449, 0.0, 1.000000);
+		FLinearColor HealthColorSevere = FLinearColor::FLinearColor(1.0f, 0.535449f, 0.0f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Health", meta = (DisplayName = "Health Color - Critical"))
-		FLinearColor HealthColorCritical = FLinearColor::FLinearColor(0.822917, 0.0, 0.007703, 1.000000);
+		FLinearColor HealthColorCritical = FLinearColor::FLinearColor(0.822917f, 0.0f, 0.007703f, 1.000000f);
 
 
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hyperthermic"))
-		FLinearColor TemperatureColorHyperthermic = FLinearColor::FLinearColor(0.770833, 0.012755, 0.012044, 1.000000);
+		FLinearColor TemperatureColorHyperthermic = FLinearColor::FLinearColor(0.770833f, 0.012755f, 0.012044f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hot"))
-		FLinearColor TemperatureColorHot = FLinearColor::FLinearColor(0.770833, 0.012755, 0.012044, 1.000000);
+		FLinearColor TemperatureColorHot = FLinearColor::FLinearColor(0.770833f, 0.012755f, 0.012044f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Warm"))
-		FLinearColor TemperatureColorWarm = FLinearColor::FLinearColor(0.932292,0.413318,0.082547,1.000000);
+		FLinearColor TemperatureColorWarm = FLinearColor::FLinearColor(0.932292f,0.413318f,0.082547f,1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Normal"))
-		FLinearColor TemperatureColorNeutral = FLinearColor::FLinearColor(0.796875, 0.773010,0.701416, 1.000000);
+		FLinearColor TemperatureColorNeutral = FLinearColor::FLinearColor(0.796875f, 0.773010f,0.701416f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Cold"))
-		FLinearColor TemperatureColorCold = FLinearColor::FLinearColor(0.162241, 0.528483, 0.973445, 1.000000);
+		FLinearColor TemperatureColorCold = FLinearColor::FLinearColor(0.162241f, 0.528483f, 0.973445f, 1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Freezing"))
-		FLinearColor TemperatureColorFreezing = FLinearColor::FLinearColor(0.034668,0.037981,0.739583,1.000000);
+		FLinearColor TemperatureColorFreezing = FLinearColor::FLinearColor(0.034668f,0.037981f,0.739583f,1.000000f);
 	UPROPERTY(EditAnywhere, Category = "Player Stats|Temperature", meta = (DisplayName = "Temperature Color - Hypothermic"))
-		FLinearColor TemperatureColorHypothermic = FLinearColor::FLinearColor(0.034668, 0.037981, 0.739583, 1.000000);
+		FLinearColor TemperatureColorHypothermic = FLinearColor::FLinearColor(0.034668f, 0.037981f, 0.739583f, 1.000000f);
 
 
 

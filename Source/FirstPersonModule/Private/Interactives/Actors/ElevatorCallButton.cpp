@@ -27,9 +27,9 @@ void AElevatorCallButton::BeginPlay()
 
 	if (InteractiveCollision)
 	{
-		InteractiveCollision->OnInteractionStarted.AddDynamic(this, &AElevatorCallButton::OnButtonPressed);
-		InteractiveCollision->OnInteractiveHovered.AddDynamic(this, &AElevatorCallButton::OnButtonHovered);
-		InteractiveCollision->OnInteractiveUnhovered.AddDynamic(this, &AElevatorCallButton::OnButtonUnhovered);
+		//InteractiveCollision->OnInteractionStarted.AddDynamic(this, &AElevatorCallButton::OnButtonPressed);
+		//InteractiveCollision->OnInteractiveHovered.AddDynamic(this, &AElevatorCallButton::OnButtonHovered);
+		//InteractiveCollision->OnInteractiveUnhovered.AddDynamic(this, &AElevatorCallButton::OnButtonUnhovered);
 	}
 }
 
@@ -47,13 +47,13 @@ void AElevatorCallButton::OnButtonPressed(AFirstPersonCharacter* User, const UIn
 void AElevatorCallButton::OnButtonHovered(AFirstPersonCharacter* User)
 {
 	if (PushButton)
-		PushButton->OnHovered(User);
+		PushButton->NativeOnHovered(User);
 }
 
 void AElevatorCallButton::OnButtonUnhovered(AFirstPersonCharacter* User)
 {
 	if (PushButton)
-		PushButton->OnUnhovered(User);
+		PushButton->NativeOnUnhovered(User);
 }
 
 
