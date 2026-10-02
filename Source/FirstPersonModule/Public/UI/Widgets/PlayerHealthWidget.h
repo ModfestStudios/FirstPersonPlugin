@@ -65,8 +65,26 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
 		float GetPlayerHealth();
+	
+	//===================
+	//======STAMINA======
+	//===================
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
-		float GetPlayerStamina();
+		float GetCurrentStamina() const;
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetCurrentStaminaNormalized() const;
+
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetMaxStamina() const;
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetReserveStamina() const;
+	UFUNCTION(BlueprintPure, Category = "Player Stats")
+		float GetReserveStaminaNormalized() const;
+
+
+
+
+
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
 		float GetPlayerEncumberance();	
 	UFUNCTION(BlueprintPure, Category = "Player Stats")
@@ -101,7 +119,7 @@ public:
 
 
 	UFUNCTION(BlueprintPure, Category = "Utilities")
-		class AFirstPersonCharacter* GetOwningCharacter();
+		class AFirstPersonCharacter* GetOwningCharacter() const;
 	UFUNCTION(BlueprintPure, Category = "Utilities")
 		class UVitalsComponent* GetVitalsComponent();
 	

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/InteractiveComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "TimerManager.h"
 #include "Components/TimelineComponent.h"
@@ -49,7 +50,7 @@ public:
  * 
  */
 UCLASS(ClassGroup = (Interactives), HideCategories = ("Sockets", "Navigation", Rendering, Physics, "Component Tick"), meta = (BlueprintSpawnableComponent))
-class FIRSTPERSONMODULE_API UDoorComponent : public UStaticMeshComponent
+class FIRSTPERSONMODULE_API UDoorComponent : public UInteractiveComponent
 {
 	GENERATED_BODY()
 protected:
@@ -93,6 +94,10 @@ protected:
 	
 	
 
+	UPROPERTY(VisibleAnywhere, Category = "Door")
+		class USceneComponent* PivotComponent;
+	UPROPERTY(VisibleAnywhere, Category = "Door")
+		class UStaticMeshComponent* DoorMeshComponent;
 
 
 

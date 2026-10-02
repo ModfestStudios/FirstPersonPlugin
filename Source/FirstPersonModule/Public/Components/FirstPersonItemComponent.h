@@ -19,7 +19,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "First Person")
 		FName MeshName = "FirstPersonMesh";
 	UPROPERTY(EditDefaultsOnly, Category = "First Person")
-		TSubclassOf<class UAnimInstance> AnimationBlueprint;
+		TSubclassOf<class UAnimInstance> ArmsAnimationBlueprint;
 
 	class USkeletalMeshComponent* SkeletalMeshComp;
 

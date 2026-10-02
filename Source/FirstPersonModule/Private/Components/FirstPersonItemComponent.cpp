@@ -70,7 +70,7 @@ void UFirstPersonItemComponent::InitializeFirstPersonMesh()
 
 		/*initialize visuals*/
 		SkeletalMeshComp->SetSkeletalMesh(FirstPersonMesh);
-		SkeletalMeshComp->SetAnimInstanceClass(AnimationBlueprint);
+		SkeletalMeshComp->SetAnimInstanceClass(ArmsAnimationBlueprint);
 		SkeletalMeshComp->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
 
 		/*set it so only the owning player sees this version*/

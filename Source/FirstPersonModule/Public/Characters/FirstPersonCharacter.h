@@ -46,6 +46,13 @@ public:
 };
 
 
+UENUM(BlueprintType)
+enum class ELeanState : uint8
+{
+	None	UMETA(DisplayName = "None"),
+	Left	UMETA(DisplayName = "Left"),
+	Right	UMETA(DisplayName = "Right")
+};
 
 
 UCLASS()
@@ -54,6 +61,7 @@ class FIRSTPERSONMODULE_API AFirstPersonCharacter : public ACharacter
 	GENERATED_BODY()
 public:
 
+	friend class UFirstPersonMovementComponent;
 
 public:
 	UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "Body Sockets")
@@ -127,13 +135,23 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interactives")
 		FName InteractiveManagerComponentName = "InteractiveManagerComponent";
 
+	//**********************
+	//*****FIRST PERSON*****
+	//**********************
+
 public:
 	/*first person view component*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "First Person View")
 		class UFirstPersonViewComponent* FirstPersonView;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "First Person View|Camera")
+		float MinLandingCameraImpactSpeed = 600.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "First Person View|Camera")
+		float ProneEyeHeight = 20.0f;
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "First Person View")
 		FName FirstPersonViewComponentName = "FirstPersonViewComponent";
+
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Gore")
 		class UGoreComponent* GoreComponent;
@@ -147,6 +165,12 @@ public:
 protected:
 	UPROPERTY(BlueprintReadOnly,Replicated, Category = "Health")
 		float Health = 100.0f;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health|Fall Damage")
+		float MinFallDamageSpeed = 800.0f;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health|Fall Damage")
+		float LethalFallDamageSpeed = 1800.0f;
+	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Health|Fall Damage")
+		float MaxFallDamage = 100.0f;
 	UPROPERTY()
 		bool bDead = false;
 
@@ -211,6 +235,25 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Vitals")
 		FName VitalsComponentName = "Vitals Component";
 
+
+//====================
+//======MOVEMENT======
+//====================
+protected:
+	UPROPERTY(ReplicatedUsing= OnRep_IsProne, VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement")
+		bool bIsProne = false;
+	UPROPERTY(ReplicatedUsing = OnRep_IsSlowWalking, VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement")
+		bool bIsSlowWalking = false;
+	UPROPERTY(ReplicatedUsing = OnRep_IsSprinting, VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement")
+		bool bIsSprinting = false;
+	UPROPERTY(ReplicatedUsing = OnRep_LeanState, VisibleInstanceOnly, BlueprintReadOnly, Category = "Movement")
+		ELeanState LeanState = ELeanState::None;
+
+
+//=================
+//======INPUT======
+//=================
+
 protected:
 	/*input*/
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
@@ -219,25 +262,37 @@ protected:
 		class UInputAction* ForwardMovementAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
 		class UInputAction* SidewaysMovementAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
+		class UInputAction* LeanLeftAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
+		class UInputAction* LeanRightAction;
+	
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
+		class UInputAction* JumpAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
 		class UInputAction* ToggleProneAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
 		class UInputAction* ToggleCrouchAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
-		class UInputAction* BeginSprintAction;
+		class UInputAction* ToggleSprintAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Movement")
-		class UInputAction* EndSprintAction;
+		class UInputAction* ToggleSlowWalkAction;
+
+
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|View")
 		class UInputAction* PitchViewAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|View")
 		class UInputAction* RotateViewAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|View")
-		class UInputAction* ZoomVisionInAction;
+		class UInputAction* ZoomVisionAction;
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|View")
 		class UInputAction* ZoomVisionOutAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|View")
+		class UInputAction* ToggleFreeLookAction;
+
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Weapons")
@@ -272,10 +327,10 @@ protected:
 	virtual void BeginPlay() override;
 
 	virtual void PossessedBy(AController* NewController) override;
-
 	virtual void UnPossessed() override;
-
 	virtual void NotifyControllerChanged() override;
+	
+
 
 public:
 	// Called every frame
@@ -290,6 +345,7 @@ public:
 public:
 	UFUNCTION()
 		class UFirstPersonViewComponent* GetFirstPersonView();
+		
 
 	//======================
 	//========HEALTH========
@@ -298,13 +354,17 @@ public:
 		const float GetHealth() const;
 	UFUNCTION(BlueprintPure, Category = "Health & Stats")
 		const float GetBloodLevel() const;
+	/*set the character's health directly*/
+	UFUNCTION(BlueprintCallable, Category = "Health & Stats")
+		virtual void SetHealth(float NewHealth);
 	UFUNCTION()
 		virtual void OnReceiveDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	UFUNCTION()
 		virtual void OnReceivePointDamage(AActor* DamagedActor, float Damage, class AController* InstigatedBy, FVector HitLocation, class UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const class UDamageType* DamageType, AActor* DamageCauser);
 	UFUNCTION()
 		virtual void OnReceiveRadialDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, class AController* InstigatedBy, AActor* DamageCauser);
-	
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Health & Stats")
+		virtual float CalculateFallDamage(const FHitResult& Hit) const;
 	UFUNCTION(BlueprintPure, Category = "Health & Stats")
 		class UVitalsComponent* GetVitalsComponent();
 
@@ -312,9 +372,11 @@ public:
 	//========STAMINA========
 	//=======================
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Player Stats|Stamina")
-		const float GetStamina() const;
+		virtual float GetStamina() const;
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Player Stats|Stamina")
-		const float GetMaxStamina() const;
+		virtual float GetMaxStamina() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Player Stats|Stamina")
+		virtual float GetReserveStamina() const;
 	
 	//======================
 	//========ENERGY========
@@ -463,10 +525,44 @@ private:
 		virtual void MoveForward(const struct FInputActionValue& Value);
 	UFUNCTION()
 		virtual void MoveRight(const struct FInputActionValue& Value);
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Movement")
+		bool IsStrafing() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Movement")
+		float GetStrafeDirection() const;
+protected:
+	UFUNCTION()
+		virtual void BeginLeanLeft();
+	UFUNCTION()
+		virtual void EndLeanLeft();
+	UFUNCTION()
+		virtual void BeginLeanRight();
+	UFUNCTION()
+		virtual void EndLeanRight();
+public:
+	UFUNCTION()
+		virtual bool IsLeaning() const;
+	UFUNCTION()
+		virtual ELeanState GetLeanState() const;
+	UFUNCTION()
+		virtual void SetLeanState(const ELeanState InLeanState);
+	UFUNCTION()
+		virtual void OnRep_LeanState();
+
 	UFUNCTION()
 		virtual void ToggleCrouch();
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Movement")
+		virtual bool IsProne() const;
+	UFUNCTION()
+		virtual void SetIsProne(const bool bInIsProne);
+protected:
 	UFUNCTION()
 		virtual void ToggleProne();
+
+	UFUNCTION()
+		virtual void OnRep_IsProne();
+
 	UFUNCTION()
 		virtual bool CanMove();
 
@@ -474,6 +570,30 @@ private:
 		virtual void BeginSprint();
 	UFUNCTION()
 		virtual void EndSprint();
+	UFUNCTION()
+		virtual void BeginSlowWalk();
+	UFUNCTION()
+		virtual void EndSlowWalk();
+	UFUNCTION()
+		virtual void SetIsSlowWalking(const bool bInIsSlowWalking);
+	UFUNCTION()
+		virtual void OnRep_IsSlowWalking();
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Movement")
+		virtual bool IsSprinting() const;
+	UFUNCTION()
+		virtual void SetIsSprinting(const bool bInIsSprinting);
+	UFUNCTION()
+		virtual void OnRep_IsSprinting();
+
+
+	public:
+		virtual void Jump() override;
+		virtual void OnJumped_Implementation() override;
+		virtual void Landed(const FHitResult& Hit) override;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Movement")
+		virtual bool IsFalling() const;
+	
 
 	//========================
 	//==========VIEW==========
@@ -489,6 +609,12 @@ private:
 		virtual void ZoomVisionOut();
 	UFUNCTION()
 		virtual bool CanMoveCamera();
+	UFUNCTION()
+		virtual void BeginFreeLook();
+	UFUNCTION()
+		virtual void EndFreeLook();
+
+	virtual float GetDesiredEyeHeight() const;
 
 	//==========================
 	//========CONTROLLER========
