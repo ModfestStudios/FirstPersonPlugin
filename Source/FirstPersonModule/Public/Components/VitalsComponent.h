@@ -29,16 +29,50 @@ class FIRSTPERSONMODULE_API UVitalsComponent : public UActorComponent
 	GENERATED_BODY()
 public:
 
+/*********/
+/*stamina*/
+/*********/
+protected:
+
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina")
+	float Stamina = 100.0f;
+UPROPERTY(BLueprintReadOnly, EditAnywhere, Category = "Stamina")
+	float MaxStamina = 100.0f;
+UPROPERTY(BLueprintReadOnly, EditAnywhere, Category = "Stamina")
+	float ReserveStamina = 100.0f;
+	/*the rate at which we gain stamina back (per second)*/
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina")
+	float StaminaRecoveryRate = 7.65f;
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina")
+	float ReserveStaminaRecoveryRate = .065f;
+
+
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina|Consumption")
+	float JumpingStaminaDrain = 12.0f;
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina|Consumption")
+	float SoftLandStaminaDrain = 6.0f;
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina|Consumption")
+	float DamagingLandStaminaDrain = 23.0f;
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina|Consumption")
+	float SprintingStaminaBaseDrainRate = 6.45f;
+UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Stamina|Consumption")
+	float SprintingEffectiveStaminaDrainRate = 3.45f; 
+
+	
+
+
+
+
 
 /*************/
 /*temperature*/
 /*************/
 protected:
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Temperature")
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Vitals|Temperature")
 		float Temperature = 37.0f;
 
 public:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Temperature")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Vitals|Temperature")
 		float RegulatedTemperatureThreshold = 37.0f;
 
 	/*hyper-thermia (overheating)*/
@@ -79,13 +113,16 @@ protected:
 	/*rate of the character cooling us down*/
 	UPROPERTY()
 		float HeatLoss;
-
 	/*amount of exposure to hyperthermia conditions*/
 	UPROPERTY()
 		float HeatExposure;
 	/*amuount of exposure to hypothermia conditions*/
 	UPROPERTY()
 		float ColdExposure;
+
+protected:
+	UPROPERTY(Transient)
+		class AFirstPersonCharacter* OwningCharacter;
 	
 
 	//===========================================================================================================================================
@@ -97,6 +134,8 @@ protected:
 public:	
 	// Sets default values for this component's properties
 	UVitalsComponent();
+	virtual void InitializeComponent() override;
+
 
 protected:
 	// Called when the game starts
@@ -105,6 +144,47 @@ protected:
 public:		
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+
+	//=========================
+	//=========STAMINA=========
+	//=========================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual bool HasStamina() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetCurrentStamina() const;
+	/* the max stamina a character can have */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetMaxStamina() const;
+	/*the max-stamina htis character has (effected by conditions)*/
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetReserveStamina() const;
+
+
+
+protected:
+	UFUNCTION()
+		virtual void CalculateStamina(float DeltaTime);
+public:
+		/*one-time event that'll consume stamina instantly*/
+	UFUNCTION(BlueprintCallable, Category = "Vitals|Stamina")
+		virtual void ConsumeStamina(float StaminaConsumption);
+	UFUNCTION(BlueprintCallable, Category = "Vitals|Stamina")
+		virtual void RecoverStamina(float StaminaRecovery);
+	UFUNCTION(BlueprintCallable, Category = "Vitals|Stamina")
+		virtual void RecoverReserveStamina(float StaminaRecovery);
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetStaminaCostForJump() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetStaminaCostForSprinting() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetStaminaCostForSoftLanding() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Stamina")
+		virtual float GetStaminaCostForDamagingLanding() const;
+
+	//===========================
+	//========TEMPERATURE========
+	//===========================
 protected:
 	UFUNCTION()
 		virtual void CalculateTemperature(float DeltaTime);
@@ -112,31 +192,32 @@ protected:
 		virtual void ApplyDamageFromTemperature(float DeltaTime);
 
 
-
-	//===========================
-	//========TEMPERATURE========
-	//===========================
 public:
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Temperature")
 		float GetPlayerTemperature();
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Temperature")
 		ETemperatureState GetTemperatureState();
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Temperature")
 		float GetAmbientTemperature();
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Temperature")
 		float GetHeatChange();
 	
 
 
 
-	UFUNCTION(BlueprintCallable, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, Category = "Vitals|Temperature")
 		void AddTemperatureInfluence(class UTemperatureComponent* Source);
-	UFUNCTION(BlueprintCallable, Category = "Temperature")
+	UFUNCTION(BlueprintCallable, Category = "Vitals|Temperature")
 		void RemoveTemperatureInfluence(class UTemperatureComponent* Source);
 
 	//=============================
 	//==========UTILITIES==========
 	//=============================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Vitals|Utilities")
+		virtual class AFirstPersonCharacter* GetOwningCharacter() const;
+protected:
+		
 	UFUNCTION()
 		class UWeatherSubsystem* GetWeatherSubsystem();
 

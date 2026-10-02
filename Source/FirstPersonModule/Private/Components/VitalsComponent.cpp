@@ -2,6 +2,8 @@
 
 #include "Components/VitalsComponent.h"
 
+#include "Characters/FirstPersonCharacter.h"
+
 /*components*/
 #include "Components/TemperatureComponent.h"
 
@@ -15,7 +17,14 @@
 UVitalsComponent::UVitalsComponent()
 {	
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.TickInterval = 1.0f;
+	PrimaryComponentTick.TickInterval = 0.025f;
+}
+
+void UVitalsComponent::InitializeComponent()
+{
+	Super::InitializeComponent();
+
+	OwningCharacter = Cast<AFirstPersonCharacter>(GetOwner());
 }
 
 
@@ -23,6 +32,9 @@ UVitalsComponent::UVitalsComponent()
 void UVitalsComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
+	if(!OwningCharacter)
+		OwningCharacter = Cast<AFirstPersonCharacter>(GetOwner());
 }
 
 
@@ -31,16 +43,138 @@ void UVitalsComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
+	/*calculate first*/
 	CalculateTemperature(DeltaTime);
+	CalculateStamina(DeltaTime);
+
+	/*apply damages*/
 	ApplyDamageFromTemperature(DeltaTime);
 }
+
+bool UVitalsComponent::HasStamina() const
+{
+	return Stamina > 0.0f;
+}
+
+float UVitalsComponent::GetCurrentStamina() const
+{
+	return Stamina;
+}
+
+float UVitalsComponent::GetMaxStamina() const
+{
+	return MaxStamina;
+}
+
+float UVitalsComponent::GetReserveStamina() const
+{
+	return ReserveStamina;
+}
+
+void UVitalsComponent::CalculateStamina(float DeltaTime)
+{	
+	float StaminaConsumption = 0.0f;
+	float StaminaRecovery = StaminaRecoveryRate * DeltaTime;
+	float EffectiveRecovery = ReserveStaminaRecoveryRate * DeltaTime;	
+	
+	
+	StaminaConsumption += GetStaminaCostForSprinting() * DeltaTime;
+
+	/*apply affect if we've consumed stmaina*/
+	if(StaminaConsumption > 0.0f)
+		ConsumeStamina(StaminaConsumption);
+	else
+	{
+		/*prevent stamina regeneration while falling as it feels weird to jump and immedietely recover while still in the air*/
+		if(GetOwningCharacter() && GetOwningCharacter()->IsFalling())
+			return;
+
+		if(FMath::IsNearlyEqual(GetReserveStamina(), GetMaxStamina()))
+			RecoverStamina(StaminaRecovery);
+		else
+		{
+			RecoverReserveStamina(EffectiveRecovery);
+			RecoverStamina(StaminaRecovery * 0.65f); //penalty applied			
+		}
+	}		
+}
+
+void UVitalsComponent::ConsumeStamina(float StaminaConsumption)
+{
+	if (StaminaConsumption <= 0.0f)
+		return;
+
+	const float StaminaConsumed = FMath::Min(Stamina, StaminaConsumption);
+
+	Stamina -= StaminaConsumed;
+	StaminaConsumption -= StaminaConsumed;
+
+	/*we've exceeded our immediate stamina, begin over-exerting*/
+	if (StaminaConsumption > 0.0f)
+	{
+		ReserveStamina = FMath::Max(0.0f,ReserveStamina - StaminaConsumption);
+	}
+}
+
+void UVitalsComponent::RecoverStamina(float StaminaRecovery)
+{	
+	if(StaminaRecovery <= 0.0f)
+		return;
+
+	Stamina = FMath::Min(GetReserveStamina(), Stamina + StaminaRecovery);
+	
+}
+
+void UVitalsComponent::RecoverReserveStamina(float StaminaRecovery)
+{
+	if(StaminaRecovery <= 0.0f)
+		return;
+
+	ReserveStamina = FMath::Min(GetMaxStamina(), ReserveStamina + StaminaRecovery);
+}
+
+float UVitalsComponent::GetStaminaCostForSprinting() const
+{
+	if (GetOwningCharacter() && GetOwningCharacter()->IsSprinting())
+	{
+		if(GetCurrentStamina() > 0.0f)
+			return SprintingStaminaBaseDrainRate;
+		else
+			return SprintingEffectiveStaminaDrainRate;
+	}
+		
+	else
+		return 0.0f;
+}
+
+float UVitalsComponent::GetStaminaCostForSoftLanding() const
+{
+	return SoftLandStaminaDrain;
+}
+
+float UVitalsComponent::GetStaminaCostForDamagingLanding() const
+{
+	return DamagingLandStaminaDrain;
+}
+
+float UVitalsComponent::GetStaminaCostForJump() const
+{
+	return JumpingStaminaDrain;
+}
+
+
+//===========================
+//========TEMPERATURE========
+//===========================
+
+
 
 void UVitalsComponent::CalculateTemperature(float DeltaTime)
 {
 	//grab the overall exterior temperature of the world first
 	float Gain = 0.0f;
 	float Loss = 0.0f;
-	float AmbientRate = GetWeatherSubsystem()->GetAmbientTemperatureEffectRate();
+	float AmbientRate = GetWeatherSubsystem() ? GetWeatherSubsystem()->GetAmbientTemperatureEffectRate() : 0.0f;
 
 	AmbientRate < 0.0f ? Loss += AmbientRate : Gain += AmbientRate;
 
@@ -58,7 +192,7 @@ void UVitalsComponent::CalculateTemperature(float DeltaTime)
 
 void UVitalsComponent::ApplyDamageFromTemperature(float DeltaTime)
 {
-
+	
 }
 
 float UVitalsComponent::GetPlayerTemperature()
@@ -129,6 +263,11 @@ void UVitalsComponent::AddTemperatureInfluence(UTemperatureComponent* Source)
 void UVitalsComponent::RemoveTemperatureInfluence(UTemperatureComponent* Source)
 {
 	TemperatureInfluences.Remove(Source);
+}
+
+AFirstPersonCharacter* UVitalsComponent::GetOwningCharacter() const
+{
+	return OwningCharacter;
 }
 
 UWeatherSubsystem* UVitalsComponent::GetWeatherSubsystem()

@@ -21,10 +21,54 @@ float UPlayerHealthWidget::GetPlayerHealth()
 	return GetOwningCharacter() ? GetOwningCharacter()->GetHealth() : 0.0f;
 }
 
-float UPlayerHealthWidget::GetPlayerStamina()
+
+float UPlayerHealthWidget::GetCurrentStamina() const
 {
-	return GetOwningCharacter() ? GetOwningCharacter()->GetStamina() : 0.0f;		
+	if(AFirstPersonCharacter* Character = GetOwningCharacter())
+		return Character->GetStamina();
+	else
+		return 0.0f;
 }
+
+float UPlayerHealthWidget::GetCurrentStaminaNormalized() const
+{
+	const float MaxStamina = GetMaxStamina();
+
+	if (MaxStamina <= 0.0f)
+		return 0.0f;
+
+	return FMath::Clamp(GetCurrentStamina() / MaxStamina, 0.0f, 1.0f);
+}
+
+float UPlayerHealthWidget::GetMaxStamina() const
+{
+	if(AFirstPersonCharacter* Character = GetOwningCharacter())
+		return Character->GetMaxStamina();
+	else
+		return 0.0f;
+}
+
+float UPlayerHealthWidget::GetReserveStamina() const
+{
+	return 0.0f;
+}
+
+float UPlayerHealthWidget::GetReserveStaminaNormalized() const
+{
+	if (AFirstPersonCharacter* Character = GetOwningCharacter())
+	{
+		const float MaxStamina = Character->GetMaxStamina();
+		const float CurrentMaxStamina = Character->GetReserveStamina();
+
+		if(MaxStamina <= 0.0f)
+			return 0.0f;
+		else
+			return FMath::Clamp(CurrentMaxStamina / MaxStamina, 0.0f, 1.0f);
+	}
+
+	return 0.0f;
+}
+
 
 float UPlayerHealthWidget::GetPlayerEncumberance()
 {
@@ -153,7 +197,7 @@ FLinearColor UPlayerHealthWidget::GetTemperatureColor()
 	return TemperatureColorNeutral;
 }
 
-AFirstPersonCharacter* UPlayerHealthWidget::GetOwningCharacter()
+AFirstPersonCharacter* UPlayerHealthWidget::GetOwningCharacter() const
 {
 	return GetOwningPlayerPawn<AFirstPersonCharacter>();
 }

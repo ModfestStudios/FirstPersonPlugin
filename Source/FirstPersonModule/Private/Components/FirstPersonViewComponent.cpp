@@ -7,11 +7,19 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Animations/FirstPersonArmsAnimInstance.h"
 
+/*camera*/
+#include "EngineCamerasSubsystem.h"
+#include "CameraAnimationSequence.h"
+#include "Animations/CameraAnimationCameraModifier.h"
+
 /*characters*/
 #include "Characters/FirstPersonCharacter.h"
 
 /*curves*/
 #include "Curves/CurveFloat.h"
+
+/*components*/
+#include "Components/FirstPersonMovementComponent.h"
 
 /*engine*/
 #include "Engine/World.h"
@@ -85,17 +93,21 @@ void UFirstPersonViewComponent::PostInitProperties()
 
 void UFirstPersonViewComponent::InitializeComponent()
 {
+	Super::InitializeComponent();
+
 	/*all clients run setup*/
-	InitializeFirstPersonScene();
+	InitializeFirstPersonViewRoot();
+	InitializeFirstPersonBodyRoot();
+
 	InitializeCameraComponent();
+
 	InitializeArmsMesh();
+	InitializeBodyMesh();
+	InitializeLegsMesh();
+
 	SyncPawnEyeHeight();
 	DefaultFOV = GetCameraComponent()->FieldOfView;
 	InitializeDamageIndictators();
-
-
-	Super::InitializeComponent();
-
 }
 
 
@@ -104,31 +116,62 @@ void UFirstPersonViewComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (AFirstPersonCharacter* Character = GetOwningCharacter())
+	{
+		if (UCharacterMovementComponent* Movement = Character->GetCharacterMovement())
+		{
+			AddTickPrerequisiteComponent(Movement);
+		}
+	}
+
+	/*used to make sure things are properly hidden/shown during startup*/
+	UpdateFirstPersonVisibility();
+
+#if WITH_EDITOR
+	/*bind switching between Play In Editor (PIE) and Simulate In Editor (SIE)*/
+	FEditorDelegates::OnSwitchBeginPIEAndSIE.AddUObject(this, &UFirstPersonViewComponent::OnSwitchPIEAndSIE);
+#endif
 }
 
-void UFirstPersonViewComponent::InitializeFirstPersonScene()
+void UFirstPersonViewComponent::InitializeFirstPersonViewRoot()
 {
-	if (Scene != nullptr || GetOwner() == nullptr)
+	if (FirstPersonViewRoot != nullptr || GetOwner() == nullptr)
 		return;
 
 	/*create Root Scene*/
-	Scene = NewObject<USceneComponent>(GetOwner(), FName("FirstPersonScene"), RF_Transient);
-	if (Scene)
+	FirstPersonViewRoot = NewObject<USceneComponent>(GetOwner(), FName("FirstPersonViewRoot"), RF_Transient);
+	if (FirstPersonViewRoot)
 	{
 		/*initialize*/
-		Scene->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-		Scene->RegisterComponent();
-		Scene->Activate();
+		FirstPersonViewRoot->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		FirstPersonViewRoot->RegisterComponent();
+		FirstPersonViewRoot->Activate();
 
 		/*position*/
-		Scene->SetRelativeLocation(FVector(ViewForwardOffset, 0, ViewHeight));
+		FirstPersonViewRoot->SetRelativeLocation(FVector(ViewForwardOffset, 0, StandingViewHeight));
+	}
+}
+
+void UFirstPersonViewComponent::InitializeFirstPersonBodyRoot()
+{
+	if (FirstPersonBodyRoot != nullptr || GetOwner() == nullptr)
+		return;
+
+	/*create Root Scene*/
+	FirstPersonBodyRoot = NewObject<USceneComponent>(GetOwner(), FName("FirstPersonBodyRoot"), RF_Transient);
+	if (FirstPersonBodyRoot)
+	{
+		/*initialize*/
+		FirstPersonBodyRoot->AttachToComponent(GetOwner()->GetRootComponent(), FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		FirstPersonBodyRoot->RegisterComponent();
+		FirstPersonBodyRoot->Activate();
 	}
 }
 
 void UFirstPersonViewComponent::InitializeCameraComponent()
 {
 	/*safety checks*/
-	if (Camera != nullptr || Scene == nullptr || GetOwner() == nullptr)
+	if (Camera != nullptr || FirstPersonViewRoot == nullptr || GetOwner() == nullptr)
 		return;
 
 	/*create camera*/
@@ -136,39 +179,122 @@ void UFirstPersonViewComponent::InitializeCameraComponent()
 	if (Camera)
 	{
 		/*initialize*/
-		Camera->AttachToComponent(Scene, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		Camera->AttachToComponent(FirstPersonViewRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
 		Camera->RegisterComponent();
 		Camera->Activate();
 	}
+
+	DefaultFOV = GetCameraComponent()->FieldOfView;
+	CurrentFOV = DefaultFOV;
+	CurrentZoomAmount = 1.0f;
+	ZoomStartAmount = 1.0f;
 }
 
 void UFirstPersonViewComponent::InitializeArmsMesh()
 {
-	if (Arms != nullptr || ArmsMesh == nullptr)
+	if (ArmsMeshComponent != nullptr || ArmsMesh == nullptr)
 		return;
 
 	/*create arms*/
-	Arms = NewObject<USkeletalMeshComponent>(GetOwner(), ArmsMeshName, RF_Transient);
-	if (Arms)
+	ArmsMeshComponent = NewObject<USkeletalMeshComponent>(GetOwner(), ArmsMeshName, RF_Transient);
+	if (ArmsMeshComponent)
 	{
 		/*initialize*/
-		Arms->AttachToComponent(Scene, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-		Arms->RegisterComponent();
-		Arms->Activate();
+		ArmsMeshComponent->AttachToComponent(FirstPersonViewRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		ArmsMeshComponent->RegisterComponent();
+		ArmsMeshComponent->Activate();
 
 		/*setup placement*/
-		Arms->SetRelativeLocation(ArmsOffset);
+		ArmsMeshComponent->SetRelativeLocation(ArmsOffset);
 
 		/*initialize visuals*/
-		Arms->SetSkeletalMesh(ArmsMesh);
-		Arms->SetAnimInstanceClass(AnimationBlueprint);
-		Arms->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
+		ArmsMeshComponent->SetSkeletalMesh(ArmsMesh);
+		ArmsMeshComponent->SetAnimInstanceClass(ArmsAnimationBlueprint);
+		ArmsMeshComponent->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
 
 		/*disable shadow casting*/
-		Arms->SetCastShadow(false);
+		ArmsMeshComponent->SetCastShadow(false);
 
 		/*ensure we hide this from anyone but the owning player*/
-		Arms->SetOnlyOwnerSee(true);
+		ArmsMeshComponent->SetOnlyOwnerSee(true);
+		ArmsMeshComponent->SetVisibility(false,false);
+		ArmsMeshComponent->SetHiddenInGame(true,true);
+
+		/*disable collision*/
+		ArmsMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ArmsMeshComponent->SetGenerateOverlapEvents(false);
+	}
+}
+
+void UFirstPersonViewComponent::InitializeBodyMesh()
+{
+	if(BodyMeshComponent != nullptr || BodyMesh == nullptr)
+		return;
+
+	/*create body mesh*/
+	BodyMeshComponent = NewObject<USkeletalMeshComponent>(GetOwner(), BodyMeshName, RF_Transient);
+	if (BodyMeshComponent)
+	{
+		/*initialize*/
+		BodyMeshComponent->AttachToComponent(FirstPersonBodyRoot,FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		BodyMeshComponent->RegisterComponent();
+		BodyMeshComponent->Activate();
+
+		/*setup placement*/
+		BodyMeshComponent->SetRelativeLocation(BodyOffset);
+
+		/*initialize visuals*/
+		BodyMeshComponent->SetSkeletalMesh(BodyMesh);
+		BodyMeshComponent->SetAnimInstanceClass(BodyAnimationBlueprint);
+		BodyMeshComponent->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
+
+		/*disable shadows*/
+		BodyMeshComponent->SetCastShadow(false);
+
+		/*ensure we hide this from anyone but owning player*/
+		BodyMeshComponent->SetOnlyOwnerSee(true);
+		BodyMeshComponent->SetVisibility(false,false);
+		BodyMeshComponent->SetHiddenInGame(true, true);
+
+		/*disable collision*/
+		BodyMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		BodyMeshComponent->SetGenerateOverlapEvents(false);
+	}
+}
+
+void UFirstPersonViewComponent::InitializeLegsMesh()
+{
+	if (LegsMeshComponent != nullptr || LegsMesh == nullptr)
+		return;
+
+	/*create body mesh*/
+	LegsMeshComponent = NewObject<USkeletalMeshComponent>(GetOwner(), LegsMeshName, RF_Transient);
+	if (LegsMeshComponent)
+	{
+		/*initialize*/
+		LegsMeshComponent->AttachToComponent(FirstPersonBodyRoot, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+		LegsMeshComponent->RegisterComponent();
+		LegsMeshComponent->Activate();
+
+		/*setup placement*/
+		LegsMeshComponent->SetRelativeLocation(LegsOffset);
+
+		/*initialize visuals*/
+		LegsMeshComponent->SetSkeletalMesh(LegsMesh);
+		LegsMeshComponent->SetAnimInstanceClass(LegsAnimationBlueprint);
+		LegsMeshComponent->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
+
+		/*disable shadows*/
+		LegsMeshComponent->SetCastShadow(false);
+
+		/*ensure we hide this from anyone but owning player*/
+		LegsMeshComponent->SetOnlyOwnerSee(true);
+		LegsMeshComponent->SetVisibility(false, false);
+		LegsMeshComponent->SetHiddenInGame(true, true);
+
+		/*disable collision*/
+		LegsMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		LegsMeshComponent->SetGenerateOverlapEvents(false);
 	}
 }
 
@@ -196,69 +322,473 @@ void UFirstPersonViewComponent::InitializeDamageIndictators()
 	}
 }
 
+#if WITH_EDITOR
+void UFirstPersonViewComponent::OnSwitchPIEAndSIE(bool bIsSimulating)
+{
+	if(bIsSimulating)
+	{
+		SetArmsVisibility(false); // hide arms
+		SetBodyVisibility(false);
+		SetLegsVisibility(false);
+		HidePlayerHUD();
+	}
+	else
+	{
+		UpdateFirstPersonVisibility(); //restore first person arms
+		ShowPlayerHUD();
+	}
+}
+#endif
+
+void UFirstPersonViewComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+#if WITH_EDITOR
+	FEditorDelegates::OnSwitchBeginPIEAndSIE.RemoveAll(this);
+#endif
+
+	if (ArmsMeshComponent)
+	{
+		ArmsMeshComponent->DestroyComponent();
+		ArmsMeshComponent = nullptr;
+	}
+
+	if (BodyMeshComponent)
+	{
+		BodyMeshComponent->DestroyComponent();
+		BodyMeshComponent = nullptr;
+	}
+
+	if (LegsMeshComponent)
+	{
+		LegsMeshComponent->DestroyComponent();
+		LegsMeshComponent = nullptr;
+	}
+
+	if (Camera)
+	{
+		Camera->DestroyComponent();
+		Camera = nullptr;
+	}
+
+	if (FirstPersonViewRoot)
+	{
+		FirstPersonViewRoot->DestroyComponent();
+		FirstPersonViewRoot = nullptr;
+	}
+
+	if (FirstPersonBodyRoot)
+	{
+		FirstPersonBodyRoot->DestroyComponent();
+		FirstPersonBodyRoot = nullptr;
+	}
+	
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
+
 void UFirstPersonViewComponent::SyncPawnEyeHeight()
 {
 	if (APawn* P = Cast<APawn>(GetOwner()))
 	{
-		P->BaseEyeHeight = ViewHeight;
+		P->BaseEyeHeight = StandingViewHeight;
 	}
 }
 
-// Called every frame
 void UFirstPersonViewComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	/*stop updates while camera is snapped to camera*/
+	/*safety*/
+	AFirstPersonCharacter* Character = GetOwningCharacter();
+
+	if (!Character || !FirstPersonViewRoot || !Camera)
+		return;
+
+	/*first-person view is only processed for the locally controlled character*/
+	if (!Character->IsLocallyControlled())
+		return;
+
+	/*camera has temporarily been attached directly to the character's head*/
 	if (bSnapCameraToHead)
 		return;
 
-	if (GetOwningCharacter()->IsLocallyControlled())
+
+	//========================================================================================================================
+	//======================================================FREE LOOK=========================================================
+	//========================================================================================================================
+
+	if (bAutoCalcVerticalFreeLook && !IsFreeLooking())
 	{
-		/*up/down looking*/
-		FRotator newSceneRotation = Scene->GetRelativeRotation();
-		newSceneRotation.Pitch = Pitch;
-
-		Scene->SetRelativeRotation(newSceneRotation);
-
-		/*determines when arms should snap to camera's vertical pitch and when they should snap to scene*/
-		if (bAutoCalcVerticalFreeLook)
+		if (ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::LockedInPlace)
 		{
-			if (ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::LockedInPlace)
-				SetFreeLookMode(EViewType::LockedInPlace);
-			else if (!ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::VerticalFreeLook)
-				SetFreeLookMode(EViewType::VerticalFreeLook);
+			SetFreeLookMode(EViewType::LockedInPlace);
 		}
-
-		/*camera free look updates*/
-		if (bAllowFreeLook)
+		else if (!ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::VerticalFreeLook)
 		{
-			if (bSnapSceneToCameraOnReset)
-			{
-				FRotator newRotation = Camera->GetComponentRotation();
-
-				Scene->SetWorldRotation(newRotation);
-				Camera->SetRelativeRotation(FRotator(0, 0, 0));
-
-				/*reset*/
-				bSnapSceneToCameraOnReset = false;
-			}
-			else
-			{
-				FRotator newCameraRotation = Camera->GetRelativeRotation();
-				newCameraRotation.Pitch = VerticalFreeLook; //add camera offset
-				newCameraRotation.Yaw = HorizontalFreeLook; //add camera offset
-
-				Camera->SetRelativeRotation(newCameraRotation);
-			}
-		}
-
-		/*zooming in/out updates*/
-		if (bAllowZoom && GetOwner()->GetWorldTimerManager().IsTimerActive(ZoomAnimHandler))
-		{
-			AnimateVisionZoom();
+			SetFreeLookMode(EViewType::VerticalFreeLook);
 		}
 	}
+
+
+	/*
+	 * When leaving free-look, transfer the Camera's existing local pitch
+	 * back into the ViewRoot.
+	 */
+	if (bSnapSceneToCameraOnReset)
+	{
+		const float RootPitch = FirstPersonViewRoot->GetRelativeRotation().Pitch;
+		const float CameraPitch = Camera->GetRelativeRotation().Pitch;
+
+		Pitch = FMath::Clamp(
+			FRotator::NormalizeAxis(RootPitch + CameraPitch),
+			-89.0f,
+			89.0f
+		);
+
+		Camera->SetRelativeRotation(FRotator::ZeroRotator);
+
+		VerticalFreeLook = 0.0f;
+		HorizontalFreeLook = 0.0f;
+
+		bSnapSceneToCameraOnReset = false;
+	}
+
+
+	//========================================================================================================================
+	//======================================================MANUAL LEAN=======================================================
+	//========================================================================================================================
+
+	float DesiredLeanAlpha = 0.0f;
+
+	switch (Character->GetLeanState())
+	{
+	case ELeanState::Left:
+		DesiredLeanAlpha = -1.0f;
+		break;
+
+	case ELeanState::Right:
+		DesiredLeanAlpha = 1.0f;
+		break;
+
+	case ELeanState::None:
+	default:
+		DesiredLeanAlpha = 0.0f;
+		break;
+	}
+
+
+	/*target changed - begin transition from our current position*/
+	if (!FMath::IsNearlyEqual(DesiredLeanAlpha, LeanTargetAlpha))
+	{
+		LeanStartAlpha = CurrentLeanAlpha;
+		LeanTargetAlpha = DesiredLeanAlpha;
+		LeanElapsedTime = 0.0f;
+	}
+
+
+	if (!FMath::IsNearlyEqual(CurrentLeanAlpha, LeanTargetAlpha))
+	{
+		const bool bLeaningOut = FMath::IsNearlyZero(LeanTargetAlpha);
+
+		const float BaseDuration =
+			bLeaningOut
+			? LeanOutDuration
+			: LeanInDuration;
+
+
+		/*
+		 * Scale duration based on how much distance remains.
+		 *
+		 * 0 -> 1   = full duration
+		 * .5 -> 0  = half duration
+		 * 1 -> -1  = twice duration
+		 */
+		const float DistanceRemaining =
+			FMath::Abs(LeanTargetAlpha - LeanStartAlpha);
+
+		const float TransitionDuration =
+			BaseDuration * DistanceRemaining;
+
+
+		LeanElapsedTime += DeltaTime;
+
+
+		const float TimeAlpha =
+			TransitionDuration > KINDA_SMALL_NUMBER
+			? FMath::Clamp(LeanElapsedTime / TransitionDuration, 0.0f, 1.0f)
+			: 1.0f;
+
+
+		/*use curve if supplied*/
+		const UCurveFloat* ActiveCurve =
+			bLeaningOut
+			? LeanOutCurve
+			: LeanInCurve;
+
+
+		/*fallback to linear interpolation*/
+		const float CurveAlpha =
+			ActiveCurve
+			? FMath::Clamp(ActiveCurve->GetFloatValue(TimeAlpha), 0.0f, 1.0f)
+			: TimeAlpha;
+
+
+		CurrentLeanAlpha = FMath::Lerp(
+			LeanStartAlpha,
+			LeanTargetAlpha,
+			CurveAlpha
+		);
+
+
+		/*finish exactly on target*/
+		if (TimeAlpha >= 1.0f)
+		{
+			CurrentLeanAlpha = LeanTargetAlpha;
+			LeanElapsedTime = 0.0f;
+		}
+	}
+	else
+	{
+		CurrentLeanAlpha = LeanTargetAlpha;
+	}
+
+
+	//========================================================================================================================
+	//======================================================STRAFE LEAN=======================================================
+	//========================================================================================================================
+
+	float TargetStrafeLeanAlpha = 0.0f;
+
+
+	/*
+	 * GetStrafeDirection():
+	 *
+	 * -1 = left
+	 *  0 = not purely strafing
+	 * +1 = right
+	 *
+	 * Intermediate values are supported for analog movement.
+	 */
+	if (Character->IsStrafing())
+	{
+		TargetStrafeLeanAlpha = Character->GetStrafeDirection();
+	}
+
+
+	/*
+	 * Manual leaning progressively removes the strafe lean.
+	 *
+	 * Manual Lean = 0.0 -> 100% strafe lean
+	 * Manual Lean = 0.5 ->  50% strafe lean
+	 * Manual Lean = 1.0 ->   0% strafe lean
+	 */
+	const float StrafeLeanWeight =
+		1.0f - FMath::Abs(CurrentLeanAlpha);
+
+	TargetStrafeLeanAlpha *= StrafeLeanWeight;
+
+
+	/*
+	 * Determine whether we're moving toward center or away from center.
+	 *
+	 * Moving toward center uses StrafeLeanOutDuration.
+	 * Moving away from center uses StrafeLeanInDuration.
+	 *
+	 * Opposite directions initially count as moving out so that we return
+	 * through center using OutDuration, then begin leaning into the opposite
+	 * side using InDuration.
+	 */
+	const bool bChangingStrafeDirection =
+		(CurrentStrafeLeanAlpha * TargetStrafeLeanAlpha) < 0.0f;
+
+	const bool bReducingStrafeLean =
+		FMath::Abs(TargetStrafeLeanAlpha) < FMath::Abs(CurrentStrafeLeanAlpha);
+
+	const bool bReturningToCenter =
+		FMath::IsNearlyZero(TargetStrafeLeanAlpha);
+
+	const bool bStrafeLeaningOut =
+		bReturningToCenter ||
+		bChangingStrafeDirection ||
+		bReducingStrafeLean;
+
+
+	const float StrafeDuration =
+		bStrafeLeaningOut
+		? StrafeLeanOutDuration
+		: StrafeLeanInDuration;
+
+
+	/*
+	 * Duration represents the amount of time required to travel one full
+	 * alpha unit:
+	 *
+	 * 0 -> 1  = StrafeLeanInDuration
+	 * 1 -> 0  = StrafeLeanOutDuration
+	 *
+	 * Therefore a direct +1 -> -1 transition naturally takes two alpha units.
+	 */
+	if (StrafeDuration > KINDA_SMALL_NUMBER)
+	{
+		const float StrafeLeanRate =
+			1.0f / StrafeDuration;
+
+		CurrentStrafeLeanAlpha = FMath::FInterpConstantTo(
+			CurrentStrafeLeanAlpha,
+			TargetStrafeLeanAlpha,
+			DeltaTime,
+			StrafeLeanRate
+		);
+	}
+	else
+	{
+		/*zero duration means snap immediately*/
+		CurrentStrafeLeanAlpha = TargetStrafeLeanAlpha;
+	}
+
+
+	/*remove tiny residual values*/
+	if (FMath::IsNearlyZero(CurrentStrafeLeanAlpha, 0.001f))
+	{
+		CurrentStrafeLeanAlpha = 0.0f;
+	}
+
+
+	//========================================================================================================================
+	//======================================================VIEW HEIGHT=======================================================
+	//========================================================================================================================
+
+	const float DesiredViewHeight = GetDesiredViewHeight();
+
+	const float CurrentViewHeight =
+		FirstPersonViewRoot->GetRelativeLocation().Z;
+
+	const float NewViewHeight =
+		FMath::FInterpTo(
+			CurrentViewHeight,
+			DesiredViewHeight,
+			DeltaTime,
+			GetViewHeightInterpSpeed()
+		);
+
+
+	//========================================================================================================================
+	//===================================================COMPOSE VIEW ROOT====================================================
+	//========================================================================================================================
+
+	/*manual lean controls horizontal position + roll*/
+	const float ManualLeanOffset =
+		LeanDistance * CurrentLeanAlpha;
+
+	const float ManualLeanRotation =
+		LeanRoll * CurrentLeanAlpha;
+
+
+	/*strafe lean only contributes roll*/
+	const float StrafeLeanRotation =
+		StrafeLean * CurrentStrafeLeanAlpha;
+
+
+	/*combine independent roll contributions*/
+	const float FinalViewRoll =
+		ManualLeanRotation +
+		StrafeLeanRotation;
+
+
+	/*
+	 * Final shared ViewRoot transform:
+	 *
+	 * X = forward offset
+	 * Y = manual lean position
+	 * Z = stance height
+	 *
+	 * Pitch = normal view pitch
+	 * Yaw   = character/controller
+	 * Roll  = manual lean + strafe lean
+	 */
+	const FVector ViewRootLocation(
+		ViewForwardOffset,
+		ManualLeanOffset,
+		NewViewHeight
+	);
+
+	const FRotator ViewRootRotation(
+		Pitch,
+		0.0f,
+		FinalViewRoll
+	);
+
+
+	FirstPersonViewRoot->SetRelativeLocationAndRotation(
+		ViewRootLocation,
+		ViewRootRotation
+	);
+
+
+	//========================================================================================================================
+	//======================================================CAMERA LOOK=======================================================
+	//========================================================================================================================
+
+	/*
+	 * Free-look remains Camera-local so the Arms inherit the ViewRoot
+	 * movement without following Camera-only free-look.
+	 */
+	FRotator CameraRotation = FRotator::ZeroRotator;
+
+	if (bAllowFreeLook)
+	{
+		switch (ViewType)
+		{
+		case EViewType::VerticalFreeLook:
+
+			CameraRotation.Pitch = VerticalFreeLook;
+			break;
+
+
+		case EViewType::FullFreeLook:
+
+			CameraRotation.Pitch = VerticalFreeLook;
+			CameraRotation.Yaw = HorizontalFreeLook;
+			break;
+
+
+		case EViewType::LockedInPlace:
+		default:
+
+			break;
+		}
+	}
+
+
+	Camera->SetRelativeRotation(CameraRotation);
+}
+
+void UFirstPersonViewComponent::EnableFreeLook()
+{
+	SetFreeLookMode(EViewType::FullFreeLook);
+}
+
+void UFirstPersonViewComponent::DisableFreeLook()
+{
+	if (bAutoCalcVerticalFreeLook)
+	{
+		if (ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::LockedInPlace)
+		{
+			SetFreeLookMode(EViewType::LockedInPlace);
+		}
+		else if (!ShouldArmsLockToCamera() && GetFreeLookMode() != EViewType::VerticalFreeLook)
+		{
+			SetFreeLookMode(EViewType::VerticalFreeLook);
+		}
+	}
+	else
+		SetFreeLookMode(EViewType::LockedInPlace);
+
+	HorizontalFreeLook = 0.0f;
+}
+
+bool UFirstPersonViewComponent::IsFreeLooking() const
+{
+	return ViewType == EViewType::FullFreeLook;
 }
 
 void UFirstPersonViewComponent::SetFreeLookMode(EViewType NewMode)
@@ -285,7 +815,7 @@ void UFirstPersonViewComponent::AttachCameraToHead(bool bKeepRelativeDistance)
 		bSnapCameraToHead = true;
 
 		FName CamSocket = GetOwningCharacter()->HeadCameraSocket;
-		UE_LOG(LogTemp, Log, TEXT("CamSocket: %s"), *CamSocket.ToString());
+		//UE_LOG(LogTemp, Log, TEXT("CamSocket: %s"), *CamSocket.ToString());
 
 
 		if (CamSocket.IsNone())
@@ -308,18 +838,18 @@ void UFirstPersonViewComponent::PitchView(float Value)
 		return;
 
 	if (bInvertVerticalLook)
-		Value *= -1;
+		Value *= -1.0f;
 
 	if (ViewType >= EViewType::VerticalFreeLook)
 	{
 		VerticalFreeLook += Value;
-		//todo: Apply offsetting against Scene pitch so you can't go past 89 between the total of Scene + Camera pitching
-		VerticalFreeLook = FMath::Clamp(VerticalFreeLook, -89, 89);
+
+		VerticalFreeLook = FMath::Clamp(VerticalFreeLook,-VerticalFreeLookLimit,VerticalFreeLookLimit);
 	}
 	else
 	{
 		Pitch += Value;
-		Pitch = FMath::Clamp(Pitch, -89, 89);
+		Pitch = FMath::Clamp(Pitch, -89.0f, 89.0f);
 	}
 }
 
@@ -331,66 +861,133 @@ void UFirstPersonViewComponent::RotateView(float Value)
 	if (ViewType == EViewType::FullFreeLook)
 	{
 		HorizontalFreeLook += Value;
-		HorizontalFreeLook = FMath::Clamp(HorizontalFreeLook, -89, 89);
+
+		HorizontalFreeLook = FMath::Clamp(HorizontalFreeLook,-HorizontalFreeLookLimit,HorizontalFreeLookLimit);
 	}
-	/*rotate controller*/
 	else
 	{
 		if (APawn* Pawn = Cast<APawn>(GetOwner()))
+		{
 			Pawn->AddControllerYawInput(Value);
+		}
 	}
 }
 
+float UFirstPersonViewComponent::GetDesiredViewHeight() const
+{
+	if (OwningCharacter)
+	{
+		if (OwningCharacter->IsProne())
+			return ProneViewHeight;
+		if(OwningCharacter->IsCrouched())
+			return CrouchedViewHeight;		
+		else
+			return StandingViewHeight;
+	}
+
+	return 88.0f;
+}
+
+float UFirstPersonViewComponent::GetViewHeightInterpSpeed() const
+{
+	return ViewHeightInterpSpeed;
+}
+
+void UFirstPersonViewComponent::PlayCameraAnimation(UCameraAnimationSequence* AnimationSequence)
+{
+	if(!AnimationSequence || !GetOwningCharacter())
+		return;
+
+	APlayerController* PC = GetOwningCharacter()->GetController<APlayerController>();
+
+	if (UEngineCamerasSubsystem* CSS = UEngineCamerasSubsystem::GetEngineCamerasSubsystem(GetWorld()))
+	{
+		FCameraAnimationParams CameraParams;
+		CameraParams.Scale = 1.0;
+		CameraParams.PlayRate = 1.0f;
+		CameraParams.bLoop = false;
+		CameraParams.PlaySpace = ECameraAnimationPlaySpace::CameraLocal;
+
+		CSS->PlayCameraAnimation(PC,AnimationSequence,CameraParams);
+	}
+}
+
+void UFirstPersonViewComponent::PlayJumpAnimation()
+{
+	if(GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled() && JumpAnimation)
+		PlayCameraAnimation(JumpAnimation);
+}
+
+void UFirstPersonViewComponent::PlayLandedCameraAnimation()
+{
+	if(GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled() && SoftLandAnimation)
+		PlayCameraAnimation(SoftLandAnimation);
+}
+
+void UFirstPersonViewComponent::PlayFallDamageCameraAnimation()
+{
+	if(GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled() && FallDamageAnimation)
+		PlayCameraAnimation(FallDamageAnimation);
+}
+
+
 void UFirstPersonViewComponent::ZoomInVision()
 {
-	/*some safety nets to keep us from activating this while it's already active*/
 	if (bZoomingIn)
 		return;
 
-	/*begin zoom*/
 	bZoomingIn = true;
-	GetOwner()->GetWorldTimerManager().SetTimer(ZoomAnimHandler, this, &UFirstPersonViewComponent::AnimateVisionZoom, ZoomInDuration, true);
+	ZoomElapsedTime = 0.0f;
+	ZoomStartAmount = CurrentZoomAmount;
+
+	GetOwner()->GetWorldTimerManager().SetTimer(ZoomAnimHandler,this,&UFirstPersonViewComponent::AnimateVisionZoom,0.015f,true);
 }
 
 void UFirstPersonViewComponent::ZoomOutVision()
 {
-	if (!bZoomingIn)
+if (!bZoomingIn)
 		return;
 
-	/*begin zoom*/
 	bZoomingIn = false;
-	GetOwner()->GetWorldTimerManager().SetTimer(ZoomAnimHandler, this, &UFirstPersonViewComponent::AnimateVisionZoom, ZoomOutDuration, true);
+	ZoomElapsedTime = 0.0f;
+	ZoomStartAmount = CurrentZoomAmount;
+
+	GetOwner()->GetWorldTimerManager().SetTimer(ZoomAnimHandler,this,&UFirstPersonViewComponent::AnimateVisionZoom,0.015f,true);
 }
 
 void UFirstPersonViewComponent::AnimateVisionZoom()
 {
+	ZoomElapsedTime += GetWorld()->GetDeltaSeconds();
+
+	const float Duration = bZoomingIn ? ZoomInDuration : ZoomOutDuration;
+
+	float Alpha = ZoomElapsedTime / Duration;
+	Alpha = FMath::Clamp(Alpha, 0.0f, 1.0f);
+
 	if (bZoomingIn)
-	{
-		float ElapsedTime = GetOwner()->GetWorldTimerManager().GetTimerElapsed(ZoomAnimHandler);
-		//float TimeRemaining = ZoomInDuration - ElapsedTime; //remaining time
-		float Math = (ElapsedTime / ZoomInDuration);
-		CurrentZoomAmount = 1.0 + (ZoomAmount * Math); //Get the % of completed time and multiply that against the total desired zoom
-		UE_LOG(LogTemp, Log, TEXT("UFirstPersonViewComponent::AnimateVisionZoom() - IN : Elapsed (%f) Zoomy Math (%f) CurrentZoomAmount (%f)"), ElapsedTime, Math, CurrentZoomAmount);
-
-		if (CurrentZoomAmount >= ZoomAmount)
-			GetOwner()->GetWorldTimerManager().ClearTimer(ZoomAnimHandler);
-	}
+		CurrentZoomAmount = FMath::Lerp(ZoomStartAmount, ZoomAmount, Alpha);
 	else
-	{
-		float ElapsedTime = GetOwner()->GetWorldTimerManager().GetTimerElapsed(ZoomAnimHandler);
-		float Math = ElapsedTime / ZoomOutDuration; //remaining time
-		CurrentZoomAmount = CurrentZoomAmount - Math;
+		CurrentZoomAmount = FMath::Lerp(ZoomStartAmount, 1.0f, Alpha);
 
-		UE_LOG(LogTemp, Log, TEXT("UFirstPersonViewComponent::AnimateVisionZoom() - OUT : Elapsed (%f) Zoomy Math (%f) CurrentZoomAmount (%f)"), ElapsedTime, Math, CurrentZoomAmount);
-		if (CurrentZoomAmount <= 1.0f)
-			GetOwner()->GetWorldTimerManager().ClearTimer(ZoomAnimHandler);
-	}
-
-	CurrentZoomAmount = FMath::Clamp(CurrentZoomAmount, 1.0f, ZoomAmount); //clamp for safety!
 	float FOVDifference = DefaultFOV - (DefaultFOV * CurrentZoomAmount);
 	CurrentFOV = DefaultFOV - FMath::Abs(FOVDifference);
 
+	//UE_LOG(LogTemp, Warning, TEXT("ZOOM | Direction: %s | Elapsed: %.3f | Duration: %.3f | Alpha: %.3f | StartAmount: %.3f | ZoomAmount: %.3f | CurrentAmount: %.3f | DefaultFOV: %.2f | CurrentFOV: %.2f"),
+	//	bZoomingIn ? TEXT("IN") : TEXT("OUT"),
+	//	ZoomElapsedTime,
+	//	Duration,
+	//	Alpha,
+	//	ZoomStartAmount,
+	//	ZoomAmount,
+	//	CurrentZoomAmount,
+	//	DefaultFOV,
+	//	CurrentFOV);
+
 	GetCameraComponent()->SetFieldOfView(CurrentFOV);
+
+	if (Alpha >= 1.0f)
+		GetOwner()->GetWorldTimerManager().ClearTimer(ZoomAnimHandler);
+	
 }
 
 void UFirstPersonViewComponent::ProcessRecenterView()
@@ -416,6 +1013,39 @@ void UFirstPersonViewComponent::ProcessRecenterView()
 
 }
 
+//======================================
+//=============FIRST PERSON=============
+//======================================
+
+void UFirstPersonViewComponent::UpdateFirstPersonVisibility()
+{
+	/*init*/
+	APawn* Pawn = Cast<APawn>(GetOwner());
+	APlayerController* PC = Pawn ? Cast<APlayerController>(Pawn->GetController()) : nullptr;
+
+	/*unless we're locally controlled we do not want to see the first person meshes*/
+	bool bVisible = Pawn && Pawn->IsLocallyControlled() && PC && PC->IsLocalPlayerController();
+
+	//UE_LOG(
+	//	LogTemp,
+	//	Warning,
+	//	TEXT("%s | PlayerController: %s | Local: %d | Arms Visible: %d"),
+	//	*GetOwner()->GetName(),		
+	//	PC ? *PC->GetName() : TEXT("NONE"),
+	//	Pawn ? Pawn->IsLocallyControlled() : false,
+	//	bVisible
+	//);
+
+	/*update meshes*/
+	SetArmsVisibility(bVisible);
+	SetBodyVisibility(bVisible);
+	SetLegsVisibility(bVisible);
+}
+
+//=====================================
+//==========FIRST PERSON ARMS==========
+//=====================================
+
 void UFirstPersonViewComponent::SetFirstPersonArms(USkeletalMesh* NewMesh)
 {
 	ArmsMesh = NewMesh;
@@ -423,10 +1053,40 @@ void UFirstPersonViewComponent::SetFirstPersonArms(USkeletalMesh* NewMesh)
 
 void UFirstPersonViewComponent::SetFirstPersonAnimBlueprint(TSubclassOf<class UFirstPersonArmsAnimInstance> NewAnimInstance)
 {
-	AnimationBlueprint = NewAnimInstance;
+	ArmsAnimationBlueprint = NewAnimInstance;
 
-	Arms->SetAnimInstanceClass(AnimationBlueprint);
-	Arms->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
+	ArmsMeshComponent->SetAnimInstanceClass(ArmsAnimationBlueprint);
+	ArmsMeshComponent->ResetAnimInstanceDynamics(ETeleportType::ResetPhysics);
+}
+
+void UFirstPersonViewComponent::PlayFullArmAnimation(UAnimSequence* Animation)
+{
+	if(!Animation || !GetArmsMeshComponent() || !GetArmsMeshComponent()->GetAnimInstance() && (GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled()))
+		return;
+
+	UAnimInstance* ArmsAnimInstance = GetArmsMeshComponent()->GetAnimInstance();
+
+	ArmsAnimInstance->PlaySlotAnimationAsDynamicMontage(Animation,"Arms");
+}
+
+void UFirstPersonViewComponent::PlayLeftArmAnimation(UAnimSequence* Animation)
+{
+	if (!Animation || !GetArmsMeshComponent() || !GetArmsMeshComponent()->GetAnimInstance() && (GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled()))
+		return;
+
+	UAnimInstance* ArmsAnimInstance = GetArmsMeshComponent()->GetAnimInstance();
+
+	ArmsAnimInstance->PlaySlotAnimationAsDynamicMontage(Animation, "LeftArm");
+}
+
+void UFirstPersonViewComponent::PlayRightArmAnimation(UAnimSequence* Animation)
+{
+	if (!Animation || !GetArmsMeshComponent() || !GetArmsMeshComponent()->GetAnimInstance() && (GetOwningCharacter() && GetOwningCharacter()->IsLocallyControlled()))
+		return;
+
+	UAnimInstance* ArmsAnimInstance = GetArmsMeshComponent()->GetAnimInstance();
+
+	ArmsAnimInstance->PlaySlotAnimationAsDynamicMontage(Animation, "RightArm");
 }
 
 
@@ -440,6 +1100,35 @@ bool UFirstPersonViewComponent::ShouldArmsLockToCamera()
 
 	/*fallback value*/
 	return false;
+}
+
+
+
+void UFirstPersonViewComponent::SetArmsVisibility(bool bVisible)
+{
+	if (ArmsMeshComponent)
+	{
+		ArmsMeshComponent->SetVisibility(bVisible, true);
+		ArmsMeshComponent->SetHiddenInGame(!bVisible, true);
+	}	
+}
+
+void UFirstPersonViewComponent::SetBodyVisibility(bool bVisible)
+{
+	if (BodyMeshComponent)
+	{
+		BodyMeshComponent->SetVisibility(bVisible, true);
+		BodyMeshComponent->SetHiddenInGame(!bVisible, true);
+	}	
+}
+
+void UFirstPersonViewComponent::SetLegsVisibility(bool bVisible)
+{
+	if (LegsMeshComponent)
+	{
+		LegsMeshComponent->SetVisibility(bVisible, true);
+		LegsMeshComponent->SetHiddenInGame(!bVisible, true);
+	}	
 }
 
 void UFirstPersonViewComponent::InitializePlayerHUD(APlayerController* PlayerController)

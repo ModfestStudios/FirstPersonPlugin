@@ -14,6 +14,8 @@ class FIRSTPERSONMODULE_API ADoor : public AActor, public IInteractiveActorInter
 public:
 	
 
+
+
 	/*auto-initialized list of doors for this actor*/
 	TArray<class UDoorComponent*> DoorComponents;
 

@@ -8,8 +8,6 @@
 #include "Animations/FirstPersonArmsAnimInstance.h"
 #include "Animations/ThirdPersonAnimInstance.h"
 #include "Animation/AnimInstance.h"
-
-
 /*curves*/
 #include "Curves/CurveFloat.h"
 
@@ -27,10 +25,14 @@
 
 /*components*/
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/FirstPersonViewComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/VitalsComponent.h"
 #include "Components/BehaviorComponent.h"
 #include "Components/SensesComponent.h"
+
+/*damages*/
+#include "Damage/DamageType_FallDamage.h"
 
 /*engine*/
 #include "Engine/GameInstance.h"
@@ -99,6 +101,7 @@
 
 /*utilities*/
 #include "UObject/ConstructorHelpers.h"
+#include "Kismet/GameplayStatics.h"
 
 
 
@@ -107,8 +110,14 @@ void AFirstPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(AFirstPersonCharacter, Health);
-	DOREPLIFETIME(AFirstPersonCharacter, ReplicatedDeath);		
+	DOREPLIFETIME(AFirstPersonCharacter, ReplicatedDeath);
+
+	DOREPLIFETIME_CONDITION(AFirstPersonCharacter,bIsProne,COND_SimulatedOnly);
+	DOREPLIFETIME_CONDITION(AFirstPersonCharacter, bIsSlowWalking, COND_SimulatedOnly);
+	DOREPLIFETIME_CONDITION(AFirstPersonCharacter,bIsSprinting,COND_SimulatedOnly);
+	DOREPLIFETIME_CONDITION(AFirstPersonCharacter,LeanState,COND_SimulatedOnly);
 }
+
 
 // Sets default values
 AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectInitializer) :
@@ -327,91 +336,107 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		PlayerInputMapping = DefaultMappingInputContextRef.Object;
 	//forward
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ForwardMovement"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ForwardMovement"));
 		if (DefaultInputActionRef.Succeeded())
 			ForwardMovementAction = DefaultInputActionRef.Object;
 	}
 	//sideways
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/SidewaysMovement"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_SidewaysMovement"));
 		if (DefaultInputActionRef.Succeeded())
 			SidewaysMovementAction = DefaultInputActionRef.Object;
 	}
+	//lean left
+	{
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_LeanLeft"));
+		if (DefaultInputActionRef.Succeeded())
+			LeanLeftAction = DefaultInputActionRef.Object;
+	}
+	//lean right
+	{
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_LeanRight"));
+		if (DefaultInputActionRef.Succeeded())
+			LeanRightAction = DefaultInputActionRef.Object;
+	}
+
+	//jump
+	{
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_Jump"));
+		if (DefaultInputActionRef.Succeeded())
+			JumpAction = DefaultInputActionRef.Object;
+	}
 	//prone
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ToggleProne"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleProne"));
 		if (DefaultInputActionRef.Succeeded())
 			ToggleProneAction = DefaultInputActionRef.Object;
 	}
 	//crouch
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ToggleCrouch"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleCrouch"));
 		if (DefaultInputActionRef.Succeeded())
 			ToggleCrouchAction = DefaultInputActionRef.Object;
 	}
-	//begin srpint
+	//begin sprint
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/BeginSprint"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleSprint"));
 		if (DefaultInputActionRef.Succeeded())
-			BeginSprintAction = DefaultInputActionRef.Object;
+			ToggleSprintAction = DefaultInputActionRef.Object;
 	}
-	//begin srpint
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/EndSprint"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleSlowWalk"));
 		if (DefaultInputActionRef.Succeeded())
-			EndSprintAction = DefaultInputActionRef.Object;
+			ToggleSlowWalkAction = DefaultInputActionRef.Object;
 	}
 	//pitch view
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/PitchView"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_PitchView"));
 		if (DefaultInputActionRef.Succeeded())
 			PitchViewAction = DefaultInputActionRef.Object;
 	}
 	//rotate view
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/RotateView"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_RotateView"));
 		if (DefaultInputActionRef.Succeeded())
 			RotateViewAction = DefaultInputActionRef.Object;
 	}
 	//zoom in view
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ZoomIn"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ZoomVision"));
 		if (DefaultInputActionRef.Succeeded())
-			ZoomVisionInAction = DefaultInputActionRef.Object;
+			ZoomVisionAction = DefaultInputActionRef.Object;
 	}
-	//zoom out view
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ZoomOut"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleFreeLook"));
 		if (DefaultInputActionRef.Succeeded())
-			ZoomVisionOutAction = DefaultInputActionRef.Object;
+			ToggleFreeLookAction = DefaultInputActionRef.Object;
 	}
-	//fire weapon
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/FireWeapon"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_FireWeapon"));
 		if (DefaultInputActionRef.Succeeded())
 			BeginFireAction = DefaultInputActionRef.Object;
 	}
 	//end fire
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/StopFiringWeapon"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_StopFiringWeapon"));
 		if (DefaultInputActionRef.Succeeded())
 			EndFireAction = DefaultInputActionRef.Object;
 	}
 	//begin interaction
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/BeginInteraction"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_BeginInteraction"));
 		if (DefaultInputActionRef.Succeeded())
 			BeginInteractionAction = DefaultInputActionRef.Object;
 	}
 	//end interaction
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/EndInteraction"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_EndInteraction"));
 		if (DefaultInputActionRef.Succeeded())
 			EndInteractionAction = DefaultInputActionRef.Object;
 	}
 	//inventory
 	{
-		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ToggleInventoryMenu"));
+		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleInventoryMenu"));
 		if (DefaultInputActionRef.Succeeded())
 			ToggleInventoryAction = DefaultInputActionRef.Object;
 	}
@@ -441,6 +466,7 @@ void AFirstPersonCharacter::BeginPlay()
 
 	if(UAIBehaviorSubsystem* BSS = GetWorld()->GetSubsystem<UAIBehaviorSubsystem>())
 		BSS->RegisterActor(this);
+	
 }
 
 
@@ -448,6 +474,10 @@ void AFirstPersonCharacter::BeginPlay()
 void AFirstPersonCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
+
+	if(FirstPersonView)
+		FirstPersonView->UpdateFirstPersonVisibility();
+
 
 	if (GetInventoryManager())
 		GetInventoryManager()->OnOwnerPossessed(NewController);
@@ -457,6 +487,9 @@ void AFirstPersonCharacter::UnPossessed()
 {
 	Super::UnPossessed();
 
+	if(FirstPersonView)
+		FirstPersonView->UpdateFirstPersonVisibility();
+
 	if (GetInventoryManager())
 		GetInventoryManager()->OnOwnerUnPossessed();		
 }
@@ -465,12 +498,9 @@ void AFirstPersonCharacter::NotifyControllerChanged()
 {
 	Super::NotifyControllerChanged(); //caches the old controller in "PreviousController" variable
 
-	if (IsLocallyControlled())
-	{
-
-	}
+	if (FirstPersonView)
+		FirstPersonView->UpdateFirstPersonVisibility();
 }
-
 
 // Called every frame
 void AFirstPersonCharacter::Tick(float DeltaTime)
@@ -498,33 +528,55 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	}
 
 	/*bind actions up*/
-	Input->BindAction(ForwardMovementAction, ETriggerEvent::Triggered, this, FName("MoveForward"));
-	Input->BindAction(SidewaysMovementAction, ETriggerEvent::Triggered, this, FName("MoveRight"));
+	Input->BindAction(ForwardMovementAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::MoveForward);
+	Input->BindAction(SidewaysMovementAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::MoveRight);
+	Input->BindAction(LeanLeftAction, ETriggerEvent::Started,this,&AFirstPersonCharacter::BeginLeanLeft);
+	Input->BindAction(LeanLeftAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndLeanLeft);
+	Input->BindAction(LeanLeftAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndLeanLeft);
+
+	Input->BindAction(LeanRightAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::BeginLeanRight);
+	Input->BindAction(LeanRightAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndLeanRight);
+	Input->BindAction(LeanRightAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndLeanRight);
+
+	Input->BindAction(JumpAction, ETriggerEvent::Started,this, &AFirstPersonCharacter::Jump);
 	/*crouch*/
-	Input->BindAction(ToggleCrouchAction, ETriggerEvent::Triggered, this, FName("ToggleCrouch"));
+	Input->BindAction(ToggleCrouchAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::ToggleCrouch);
 	//Input->BindAction(CrouchedReleasedAction, ETriggerEvent::Triggered, this, FName("EndCrouch"));
 	/*prone*/
-	Input->BindAction(ToggleProneAction, ETriggerEvent::Triggered, this, FName("ToggleProne"));
+	Input->BindAction(ToggleProneAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::ToggleProne);
 	//Input->BindAction(EndProneAction, ETriggerEvent::Triggered, this, FName("EndProne"));
 	/*sprint*/
-	Input->BindAction(BeginSprintAction, ETriggerEvent::Triggered, this, FName("BeginSprint"));
-	Input->BindAction(EndSprintAction, ETriggerEvent::Triggered, this, FName("EndSprint"));
+	Input->BindAction(ToggleSprintAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::BeginSprint);
+	Input->BindAction(ToggleSprintAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndSprint);
+	Input->BindAction(ToggleSprintAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndSprint);
+
+	
+	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::BeginSlowWalk);
+	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndSlowWalk);
+	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndSlowWalk);
 	/*pitch/rotate*/
-	Input->BindAction(PitchViewAction, ETriggerEvent::Triggered, this, FName("PitchView"));
-	Input->BindAction(RotateViewAction, ETriggerEvent::Triggered, this, FName("RotateView"));
+	Input->BindAction(PitchViewAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::PitchView);
+	Input->BindAction(RotateViewAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::RotateView);
 	/*camera zoom*/
-	Input->BindAction(ZoomVisionInAction, ETriggerEvent::Triggered, this, FName("ZoomVisionIn"));
-	Input->BindAction(ZoomVisionOutAction, ETriggerEvent::Triggered, this, FName("ZoomVisionOut"));
+	Input->BindAction(ZoomVisionAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::ZoomVisionIn);
+	Input->BindAction(ZoomVisionAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::ZoomVisionOut);
+	Input->BindAction(ZoomVisionAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::ZoomVisionOut);
+
+	/*free-look*/
+	Input->BindAction(ToggleFreeLookAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::BeginFreeLook);
+	Input->BindAction(ToggleFreeLookAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndFreeLook);
+	Input->BindAction(ToggleFreeLookAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndFreeLook);
+
 	/*weapon firing*/
-	Input->BindAction(BeginFireAction, ETriggerEvent::Triggered, this, FName("BeginFire"));
-	Input->BindAction(EndFireAction, ETriggerEvent::Triggered, this, FName("EndFire"));
+	Input->BindAction(BeginFireAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::BeginFire);
+	Input->BindAction(EndFireAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::EndFire);
 
 	/*interactions*/
-	Input->BindAction(BeginInteractionAction, ETriggerEvent::Triggered, this, FName("BeginInteraction"));
-	Input->BindAction(EndInteractionAction, ETriggerEvent::Triggered, this, FName("EndInteraction"));
+	Input->BindAction(BeginInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::BeginInteraction);
+	Input->BindAction(EndInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::EndInteraction);
 
 	/*inventory*/
-	Input->BindAction(ToggleInventoryAction, ETriggerEvent::Triggered, this, FName("ToggleInventory"));
+	Input->BindAction(ToggleInventoryAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::ToggleInventory);
 }
 
 //========================
@@ -562,16 +614,138 @@ void AFirstPersonCharacter::MoveRight(const FInputActionValue& Value)
 	GetCharacterMovement()->AddInputVector(inputVector);
 }
 
+bool AFirstPersonCharacter::IsStrafing() const
+{
+	return !FMath::IsNearlyZero(GetStrafeDirection(), 0.05f);
+}
+
+float AFirstPersonCharacter::GetStrafeDirection() const
+{
+	const UCharacterMovementComponent* Movement = GetCharacterMovement();
+
+	if (!Movement)
+		return 0.0f;
+
+	const FVector Acceleration = Movement->GetCurrentAcceleration();
+
+	if (Acceleration.IsNearlyZero())
+		return 0.0f;
+
+	const FVector HorizontalAcceleration(
+		Acceleration.X,
+		Acceleration.Y,
+		0.0f
+	);
+
+	if (HorizontalAcceleration.IsNearlyZero())
+		return 0.0f;
+
+	const FVector ForwardDirection = GetActorForwardVector().GetSafeNormal2D();
+	const FVector RightDirection = GetActorRightVector().GetSafeNormal2D();
+
+	const FVector InputDirection = HorizontalAcceleration.GetSafeNormal();
+
+	const float ForwardAmount =
+		FVector::DotProduct(InputDirection, ForwardDirection);
+
+	const float StrafeAmount =
+		FVector::DotProduct(InputDirection, RightDirection);
+
+
+	constexpr float DirectionTolerance = 0.05f;
+
+	/*no meaningful left/right input*/
+	if (FMath::Abs(StrafeAmount) <= DirectionTolerance)
+		return 0.0f;
+
+
+	/*get left/right sign*/
+	const float StrafeDirection =
+		FMath::Sign(StrafeAmount);
+
+
+	/*
+	 * If we're also moving meaningfully forward/backward,
+	 * reduce the strafe lean to half strength.
+	 */
+	if (FMath::Abs(ForwardAmount) > DirectionTolerance)
+	{
+		return StrafeDirection * 0.5f;
+	}
+
+
+	/*pure strafe gets full strength*/
+	return StrafeDirection;
+}
+
+void AFirstPersonCharacter::BeginLeanLeft()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->BeginLeanLeft();
+}
+
+void AFirstPersonCharacter::EndLeanLeft()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->EndLeanLeft();
+}
+
+void AFirstPersonCharacter::BeginLeanRight()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->BeginLeanRight();
+}
+
+void AFirstPersonCharacter::EndLeanRight()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->EndLeanRight();
+}
+
+bool AFirstPersonCharacter::IsLeaning() const
+{
+	return LeanState != ELeanState::None;
+}
+
+ELeanState AFirstPersonCharacter::GetLeanState() const
+{
+	return LeanState;
+}
+
+void AFirstPersonCharacter::SetLeanState(const ELeanState InLeanState)
+{
+	LeanState = InLeanState;
+}
+
+void AFirstPersonCharacter::OnRep_LeanState()
+{
+	if (UFirstPersonMovementComponent* Movement = GetCharacterMovement<UFirstPersonMovementComponent>())
+	{
+		Movement->bWantsToLeanLeft = LeanState == ELeanState::Left;
+		Movement->bWantsToLeanRight = LeanState == ELeanState::Right;
+	}
+}
+
 void AFirstPersonCharacter::ToggleCrouch()
 {
 	GetCharacterMovement<UFirstPersonMovementComponent>()->ToggleCrouch();
 }
 
+bool AFirstPersonCharacter::IsProne() const
+{
+	return bIsProne;
+}
+
+void AFirstPersonCharacter::SetIsProne(const bool bInIsProne)
+{
+	bIsProne = bInIsProne;
+}
 
 
 void AFirstPersonCharacter::ToggleProne()
 {
 	GetCharacterMovement<UFirstPersonMovementComponent>()->ToggleProne();
+}
+
+void AFirstPersonCharacter::OnRep_IsProne()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->bWantsToProne = bIsProne;
 }
 
 bool AFirstPersonCharacter::CanMove()
@@ -594,6 +768,112 @@ void AFirstPersonCharacter::EndSprint()
 {
 	//GetCharacterMovement<UFirstPersonMovementComponent>()->ToggleSprintingFlag(false);
 	GetCharacterMovement<UFirstPersonMovementComponent>()->EndSprint();
+}
+
+void AFirstPersonCharacter::BeginSlowWalk()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->BeginSlowWalk();
+}
+
+void AFirstPersonCharacter::EndSlowWalk()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->EndSlowWalk();
+}
+
+void AFirstPersonCharacter::SetIsSlowWalking(const bool bInIsSlowWalking)
+{
+	bIsSlowWalking = bInIsSlowWalking;
+}
+
+void AFirstPersonCharacter::OnRep_IsSlowWalking()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->bWantsToSlowWalk = bIsSlowWalking;
+}
+
+bool AFirstPersonCharacter::IsSprinting() const
+{
+	return bIsSprinting;
+}
+
+void AFirstPersonCharacter::SetIsSprinting(const bool bInIsSprinting)
+{
+	bIsSprinting = bInIsSprinting;
+}
+
+void AFirstPersonCharacter::OnRep_IsSprinting()
+{
+	GetCharacterMovement<UFirstPersonMovementComponent>()->bWantsToSprint = bIsSprinting;
+}
+
+void AFirstPersonCharacter::Jump()
+{
+	if (VitalsComponent)
+	{
+		float JumpStaminaCost = VitalsComponent->GetStaminaCostForJump();
+		float CurrentStamina = VitalsComponent->GetCurrentStamina();
+		
+		/*block the jump if it's too much*/
+		if(JumpStaminaCost > CurrentStamina)
+			return;		
+	}
+
+	Super::Jump();
+}
+
+void AFirstPersonCharacter::OnJumped_Implementation()
+{
+	Super::OnJumped_Implementation();
+
+	if (VitalsComponent)
+	{
+		float JumpStaminaCost = VitalsComponent->GetStaminaCostForJump();
+		
+		VitalsComponent->ConsumeStamina(JumpStaminaCost);
+	}
+}
+
+void AFirstPersonCharacter::Landed(const FHitResult& Hit)
+{
+	Super::Landed(Hit);
+
+	/*initiation*/
+	const float ImpactSpeed = FMath::Max(0.0f, -FVector::DotProduct(GetVelocity(), Hit.ImpactNormal));
+
+
+
+
+	float FallDamage = CalculateFallDamage(Hit);
+
+	if (FallDamage > 0.0f)
+	{		
+		UGameplayStatics::ApplyDamage(this, FallDamage,GetController(),this,UDamageType_FallDamage::StaticClass());
+		GetFirstPersonView()->PlayFallDamageCameraAnimation();
+
+		/*apply stamina cost*/
+		if (VitalsComponent)
+			VitalsComponent->ConsumeStamina(VitalsComponent->GetStaminaCostForDamagingLanding());
+	}
+	else
+	{
+		/*play an animation if we've hit hard enough*/
+		if (ImpactSpeed >= MinLandingCameraImpactSpeed)
+		{
+			GetFirstPersonView()->PlayLandedCameraAnimation();
+
+			/*apply stamina cost*/
+			if(VitalsComponent)
+				VitalsComponent->ConsumeStamina(VitalsComponent->GetStaminaCostForSoftLanding());
+		}
+			
+	}
+}
+
+bool AFirstPersonCharacter::IsFalling() const
+{
+	if(GetCharacterMovement())
+		return GetCharacterMovement()->IsFalling();
+	else
+		return false;
 }
 
 void AFirstPersonCharacter::PitchView(const FInputActionValue& Value)
@@ -650,6 +930,28 @@ bool AFirstPersonCharacter::CanMoveCamera()
 	return true;
 }
 
+void AFirstPersonCharacter::BeginFreeLook()
+{
+	if (UFirstPersonViewComponent* FPV = GetFirstPersonView())
+		FPV->EnableFreeLook();
+}
+
+void AFirstPersonCharacter::EndFreeLook()
+{
+	if (UFirstPersonViewComponent* FPV = GetFirstPersonView())		
+		FPV->DisableFreeLook();
+}
+
+float AFirstPersonCharacter::GetDesiredEyeHeight() const
+{
+	if (IsCrouched())
+		return CrouchedEyeHeight;
+	if (IsProne())
+		return ProneEyeHeight;
+
+	return BaseEyeHeight;
+}
+
 AFirstPersonPlayerController* AFirstPersonCharacter::GetFirstPersonController()
 {
 	return Cast<AFirstPersonPlayerController>(GetController());
@@ -673,6 +975,8 @@ UFirstPersonViewComponent* AFirstPersonCharacter::GetFirstPersonView()
 	return FirstPersonView;
 }
 
+
+
 //============================
 //===========DAMAGE===========
 //============================
@@ -685,6 +989,26 @@ const float AFirstPersonCharacter::GetHealth() const
 const float AFirstPersonCharacter::GetBloodLevel() const
 {
 	return BloodLevel;
+}
+
+void AFirstPersonCharacter::SetHealth(float NewHealth)
+{
+	float OriginalHealth = Health;
+	Health = NewHealth;
+
+	if (NewHealth < OriginalHealth)
+	{
+		UDamageType* GenericDamageType = NewObject<UDamageType>();
+
+		if (FirstPersonView)
+			FirstPersonView->FlashDamageIndicator(UDamageType::StaticClass());
+
+			if (Health <= 0.0f && !IsPlayerDead())
+			{
+
+				Kill(GenericDamageType, nullptr, nullptr);
+			}
+	}	
 }
 
 void AFirstPersonCharacter::OnReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
@@ -728,19 +1052,49 @@ void AFirstPersonCharacter::OnReceiveRadialDamage(AActor* DamagedActor, float Da
 	//GEngine->AddOnScreenDebugMessage(628, 1.0f, FColor::Emerald, DamageText);
 }
 
+float AFirstPersonCharacter::CalculateFallDamage(const FHitResult& Hit) const
+{
+	const float ImpactSpeed = FMath::Max(0.0f,-FVector::DotProduct(GetVelocity(),Hit.ImpactNormal));
+
+	if(ImpactSpeed <= MinFallDamageSpeed)
+		return 0.0f;
+
+	const float DamageAlpha = FMath::Clamp((ImpactSpeed - MinFallDamageSpeed) /	(LethalFallDamageSpeed - MinFallDamageSpeed),0.0f,1.0f);
+
+	const float CurvedDamageAlpha =
+		FMath::Pow(DamageAlpha, 2.0f);
+
+	return MaxFallDamage * CurvedDamageAlpha;
+}
+
+
 UVitalsComponent* AFirstPersonCharacter::GetVitalsComponent()
 {
 	return VitalsComponent;
 }
 
-const float AFirstPersonCharacter::GetStamina() const
+float AFirstPersonCharacter::GetStamina() const
 {
-	return Stamina;
+	if(VitalsComponent)
+		return VitalsComponent->GetCurrentStamina();
+	else
+		return 0.0f;
 }
 
-const float AFirstPersonCharacter::GetMaxStamina() const
+float AFirstPersonCharacter::GetMaxStamina() const
 {
-	return MaxStamina;
+	if(VitalsComponent)
+		return VitalsComponent->GetMaxStamina();
+	else
+		return 0.0f;
+}
+
+float AFirstPersonCharacter::GetReserveStamina() const
+{
+	if (VitalsComponent)
+		return VitalsComponent->GetReserveStamina();
+	else
+		return 0.0f;
 }
 
 const float AFirstPersonCharacter::GetEnergyLevel() const
@@ -803,9 +1157,9 @@ void AFirstPersonCharacter::OnDeath(const FDeathInfo DeathInfo, AActor* DamageCa
 		GetMesh()->SetOwnerNoSee(false);
 	}
 
-	/*notify 3rd person animation instance*/
-	if (UThirdPersonAnimInstance* AnimInstance = GetThirdPersonAnimBlueprint())
-		AnimInstance->OnDeath(DeathInfo);
+	///*notify 3rd person animation instance*/
+	//if (UThirdPersonAnimInstance* AnimInstance = GetThirdPersonAnimBlueprint())
+	//	AnimInstance->OnDeath(DeathInfo);
 	
 	/*if this was a player-controlled pawn - notify Character so it can provide an event*/
 	if (IsPlayerControlled())
