@@ -44,9 +44,35 @@ FText UPlayerHUDWidget::GetInHandItemName()
 	return FText();
 }
 
+TArray<UInteractiveAction*> UPlayerHUDWidget::GetFocusedInteractiveActions() const
+{
+	if (AFirstPersonCharacter* OwningCharacter = GetOwningFirstPersonCharacter())
+	{
+		if (UInteractiveManagerComponent* InteractiveManager = OwningCharacter->GetInteractionsManager())
+		{
+			return InteractiveManager->GetFocusedInteractiveActions();
+		}			
+	}
 
 
-AFirstPersonCharacter* UPlayerHUDWidget::GetOwningFirstPersonCharacter()
+	return TArray<UInteractiveAction*>();
+}
+
+UInteractiveAction* UPlayerHUDWidget::GetPendingInteractiveAction() const
+{
+	if (AFirstPersonCharacter* OwningCharacter = GetOwningFirstPersonCharacter())
+	{
+		if (UInteractiveManagerComponent* InteractiveManager = OwningCharacter->GetInteractionsManager())
+		{
+			return InteractiveManager->GetPendingInteractiveAction();
+		}
+	}
+
+	return nullptr;
+}
+
+
+AFirstPersonCharacter* UPlayerHUDWidget::GetOwningFirstPersonCharacter() const
 {
 	return GetOwningPlayerPawn<AFirstPersonCharacter>();
 }

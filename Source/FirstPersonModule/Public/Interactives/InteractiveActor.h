@@ -27,7 +27,7 @@ public:
 	/*components*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Rendering")
 		class UStaticMeshComponent* Mesh;
-	UPROPERTY(VisibleAnywhere, Category = "Interactive")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interactive")
 		class UInteractiveComponent* InteractiveComponent;
 
 
@@ -60,16 +60,12 @@ private:
 
 
 protected:
-	UFUNCTION()
-		virtual void NativeOnInteractionBegins(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
-	UFUNCTION()
-		virtual void NativeOnInteractionEnds(class AFirstPersonCharacter* User, const class UInteractiveAction* Action, EInteractionEndReason EndReason);
-	//UFUNCTION()
-	//	virtual void OnInteraction(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action) override;
-	//UFUNCTION()
-	//	virtual void OnInteractionEnds(class AFirstPersonCharacter* User, class UInteractiveCollisionComponent* InteractiveComponent, const class UInteractiveAction* Action);
-	/*UFUNCTION()
-		virtual void OnInteractionInterrupted()*/
+	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action) override;
+	virtual void NativeOnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action) override;
+	virtual void NativeOnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, bool bInterrupted) override;
+	virtual bool IsActionAvailable_Implementation(const AFirstPersonCharacter* User, const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const override;
+
+
 public:
 	/*returns whether true if this user is currently interacting with this Actor*/
 	UFUNCTION()

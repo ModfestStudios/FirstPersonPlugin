@@ -43,21 +43,12 @@ AInteractiveActor::AInteractiveActor(const FObjectInitializer& ObjectInitializer
 
 	bReplicates = true;
 	PrimaryActorTick.bCanEverTick = true;
-
 }
 
 // Called when the game starts or when spawned
 void AInteractiveActor::BeginPlay()
 {
 	Super::BeginPlay();
-
-
-	/*begin bindings*/
-	if (InteractiveComponent)
-	{
-		InteractiveComponent->OnInteractionBegin.AddDynamic(this,&AInteractiveActor::NativeOnInteractionBegins);
-		InteractiveComponent->OnInteractionEnd.AddDynamic(this, &AInteractiveActor::NativeOnInteractionEnds);
-	}
 	
 }
 
@@ -67,17 +58,26 @@ void AInteractiveActor::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AInteractiveActor::NativeOnInteractionBegins(AFirstPersonCharacter* User, const UInteractiveAction* Action)
+void AInteractiveActor::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
 {
-	
-
-
+	UE_LOG(LogTemp,Warning,TEXT("%s::NativeOnInteractionStarted() WAS NOT OVERRIDDEN"), *GetName());
 }
 
-void AInteractiveActor::NativeOnInteractionEnds(AFirstPersonCharacter* User, const UInteractiveAction* Action, EInteractionEndReason EndReason)
+void AInteractiveActor::NativeOnInteractionCompleted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
 {
-	
+	UE_LOG(LogTemp, Warning, TEXT("%s::NativeOnInteractionCompleted() WAS NOT OVERRIDDEN"), *GetName());
 }
+
+void AInteractiveActor::NativeOnInteractionCanceled(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, bool bInterrupted)
+{
+	UE_LOG(LogTemp, Warning, TEXT("%s::NativeOnInteractionCanceled() WAS NOT OVERRIDDEN"), *GetName());
+}
+
+bool AInteractiveActor::IsActionAvailable_Implementation(const AFirstPersonCharacter* User, const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const
+{
+	return true;
+}
+
 
 //void AInteractiveActor::OnInteraction(AFirstPersonCharacter* User, UInteractiveCollisionComponent* InteractiveComponent, const UInteractiveAction* Action)
 //{

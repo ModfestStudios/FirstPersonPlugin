@@ -40,7 +40,7 @@ public:
 
 	/*list of interactions this item can have*/
 	UPROPERTY(EditAnywhere, Category = "Interaction")
-		TArray<FInteractiveActionCall> Interactions;	
+		TArray<FInteractiveActionConfig> Interactions;	
 
 	/*local variable to be updated by local client only - indicates when this is being hovered*/
 	bool bHovered = false;

@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Interactives/Interactives.h"
+#include "Inventory/Inventory.h"
 #include "PlayerHUDWidget.generated.h"
 
 /**
@@ -45,6 +47,16 @@ public:
 	UFUNCTION(BlueprintPure, Blueprintcallable, Category = "Inventory")
 		FText GetInHandItemName();
 
+	
+//============================
+//========INTERACTIVES========
+//============================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interactions")
+		TArray<class UInteractiveAction*> GetFocusedInteractiveActions() const;
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interactions")
+		class UInteractiveAction* GetPendingInteractiveAction() const;
+
 
 
 //=========================
@@ -52,6 +64,6 @@ public:
 //=========================
 public:
 	UFUNCTION(BlueprintPure, BlueprintCallable, Category = "Player")
-		class AFirstPersonCharacter* GetOwningFirstPersonCharacter();
+		class AFirstPersonCharacter* GetOwningFirstPersonCharacter() const;
 
 };

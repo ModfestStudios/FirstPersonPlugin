@@ -51,13 +51,13 @@ const TArray<FText> UInteractiveCollisionComponent::GetActionLabels(AFirstPerson
 {
 	TArray<FText> ActionLabels = TArray<FText>();
 
-	for (uint8 i = 0; i < Interactions.Num(); i++)
-	{
-		UInteractiveAction* Action = Interactions[i].Action.GetDefaultObject();
+	//for (uint8 i = 0; i < Interactions.Num(); i++)
+	//{
+	//	UInteractiveAction* Action = Interactions[i].Action.GetDefaultObject();
 
-		if (Action->CanExecute(GetOwner(),User))
-			ActionLabels.Add(Action->InteractionLabel);
-	}
+	//	if (Action->CanExecute(GetOwner(),User))
+	//		ActionLabels.Add(Action->InteractionLabel);
+	//}
 
 	return ActionLabels;
 }
@@ -175,7 +175,7 @@ void UInteractiveCollisionComponent::CompleteInteraction(AFirstPersonCharacter* 
 
 void UInteractiveCollisionComponent::DenyInteraction(AFirstPersonCharacter* User)
 {	
-	User->GetInteractionsManager()->ReceiveDeniedInteraction(GetOwner());	
+	//User->GetInteractionsManager()->NativeOnInteractionDenied(GetOwner());	
 
 	//if (OnInteractionDenied.IsBound())
 	//	OnInteractionCompleted.Broadcast(GetOwner(), User);

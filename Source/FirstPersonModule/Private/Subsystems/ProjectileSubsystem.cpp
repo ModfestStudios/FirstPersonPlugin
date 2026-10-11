@@ -60,7 +60,7 @@ void UProjectileSubsystem::Tick(float DeltaTime)
 
 TStatId UProjectileSubsystem::GetStatId() const
 {
-	return TStatId();
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UProjectileSubsystem, STATGROUP_Tickables);
 }
 
 void UProjectileSubsystem::SpawnProjectile(FProjectile& NewProjectile)

@@ -304,6 +304,8 @@ protected:
 		class UInputAction* BeginInteractionAction;
 	UPROPERTY(EditDefaultsonly, Category = "Input|Actions|Interactives")
 		class UInputAction* EndInteractionAction;
+	UPROPERTY(EditDefaultsonly, Category = "Input|Actions|Interactives")
+		class UInputAction* CycleInteractiveAction;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input|Actions|Inventory")
 		class UInputAction* ToggleInventoryAction;
@@ -482,6 +484,8 @@ protected:
 		virtual void BeginInteraction();
 	UFUNCTION()
 		virtual void EndInteraction();
+	UFUNCTION()
+		virtual void CycleInteractiveActions(const FInputActionValue& Value);
 
 
 	//=======================
