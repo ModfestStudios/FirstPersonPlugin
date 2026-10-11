@@ -122,11 +122,10 @@ void ATerminalSystem::ShutdownTerminal()
 
 }
 
-void ATerminalSystem::NativeOnInteractionBegins(AFirstPersonCharacter* User, const UInteractiveAction* Action)
-{
-	Super::NativeOnInteractionBegins(User, Action);
 
-	EnterTerminal(User);	
+void ATerminalSystem::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+{
+	EnterTerminal(User);
 }
 
 void ATerminalSystem::EnterTerminal(AFirstPersonCharacter* User)

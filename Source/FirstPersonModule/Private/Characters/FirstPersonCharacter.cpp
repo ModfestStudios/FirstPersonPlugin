@@ -45,7 +45,6 @@
 #include "Equipment/Watch.h"
 
 
-
 /*framwork*/
 #include "GameFramework/DamageType.h"
 #include "Engine/SkeletalMesh.h"
@@ -434,6 +433,12 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		if (DefaultInputActionRef.Succeeded())
 			EndInteractionAction = DefaultInputActionRef.Object;
 	}
+	//cycle interaction
+	{
+	static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_CycleInteractive"));
+	if (DefaultInputActionRef.Succeeded())
+		CycleInteractiveAction = DefaultInputActionRef.Object;
+	}
 	//inventory
 	{
 		static ConstructorHelpers::FObjectFinder<UInputAction> DefaultInputActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleInventoryMenu"));
@@ -574,6 +579,7 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	/*interactions*/
 	Input->BindAction(BeginInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::BeginInteraction);
 	Input->BindAction(EndInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::EndInteraction);
+	Input->BindAction(CycleInteractiveAction, ETriggerEvent::Triggered,this, &AFirstPersonCharacter::CycleInteractiveActions);
 
 	/*inventory*/
 	Input->BindAction(ToggleInventoryAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::ToggleInventory);
@@ -1327,7 +1333,11 @@ void AFirstPersonCharacter::BeginInteraction()
 {
 	if (GetInteractionsManager())
 	{
-		GetInteractionsManager()->Interact();
+		UInteractiveComponent* Interactive = GetInteractionsManager()->GetFocusedInteractive();
+		UInteractiveAction* Action = GetInteractionsManager()->GetPendingInteractiveAction();
+
+		if(Interactive && Action)
+			GetInteractionsManager()->StartInteraction(Interactive,Action);
 	}
 }
 
@@ -1335,8 +1345,23 @@ void AFirstPersonCharacter::EndInteraction()
 {
 	if (GetInteractionsManager())
 	{
-		GetInteractionsManager()->StopInteraction();
+		UInteractiveComponent* Interactive = GetInteractionsManager()->GetFocusedInteractive();
+		UInteractiveAction* Action = GetInteractionsManager()->GetPendingInteractiveAction();
+		GetInteractionsManager()->StopInteraction(Interactive, Action);
 	}
+}
+
+void AFirstPersonCharacter::CycleInteractiveActions(const FInputActionValue& Value)
+{
+	const float ScrollValue = Value.Get<float>();
+
+	if(FMath::IsNearlyZero(ScrollValue) || !GetInteractionsManager())
+		return;
+
+	if(ScrollValue > 0.0)
+		GetInteractionsManager()->PreviousPendingAction();
+	else
+		GetInteractionsManager()->NextPendingAction();
 }
 
 

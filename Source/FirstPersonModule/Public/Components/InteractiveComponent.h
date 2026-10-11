@@ -33,13 +33,13 @@ public:
 
 
 
-	UPROPERTY(EditDefaultsOnly, Category = "Material")
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Hover")
 		bool bHighlightOnHover = false;
-	UPROPERTY(EditDefaultsOnly, Category = "Material")
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Hover", meta = (EditCondition = "bHighlightOnHover"))
 		FName HighlightMaterialParameterName = "Highlight Intensity";
-	UPROPERTY(EditDefaultsOnly, Category = "Material")
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Hover", meta = (EditCondition = "bHighlightOnHover"))
 		float HighlightMaterialIntensity = 3.0f;
-	UPROPERTY(EditDefaultsOnly, Category = "Material")
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Hover", meta = (EditCondition = "bHighlightOnHover"))
 		float DefaultMaterialIntensity = 0.0f;
 
 	UPROPERTY()
@@ -47,12 +47,12 @@ public:
 
 
 
-	/*if enabled - will automatically find the UFUNCTION() (required) in the owner's C++ code and call it*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
-		bool bAutoCallFunction = false;
-	/*name of the UFUNCTION() to call in C++ of this component's owner*/
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction",meta = (EditCondition=bAutoCallFunction))
-		FName FunctionToCall;
+	///*if enabled - will automatically find the UFUNCTION() (required) in the owner's C++ code and call it*/
+	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
+	//	bool bAutoCallFunction = false;
+	///*name of the UFUNCTION() to call in C++ of this component's owner*/
+	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction",meta = (EditCondition=bAutoCallFunction))
+	//	FName FunctionToCall;
 
 
 	//UPROPERTY(BlueprintAssignable)
@@ -62,7 +62,7 @@ public:
 
 
 
-	UPROPERTY(EditAnywhere, Category = "Animation")
+	UPROPERTY(EditAnywhere, Category = "Interaction|Animation")
 		UCurveFloat* AnimationCurve;
 
 	UPROPERTY(Transient)
@@ -76,26 +76,39 @@ public:
 	UPROPERTY(Replicated, EditAnywhere, Category = "Interaction")
 		bool bInteractionDisabled = false;
 
+	
 	uint8 InteractionIndex = 0; //the current index of our interactions the player is set to
 
 
 	/*replicated variable indicating this is already being interacted with - used to prevent further use by others*/
 	UPROPERTY(Replicated)
 		bool bInteractionActive;
+	UPROPERTY()
+		class UInteractiveAction* ActiveAction = nullptr;
+
+
 	UPROPERTY(Replicated)
-		AActor* CurrentUser;
-	UPROPERTY(EditAnywhere, Category = "Interaction")
-		EInteractionType InteractionType;
+		AFirstPersonCharacter* ActiveUser;
+
+	UPROPERTY(Transient)
+		TArray<UInteractiveAction*> RuntimeActions;
 
 	/*list of interactions this item can have*/
-	UPROPERTY(EditAnywhere, Category = "Interaction")
-		TArray<FInteractiveActionCall> Interactions;
+	UPROPERTY(EditAnywhere, Category = "Interaction", meta = (DisplayName = "Actions", TitleProperty="Action"))
+		TArray<FInteractiveActionConfig> ActionConfigs;
 
 	/*local variable to be updated by local client only - indicates when this is being hovered*/
 	bool bHovered = false;
 
-	/*DELEGATES/EVENTS*/
 
+	/**/
+protected:
+	UPROPERTY(BlueprintReadOnly, Category = "Interaction|Grid")
+		FIntPoint RegisteredGridKey;
+
+
+	/*DELEGATES/EVENTS*/
+public:
 	///*interaction started*/
 	UPROPERTY(BlueprintAssignable)
 		FOnInteraction OnInteractionBegin;
@@ -127,11 +140,16 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	UFUNCTION()
+		virtual void InitializeActions();
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:	
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 
 
 protected:
@@ -184,29 +202,35 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interaction|Actions")
 		const UInteractiveAction* GetCurrentAction() const;
 	UFUNCTION(BlueprintCallable, Category = "Interaction|Actions")
+		UInteractiveAction* GetActionByID(FGuid ID) const;
+	UFUNCTION(BlueprintCallable, Category = "Interaction|Actions")
 		const FName GetCurrentActionFunctionToCall() const;
-
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interaction|Actions")
+		TArray<UInteractiveAction*> GetAvailableActions(class AFirstPersonCharacter* User) const;
+	/*used to determine if an ACTION is available (otherwise it's hidden)*/
+	UFUNCTION()
+		virtual bool IsActionAvailable(class AFirstPersonCharacter* User, const class UInteractiveAction* Action) const;
 
 	//=================================================
 	//===================INTERACTION===================
 	//=================================================
 public:
-	/*whether or not the object has any interactions available or potentially busy*/
-	UFUNCTION()
-		virtual bool IsInteractionAvailable(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
+	
+	
 	/*checks to see if interactions are enabled - hides it from InteractionManager if true*/
 	UFUNCTION()
-		virtual bool IsInteractionEnabled();
+		virtual bool IsInteractionEnabled() const;
+	UFUNCTION()
+		virtual bool IsActionInProgress(const class UInteractiveAction* Action) const;
 
+	/*function called to initiate an interaction*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions")
-		virtual bool BeginInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
-
-public:
-	/*function that a player can call directly to try and stop an interaction*/
+		virtual bool NativeOnBeginInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
+	/*function called when an interaction has been stopped either intentionally or unintentionally*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions")
-		virtual void StopInteraction(class AFirstPersonCharacter* User);
+		virtual void NativeOnStopInteraction(class AFirstPersonCharacter* User,const class UInteractiveAction* Action, EInteractionEndReason EndReason);
 
-
+protected:
 
 	/*cancel an interaction due to interruption or abandonment*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions")
@@ -218,7 +242,7 @@ public:
 
 	/*interaction attempt was denied*/
 	UFUNCTION()
-		virtual void DenyInteraction(class AFirstPersonCharacter* User);
+		virtual void NativeOnDenyInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
 
 
 
@@ -238,8 +262,23 @@ public:
 //	UFUNCTION()
 //		virtual void UpdateCollisionProperties();
 
-		
+	//==============================================================
+	//=========================REGISTRATION=========================
+	//==============================================================
+protected:
+	UFUNCTION()
+		virtual void RegisterInteractive();
+	UFUNCTION()
+		virtual void UnregisterInteractive();
 
+	//==============================================================
+	//=============================GRID=============================
+	//=============================================================
+public:
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interaction|Grid")
+		virtual FIntPoint GetGridKey() const;
+	UFUNCTION(BlueprintCallable, Category = "Interaction|Grid")
+	virtual void UpdateGridKey(FIntPoint NewGridKey);
 
 	//=============================================================
 	//==========================UTILITIES==========================

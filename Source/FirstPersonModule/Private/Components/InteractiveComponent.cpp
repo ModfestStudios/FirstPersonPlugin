@@ -3,6 +3,7 @@
 
 #include "Components/InteractiveComponent.h"
 #include "Interactives/InteractiveActor.h"
+#include "Interactives/InteractiveAction.h"
 
 /*components*/
 #include "Components/InteractiveCollisionComponent.h"
@@ -27,6 +28,9 @@
 /*logging*/
 #include "../Logging.h"
 
+/*subsystems*/
+#include "Subsystems/InteractiveSubsystem.h"
+
 /*replication*/
 #include "Net/UnrealNetwork.h"
 
@@ -38,7 +42,7 @@ void UInteractiveComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME(UInteractiveComponent, bIsInteractive);
 	DOREPLIFETIME(UInteractiveComponent, bInteractionDisabled);
 	DOREPLIFETIME(UInteractiveComponent, bInteractionActive);
-	DOREPLIFETIME(UInteractiveComponent, CurrentUser);
+	DOREPLIFETIME(UInteractiveComponent, ActiveUser);
 }
 
 UInteractiveComponent::UInteractiveComponent()
@@ -61,6 +65,8 @@ UInteractiveComponent::UInteractiveComponent()
 		InteractiveCollision->ShapeColor = FColor(55, 195, 251, 255);
 		InteractiveCollision->SetLineThickness(2.0f);		
 	}
+
+	bAutoActivate = true;
 }
 
 void UInteractiveComponent::OnRegister()
@@ -101,12 +107,43 @@ void UInteractiveComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	InitializeActions();
+
+	/*register component*/
+	RegisterInteractive();
+
+	/*create dynamic material if needed*/
 	InitDynamicMaterial();
+
 	/*init collision bindings*/
 	//if (InteractiveCollision)
 	//{
 	//	InteractiveCollision->OnInteractiveHovered.AddDynamic(this,&UInteractiveComponent::NativeOnHovered);
 	//}
+}
+
+void UInteractiveComponent::InitializeActions()
+{
+	for (const FInteractiveActionConfig& Config : ActionConfigs)
+	{
+		if(!Config.Action)
+			continue;
+
+		UInteractiveAction* Action = NewObject<UInteractiveAction>(this, Config.Action);
+
+		if(!Action)
+			continue;
+
+		Action->Initialize(this, Config);
+
+		RuntimeActions.Add(Action);
+	}
+}
+
+void UInteractiveComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	UnregisterInteractive();
+	Super::EndPlay(EndPlayReason);
 }
 
 
@@ -115,7 +152,33 @@ void UInteractiveComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// ...
+	for (UInteractiveAction* Action : RuntimeActions)
+	{
+		if(!IsValid(Action))
+			continue;
+
+		if (IsActionInProgress(Action))
+		{
+			if (UInteractiveManagerComponent* InteractionManager = ActiveUser->GetComponentByClass<UInteractiveManagerComponent>())
+			{
+				if (Action->InteractionType == EInteractionType::Duration)
+				{
+					float StartTimeStamp = InteractionManager->InteractionStartTime;
+					float CurrentTimeStamp = GetWorld()->GetTimeSeconds();
+					float ElapsedTime = CurrentTimeStamp - StartTimeStamp;
+
+					if(ElapsedTime >= Action->ActionDuration)
+						NativeOnStopInteraction(ActiveUser,Action,EInteractionEndReason::Completed);
+				}
+				
+			}	
+		}
+	}
+}
+
+void UInteractiveComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+	Super::OnComponentDestroyed(bDestroyingHierarchy);
 }
 
 
@@ -222,13 +285,13 @@ const TArray<FText> UInteractiveComponent::GetActionLabels(AFirstPersonCharacter
 {
 	TArray<FText> ActionLabels = TArray<FText>();
 
-	for (uint8 i = 0; i < Interactions.Num(); i++)
-	{
-		UInteractiveAction* Action = Interactions[i].Action.GetDefaultObject();
+	//for (uint8 i = 0; i < ActionConfigs.Num(); i++)
+	//{
+	//	UInteractiveAction* Action = ActionConfigs[i].Action.GetDefaultObject();
 
-		if (Action->CanExecute(GetOwner(), User))
-			ActionLabels.Add(Action->InteractionLabel);
-	}
+	//	if (Action->CanExecute(GetOwner(), User))
+	//		ActionLabels.Add(Action->InteractionLabel);
+	//}
 
 	return ActionLabels;
 }
@@ -261,18 +324,78 @@ void UInteractiveComponent::TogglePromptVisibility(bool bNewVisibility)
 
 const UInteractiveAction* UInteractiveComponent::GetCurrentAction() const
 {
-	if (!Interactions.IsValidIndex(InteractionIndex))
+	if (!ActionConfigs.IsValidIndex(InteractionIndex))
 		return nullptr;
 
-	return Interactions[InteractionIndex].Action.GetDefaultObject();
+	return ActionConfigs[InteractionIndex].Action.GetDefaultObject();
+}
+
+UInteractiveAction* UInteractiveComponent::GetActionByID(FGuid ID) const
+{
+	for (UInteractiveAction* Action : RuntimeActions)
+	{
+		if(Action->ID == ID)
+			return Action;
+	}
+
+	return nullptr;
 }
 
 const FName UInteractiveComponent::GetCurrentActionFunctionToCall() const
 {
-	if (!Interactions.IsValidIndex(InteractionIndex))
+	if (!ActionConfigs.IsValidIndex(InteractionIndex))
 		return "N/A";
 
-	return Interactions[InteractionIndex].FunctionToCall;
+	return ActionConfigs[InteractionIndex].FunctionToCall;
+}
+
+TArray<UInteractiveAction*> UInteractiveComponent::GetAvailableActions(AFirstPersonCharacter* User) const
+{
+	TArray<UInteractiveAction*> AvailableActions;
+
+	for (const UInteractiveAction* Action : RuntimeActions)
+	{
+		//UE_LOG(LogTemp,Log,TEXT("===============GetAvailableActions()==============="));
+		if(IsActionAvailable(User, Action))
+			AvailableActions.Add(const_cast<UInteractiveAction*>(Action));
+	}
+	
+	return AvailableActions;
+}
+
+bool UInteractiveComponent::IsActionAvailable(AFirstPersonCharacter* User, const UInteractiveAction* Action) const
+{
+	//UE_LOG(LogTemp,Warning,TEXT("%s::IsActionAvailable(%s,%s)"),*GetName(),*GetNameSafe(User),*GetNameSafe(Action));
+	if (!User || !Action)
+		return false;
+
+	AActor* Owner = GetOwner();
+
+	if (!Owner)
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("\t NO OWNER FOUND"));
+		return false;
+	}
+		
+
+	/*let the owning Actor make the final contextual decision*/
+	if (IInteractiveActorInterface* InteractiveInterface = Cast<IInteractiveActorInterface>(Owner))
+	{		
+		bool bActorResult = InteractiveInterface->Execute_IsActionAvailable(Owner,User,this,Action);
+		
+		//UE_LOG(LogTemp,Log, TEXT("\t %s Result : %d"),*GetNameSafe(Owner),bActorResult);
+
+		return bActorResult;
+	}
+	else
+	{
+		//UE_LOG(LogTemp, Warning, TEXT("\t NOT AN INTERACTIVE ACTOR INTERFACE"));		
+	}
+
+	/*otherwise we return the action's default state*/
+	bool bActionResult = Action->IsActionAvailable(this, Owner, User);
+	
+	return bActionResult;
 }
 
 //=================================================
@@ -280,20 +403,10 @@ const FName UInteractiveComponent::GetCurrentActionFunctionToCall() const
 //=================================================
 
 
-bool UInteractiveComponent::IsInteractionAvailable(AFirstPersonCharacter* User, const UInteractiveAction* Action)
-{
-	if (bInteractionDisabled)
-		return false;
 
-	/*if our owner (actor) is using the InteractiveActorInterface let them override the results*/
-	//if (GetOwner()->GetClass()->ImplementsInterface(UInteractiveActorInterface::StaticClass()))
-	//	return Cast<IInteractiveActorInterface>(GetOwner())->Execute_IsInteractionAvailable(GetOwner(), User, this, Action);
-
-	return bIsInteractive;
-}
 
 /*whether or not this interactive should be pickedu up by traces currently or not*/
-bool UInteractiveComponent::IsInteractionEnabled()
+bool UInteractiveComponent::IsInteractionEnabled() const
 {
 	return !bInteractionDisabled;
 }
@@ -313,36 +426,99 @@ bool UInteractiveComponent::IsInteractionEnabled()
 //		OnInteraction.Broadcast(User);*/
 //}
 
-/*starts the interaction*/
-bool UInteractiveComponent::BeginInteraction(AFirstPersonCharacter* User, const UInteractiveAction* Action)
+bool UInteractiveComponent::IsActionInProgress(const UInteractiveAction* Action) const
 {
-	//const UInteractiveAction* Action = GetCurrentAction();
-	const FName FunctionName = GetCurrentActionFunctionToCall();
+	return bInteractionActive && 
+			IsValid(ActiveUser) &&
+			IsValid(ActiveAction) &&
+			ActiveAction == Action;
+}
 
-	/*deny interaction*/
-	if (!(IsInteractionAvailable)(User, Action))
+/*starts the interaction*/
+bool UInteractiveComponent::NativeOnBeginInteraction(AFirstPersonCharacter* User, const UInteractiveAction* Action)
+{	
+	/*deny interaction if unavailable*/
+	if (!(IsActionAvailable)(User, Action))
 	{
-		DenyInteraction(User);
+		NativeOnDenyInteraction(User, Action);
 		return false;
 	}
 
+	bInteractionActive = true;
+
+	/*mark our user*/
 	SetActiveUser(User);
+	ActiveAction = const_cast<UInteractiveAction*>(Action);
+
+	/*notify the interactive manager that the action has been accepted and officially started*/
+	User->GetInteractionsManager()->NativeOnInteractionStarted(this, Action);
+
+	/*notify the action*/
+	Action->NativeOnInteractionStarted(this, GetOwner(), User);
+
+	if(Action->FunctionType == EInteractionFunctionType::NativeEvent)
+	{
+		if(IInteractiveActorInterface* ActorInterface = Cast<IInteractiveActorInterface>(GetOwner()))
+			ActorInterface->StartInteraction(User,this,Action);
+			
 
 	/*notify anyone listening to our component*/
-	if (OnInteractionBegin.IsBound())
-		OnInteractionBegin.Broadcast(User, Action);
+		if (OnInteractionBegin.IsBound())
+			OnInteractionBegin.Broadcast(User, Action);
+	}
 
-	/*if a custom function is declared in the Blueprint - try to call that function on our owner*/
-	if (!FunctionName.IsNone())
+	else if (Action->FunctionType == EInteractionFunctionType::CustomFunction)
+	{
+		if(Action->FunctionToCall.IsNone())
+		{
+			UE_LOG(LogTemp,Warning,TEXT("%s::NativeOnBeginInteraction() - %s (Action) DID NOT DEFINE FUNCTION NAME FOR CUSTOM FUNCTION CALL"),*GetName(), *GetNameSafe(Action));
+			return false;
+		}
+
+		const FName FunctionName = Action->FunctionToCall;
 		CallOwnerFunctionByName(FunctionName, User, Action);
+	}
 
+	/*go ahead and just instantly notify we've completed*/
+	if(Action->InteractionType == EInteractionType::Instant)
+		NativeOnStopInteraction(User,Action,EInteractionEndReason::Completed);
+	
 
 	return true;
 }
 
-void UInteractiveComponent::StopInteraction(AFirstPersonCharacter* User)
+void UInteractiveComponent::NativeOnStopInteraction(AFirstPersonCharacter* User, const UInteractiveAction* Action, EInteractionEndReason EndReason)
 {
+	if (IsActionInProgress(Action))
+	{
+		bool bInterrupted = EndReason == EInteractionEndReason::Interrupted ? true : false;
+		RemoveActiveUser(User);
 
+		/*notify the interactive manager that we've been succesful*/
+		if(EndReason == EInteractionEndReason::Completed)
+			User->GetInteractionsManager()->NativeOnInteractionCompleted(this, Action);
+		else
+			User->GetInteractionsManager()->NativeOnInteractionCancelled(this, Action, bInterrupted);
+
+		if (Action->FunctionType == EInteractionFunctionType::NativeEvent)
+		{
+			if (IInteractiveActorInterface* ActorInterface = Cast<IInteractiveActorInterface>(GetOwner()))
+				ActorInterface->StopInteraction(User, this, Action, EndReason);
+
+
+		/*notify anyone listening to our component*/
+			if (OnInteractionEnd.IsBound())
+				OnInteractionEnd.Broadcast(User, Action,EndReason);
+		}
+
+		if(EndReason == EInteractionEndReason::Completed)
+			Action->NativeOnInteractionCompleted(this,GetOwner(),User);
+		else
+			Action->NativeOnInteractionCanceled(this,GetOwner(),User,bInterrupted);
+	}
+
+	bInteractionActive = false;
+	ActiveAction = nullptr;
 }
 
 
@@ -372,9 +548,9 @@ void UInteractiveComponent::CompleteInteraction(AFirstPersonCharacter* User, con
 		//OnInteractionCompleted.Broadcast(GetOwner(), User);
 }
 
-void UInteractiveComponent::DenyInteraction(AFirstPersonCharacter* User)
+void UInteractiveComponent::NativeOnDenyInteraction(AFirstPersonCharacter* User, const UInteractiveAction* Action)
 {
-	User->GetInteractionsManager()->ReceiveDeniedInteraction(GetOwner());
+	
 
 	//if (OnInteractionDenied.IsBound())
 	//	OnInteractionCompleted.Broadcast(GetOwner(), User);
@@ -392,82 +568,36 @@ float UInteractiveComponent::GetRemainingInteractionTime()
 }
 
 
-	//===============================================================
-	//===========================COLLISION===========================
-	//===============================================================
-
-//void UInteractiveComponent::RebuildCollision()
-//{
-//	if (!GetOwner())
-//		return;
-//
-//	if (InteractiveCollision)
-//	{
-//		InteractiveCollision->DestroyComponent();
-//		InteractiveCollision = nullptr;
-//	}
-//
-//	switch (InteractiveShape)
-//	{
-//	case EInteractiveShape::Box:
-//		{
-//			UBoxComponent* Shape = NewObject<UBoxComponent>(GetOwner(), NAME_None, RF_Transactional);
-//			Shape->InitBoxExtent(BoxExtent);
-//			InteractiveCollision = Shape;
-//			break;
-//		}
-//
-//	case EInteractiveShape::Sphere:
-//		{
-//			USphereComponent* Shape = NewObject<USphereComponent>(GetOwner(), NAME_None, RF_Transactional);
-//			Shape->InitSphereRadius(SphereRadius);
-//			InteractiveCollision = Shape;
-//			break;
-//		}
-//
-//	case EInteractiveShape::Capsule:
-//		{
-//			UCapsuleComponent* Shape = NewObject<UCapsuleComponent>(GetOwner(), NAME_None, RF_Transactional);
-//			Shape->InitCapsuleSize(CapsuleRadius, CapsuleHalfHeight);
-//			InteractiveCollision = Shape;
-//			break;
-//		}
-//	}
-//
-//	if (!InteractiveCollision)
-//		return;
-//
-//	GetOwner()->AddInstanceComponent(InteractiveCollision);
-//
-//	InteractiveCollision->SetupAttachment(this);
-//	InteractiveCollision->SetRelativeTransform(FTransform::Identity);
-//	InteractiveCollision->SetCollisionProfileName(TEXT("Interactive"));
-//	InteractiveCollision->CanCharacterStepUpOn = ECanBeCharacterBase::ECB_No;
-//	InteractiveCollision->RegisterComponent();
-//}
-//
-//void UInteractiveComponent::UpdateCollisionProperties()
-//{
-//	if (UBoxComponent* Box = Cast<UBoxComponent>(InteractiveCollision))
-//	{
-//		Box->SetBoxExtent(BoxExtent);
-//	}
-//	else if (USphereComponent* Sphere = Cast<USphereComponent>(InteractiveCollision))
-//	{
-//		Sphere->SetSphereRadius(SphereRadius);
-//	}
-//	else if (UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(InteractiveCollision))
-//	{
-//		Capsule->SetCapsuleSize(CapsuleRadius, CapsuleHalfHeight);
-//	}
-//}
-
-
-
 
 //=============================================================
 //==========================UTILITIES==========================
 //=============================================================
+
+void UInteractiveComponent::RegisterInteractive()
+{
+	if (UInteractiveSubsystem* ISS = GetWorld()->GetSubsystem<UInteractiveSubsystem>())
+	{
+		ISS->RegisterInteractiveComponent(this);
+	}
+}
+
+void UInteractiveComponent::UnregisterInteractive()
+{
+	if (UInteractiveSubsystem* ISS = GetWorld()->GetSubsystem<UInteractiveSubsystem>())
+	{
+		ISS->UnregisterInteractiveComponent(this);
+	}
+}
+
+FIntPoint UInteractiveComponent::GetGridKey() const
+{
+	return RegisteredGridKey;
+}
+
+void UInteractiveComponent::UpdateGridKey(FIntPoint NewGridKey)
+{
+	RegisteredGridKey = NewGridKey;
+}
 
 void UInteractiveComponent::CallOwnerFunctionByName(const FName FunctionName, const AFirstPersonCharacter* User, const UInteractiveAction* Action)
 {
@@ -502,14 +632,14 @@ void UInteractiveComponent::SetActiveUser(AFirstPersonCharacter* User)
 {
 	/*beginning of interaction starts*/
 	bInteractionActive = true;
-	CurrentUser = User;
+	ActiveUser = User;
 }
 
 void UInteractiveComponent::RemoveActiveUser(AFirstPersonCharacter* User)
 {
-	if (CurrentUser == User)
+	if (ActiveUser == User)
 	{
 		bInteractionActive = false;
-		CurrentUser = nullptr;
+		ActiveUser = nullptr;
 	}
 }

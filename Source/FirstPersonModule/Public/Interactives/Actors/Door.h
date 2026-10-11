@@ -4,17 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Interactives/InteractiveActor.h"
 #include "Interfaces/InteractiveActorInterface.h"
 #include "Door.generated.h"
 
 UCLASS(abstract)
-class FIRSTPERSONMODULE_API ADoor : public AActor, public IInteractiveActorInterface
+class FIRSTPERSONMODULE_API ADoor : public AInteractiveActor
 {
 	GENERATED_BODY()
 public:
 	
 
-
+	//UPROPERTY(VisibleAnywhere, Category = "Components")
+	//	class UStaticMeshComponent* Mesh;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	//	class UDoorComponent* DoorComponent;
 
 	/*auto-initialized list of doors for this actor*/
 	TArray<class UDoorComponent*> DoorComponents;
@@ -40,7 +44,16 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Interactive|Door")
 		virtual void Open();
 	UFUNCTION(BlueprintCallable, Category = "Interactive|Door")
-		virtual void Close();
+		virtual void Close();	
+
+	//===========================
+	//==========ACTIONS==========
+	//===========================
+public:
+	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action) override;
+	virtual void NativeOnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action) override;
+	virtual void NativeOnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, bool bInterrupted) override;
+	virtual bool IsActionAvailable_Implementation(const AFirstPersonCharacter* User,const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const override;
 
 
 };
