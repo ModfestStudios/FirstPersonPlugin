@@ -103,7 +103,7 @@ public:
 	//=====================
 	//=====INTERACTION=====
 	//=====================
-	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action) override;
+	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context) override;
 	
 
 	UFUNCTION(BlueprintCallable, Category = "Terminal System")

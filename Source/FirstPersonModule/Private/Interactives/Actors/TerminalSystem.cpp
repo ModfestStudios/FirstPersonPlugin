@@ -30,6 +30,7 @@
 
 
 // Sets default values
+
 ATerminalSystem::ATerminalSystem(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
@@ -122,8 +123,11 @@ void ATerminalSystem::ShutdownTerminal()
 
 }
 
+//================================================
+//==================INTERACTION===================
+//================================================
 
-void ATerminalSystem::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void ATerminalSystem::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	EnterTerminal(User);
 }
@@ -132,21 +136,18 @@ void ATerminalSystem::EnterTerminal(AFirstPersonCharacter* User)
 {
 	if (AFirstPersonPlayerController* PC = User->GetController<AFirstPersonPlayerController>())
 	{
+		const auto AddTerminalWidget = [this, PC]()
+		{
+			AddWidgetToViewport(PC);
+		};
+
 		PC->SetInputMode(FInputModeUIOnly::FInputModeUIOnly());
 
 		/*animate camera towards terminal*/
 		SetPlayerViewToCamera(PC);		
 
 		/*create and pullup the widget for the player to interact with*/
-		GetWorld()->GetTimerManager().SetTimer(
-			WidgetAddHandle,
-			FTimerDelegate::CreateLambda([this, PC]()
-		{
-			AddWidgetToViewport(PC);
-		}),
-			CameraBlendTime + .30f,
-			false
-		);
+		GetWorld()->GetTimerManager().SetTimer(WidgetAddHandle, FTimerDelegate::CreateLambda(AddTerminalWidget), CameraBlendTime + .30f, false);
 	}
 }
 
@@ -159,6 +160,9 @@ void ATerminalSystem::ExitTerminal(AFirstPersonCharacter* User)
 	}
 }
 
+//================================================
+//=====================CAMERA=====================
+//================================================
 
 void ATerminalSystem::SetPlayerViewToCamera(AFirstPersonPlayerController* Player)
 {
@@ -172,11 +176,10 @@ void ATerminalSystem::RestorePlayerView(AFirstPersonPlayerController* Player)
 		Player->SetViewTargetWithBlend(Player->GetPawn(), CameraBlendTime, EViewTargetBlendFunction::VTBlend_EaseIn);		
 }
 
+//================================================
+//=======================UI=======================
+//================================================
 
-
-//==================
-//========UI========
-//==================
 UOperatingSystemWidget* ATerminalSystem::GetTerminalWidget()
 {
 	return Cast<UOperatingSystemWidget>(WidgetComponent->GetWidget());
@@ -187,7 +190,6 @@ UOperatingSystemWidget* ATerminalSystem::GetViewportWidget()
 	return ViewportWidget;
 }
 
-
 void ATerminalSystem::InitializeTerminalWidgetDisplay()
 {
 	/*create the material instance we can use during gameplay*/
@@ -195,6 +197,7 @@ void ATerminalSystem::InitializeTerminalWidgetDisplay()
 	{
 		/*create material*/
 		FName MaterialName = FName(GetFName().ToString() + "_ScreenMaterialInstance");
+
 		DynamicScreenMaterial = UMaterialInstanceDynamic::Create(ScreenMaterial, this, MaterialName);
 		
 		/*apply to mesh*/
@@ -248,6 +251,7 @@ void ATerminalSystem::AddWidgetToViewport(AFirstPersonPlayerController* Player)
 		GetViewportWidget()->AddToViewport(10);
 
 		FInputModeUIOnly InputMode;
+
 		InputMode.SetWidgetToFocus(ViewportWidget->TakeWidget());		
 		Player->SetInputMode(InputMode);
 		GetViewportWidget()->SetKeyboardFocus();		

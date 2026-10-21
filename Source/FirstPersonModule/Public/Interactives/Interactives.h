@@ -40,6 +40,22 @@ enum class EInteractionEndReason : uint8
 };
 
 
+/** Immutable per-attempt input and termination context, independent of action configuration. */
+USTRUCT(BlueprintType)
+struct FIRSTPERSONMODULE_API FInteractionContext
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction")
+    bool bLongHeld = false;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction")
+    bool bInterrupted = false;
+
+    FInteractionContext() = default;
+    explicit FInteractionContext(bool bInLongHeld) : bLongHeld(bInLongHeld) {}
+};
+
 USTRUCT(BlueprintType)
 struct FInteractiveActionConfig
 {
@@ -62,6 +78,8 @@ public:
 	/*how long the action takes to complete (player must hold the interaction button down for this amount of time before completion is triggered)*/
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction", meta = (EditCondition = "InteractionType == EInteractionType::Duration"))
 		float ActionDuration = 0.0f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Interaction", meta=(ClampMin="0.0"))
+        float LongHeldActionDuration = 1.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
 		EInteractionFunctionType FunctionType = EInteractionFunctionType::NativeEvent;
 	/*if filled - will automatically call the blueprint or C++ with matching function name on the owning actor when activated. Note: Use FInteractionEventParams as a parameter of the function to get references to Action and InteractiveCollisionComponent passed in. MUST BE A UFUNCTION() for C++ to work*/
@@ -115,6 +133,8 @@ public:
 		const class AFirstPersonCharacter* User;
 	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
 		class UInteractiveComponent* InteractiveComponent;
+    UPROPERTY(BlueprintReadOnly, Category="Interaction")
+        FInteractionContext Context;
 
 	FInteractionEventParams()
 		: Action(nullptr), User(nullptr), InteractiveComponent(nullptr)
@@ -168,6 +188,6 @@ public:
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FInteractionAction, class AFirstPersonCharacter*, User, const class UInteractiveAction*, Action);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FInteractionHover, class AFirstPersonCharacter*, User);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteraction, AFirstPersonCharacter*, User, const UInteractiveAction*, Action);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteractionEnded, AFirstPersonCharacter*, User, const UInteractiveAction*, Action, EInteractionEndReason, EndReason);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnInteraction, AFirstPersonCharacter*, User, const UInteractiveAction*, Action, const FInteractionContext&, Context);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_FourParams(FOnInteractionEnded, AFirstPersonCharacter*, User, const UInteractiveAction*, Action, EInteractionEndReason, EndReason, const FInteractionContext&, Context);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInteractiveHoverChange, AFirstPersonCharacter*, User, bool, bHovered);

@@ -2,9 +2,11 @@
 
 /*inventory*/
 #include "Components/InventoryManagerComponent.h"
+#include "UObject/GarbageCollection.h"
 #include "Inventory/InventoryItem.h"
 #include "Components/InventoryItemComponent.h"
-#include "Inventory/InventoryEquipmentSlot.h"
+#include "Components/InventoryAttachmentComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "Subsystems/LootSubsystem.h"
 #include "Inventory/InventoryLoadout.h"
 #include "Inventory/InventoryItemSlot.h"
@@ -29,6 +31,7 @@
 #include "UI/Widgets/InventoryWidget.h"
 
 /*setup replication*/
+
 void UInventoryManagerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -39,6 +42,7 @@ void UInventoryManagerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProp
 	DOREPLIFETIME(UInventoryManagerComponent, AlternativeWeapon);
 	//DOREPLIFETIME(UInventoryManagerComponent, Inventory);
 	DOREPLIFETIME(UInventoryManagerComponent, InventorySlots);
+	DOREPLIFETIME(UInventoryManagerComponent, EquipmentSlots);
 }
 
 bool UInventoryManagerComponent::ReplicateSubobjects(UActorChannel* Channel, FOutBunch* Bunch, FReplicationFlags* RepFlags)
@@ -58,6 +62,7 @@ bool UInventoryManagerComponent::ReplicateSubobjects(UActorChannel* Channel, FOu
 UInventoryManagerComponent::UInventoryManagerComponent()
 {
 	Quickslots.Init(nullptr, 11);
+	EquipmentSlotComponentClass = UInventoryAttachmentComponent::StaticClass();
 	bCanEquipItems = true;
 	bEnablePrimaryWeapon = true;
 	bAutoEquipPrimaryOnSpawn = true;
@@ -73,14 +78,15 @@ UInventoryManagerComponent::UInventoryManagerComponent()
 	PrimaryComponentTick.TickInterval = 0.15f;
 }
 
-
 #if WITH_EDITOR
 void UInventoryManagerComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
 }
+#endif
 
+#if WITH_EDITOR
 void UInventoryManagerComponent::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeChainProperty(PropertyChangedEvent);
@@ -95,9 +101,7 @@ void UInventoryManagerComponent::PostEditChangeChainProperty(FPropertyChangedCha
 
 	if (MemberName == GET_MEMBER_NAME_CHECKED(UInventoryManagerComponent, DefaultItems))
 	{
-		const int32 Index = PropertyChangedEvent.GetArrayIndex(
-			GET_MEMBER_NAME_STRING_CHECKED(UInventoryManagerComponent, DefaultItems)
-		);
+		const int32 Index = PropertyChangedEvent.GetArrayIndex(GET_MEMBER_NAME_STRING_CHECKED(UInventoryManagerComponent, DefaultItems));
 
 		if (DefaultItems.IsValidIndex(Index))
 		{
@@ -112,24 +116,47 @@ void UInventoryManagerComponent::PostEditChangeChainProperty(FPropertyChangedCha
 		}
 	}
 }
-
 #endif
-
 
 // Called when the game starts
 void UInventoryManagerComponent::BeginPlay()
 {
-	Super::BeginPlay();
-
-	/*register ourselves with the subsystem*/
-	RegisterInventoryManager();
-
-	/*spawn the default inventory*/
-	if (InventorySlots.Num() == 0)//we check if Inventory == 0 because BeginPlay() is called multiple times, so this saves overhead
-		SpawnDefaultInventory();
+    Super::BeginPlay();
+    RegisterInventoryManager();
+    if (GetOwner()->HasAuthority())
+    {
+        InitializeEquipmentSlots();
+        SpawnDefaultInventory();
+    }
 }
 
+void UInventoryManagerComponent::OnComponentDestroyed(bool bDestroyingHierarchy)
+{
+    UWorld* World = GetWorld();
+    AActor* Owner = GetOwner();
+    const bool bCanAccessWorld = !IsGarbageCollecting() && !HasAnyFlags(RF_BeginDestroyed | RF_FinishDestroyed) && IsValid(World) && !World->bIsTearingDown;
 
+    // Gameplay transfers are only appropriate when removing a live component, not during PIE/GC teardown.
+    if (bCanAccessWorld && !bDestroyingHierarchy && IsValid(Owner) && !Owner->IsActorBeingDestroyed() && Owner->HasAuthority())
+    {
+        ClearInventory();
+        for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+            if (IsValid(Slot) && Slot->GetAttachedItem())
+                DropItem(Slot->GetAttachedItem());
+    }
+
+    if (!IsGarbageCollecting())
+        for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+            if (IsValid(Slot))
+                Slot->DestroyComponent();
+    EquipmentSlots.Empty();
+
+    if (bCanAccessWorld)
+        if (UInventorySubsystem* Subsystem = World->GetSubsystem<UInventorySubsystem>())
+            Subsystem->UnregisterInventoryManager(this);
+
+    Super::OnComponentDestroyed(bDestroyingHierarchy);
+}
 
 void UInventoryManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -175,6 +202,9 @@ void UInventoryManagerComponent::OnOwnerUnPossessed()
 	}
 }
 
+//================================================
+//===================INVENTORY====================
+//================================================
 
 void UInventoryManagerComponent::SpawnDefaultInventory()
 {
@@ -188,144 +218,138 @@ void UInventoryManagerComponent::SpawnDefaultInventory()
 
 void UInventoryManagerComponent::SpawnInventoryFromLoadout(AInventoryLoadout* Loadout, bool bClearExisting)
 {
-	/*servery check*/
-	if (GetNetMode() == NM_Client)
-		return;
+    if (!IsValid(Loadout) || !GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    if (bClearExisting) ClearInventory();
 
-	/*safety check*/
-	if(!IsValid(Loadout))
-		return;
+    TArray<FInventoryItemSpawnParams> Entries = Loadout->Items;
 
-	TSubclassOf<AInventoryItem> Primary = Loadout->PrimaryWeapon.ItemClass;
-	//TArray<TSubclassOf<AInventoryItem>> InventoryItems = Loadout->Items;
-
-	if (Primary)
-	{
-		AInventoryItem* NewPrimary = SpawnInventoryItem(Primary);
-		AssignPrimaryWeapon(NewPrimary);
-
-		if (bAutoEquipPrimaryOnSpawn)
-			Equip(GetPrimaryWeapon());
-	}
-
-	//if (InventoryItems.Num() > 0)
-	//	SpawnInventory(InventoryItems, false);
-
+    for (FInventoryItemSpawnParams Entry : {Loadout->PrimaryWeapon, Loadout->SecondaryWeapon, Loadout->AlternativeWeapon})
+        if (Entry.ItemClass)
+        {
+            Entry.bEquipOnSpawn = true;
+            Entries.Add(Entry);
+        }
+    SpawnInventoryItems(Entries);
 }
 
 void UInventoryManagerComponent::SpawnInventoryItems(TArray<FInventoryItemSpawnParams> Inventory)
 {
-	/*safety checks*/
-	if (!IsValid(GetOwner()) || Inventory.Num() == 0 || GetNetMode() == NM_Client)
-		return;
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    // Equipped containers must exist before ordinary default items need storage.
+    const auto SortDefaultItems = [](const FInventoryItemSpawnParams& A, const FInventoryItemSpawnParams& B)
+    {
+        auto AutoEquip = [](const FInventoryItemSpawnParams& Entry)
+        {
+            const AInventoryItem* Default = Entry.ItemClass ? Entry.ItemClass->GetDefaultObject<AInventoryItem>() : nullptr;
+            const UInventoryItemComponent* Item = Default ? Default->FindComponentByClass<UInventoryItemComponent>() : nullptr;
 
-	for (FInventoryItemSpawnParams SpawnParams : Inventory)
-	{
-		/*assign it an equipment slot*/
-		if (SpawnParams.bEquipOnSpawn)
-		{
+            return Entry.bEquipOnSpawn || (Item && Item->bAutoEquip);
+        };
+        auto Rank = [&AutoEquip](const FInventoryItemSpawnParams& Entry)
+        {
+            if (!AutoEquip(Entry))
+                return 2;
 
-		}
-		/*otherwise put it inside an inventory container*/
-		else
-		{
+            const AInventoryItem* Default = Entry.ItemClass ? Entry.ItemClass->GetDefaultObject<AInventoryItem>() : nullptr;
+            const UInventoryManagerComponent* Container = Default ? Default->FindComponentByClass<UInventoryManagerComponent>() : nullptr;
 
-		}
-	}
+            return Container && (Container->SlotCapacity > 0 || !Container->EquipmentSlotConfigs.IsEmpty()) ? 0 : 1;
+        };
+        return Rank(A) < Rank(B);
+    };
+
+    Inventory.StableSort(SortDefaultItems);
+    for (const FInventoryItemSpawnParams& Params : Inventory)
+        for (int32 Index = 0; Index < Params.Quantity; ++Index)
+        {
+            AInventoryItem* Item = SpawnInventoryItem(Params.ItemClass);
+
+            if (!Item) continue;
+
+            UInventoryItemComponent* Component = GetItemComponent(Item);
+
+            if (Component) Component->Condition = Params.Condition;
+
+            const bool bAutoEquip = Params.bEquipOnSpawn || (Component && Component->bAutoEquip);
+
+            if (!(bAutoEquip && TryEquipItem(Item)) && !AddItem(Item))
+                UE_LOG(LogInventoryModule, Warning, TEXT("%s: default item %s could not fit; left in the world."), *GetNameSafe(GetOwner()), *GetNameSafe(Item));
+        }
 }
 
 void UInventoryManagerComponent::SpawnInventory(TArray<TSubclassOf<AInventoryItem>> Items, bool bClearExisting)
 {
-	/*safety/server-check*/
-	if (GetOwner() == nullptr || GetOwner()->IsPendingKillPending() || GetNetMode() == NM_Client)
-		return;
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    if (bClearExisting) ClearInventory();
 
-	/*destroy existing inventory*/
-	if (bClearExisting)
-		ClearInventory();
+    TArray<FInventoryItemSpawnParams> Entries;
 
-	/*auto-equip*/
-	AInventoryItem* AutoEquip = nullptr;
+    for (TSubclassOf<AInventoryItem> ItemClass : Items)
+    {
+        FInventoryItemSpawnParams Entry;
 
-	for (TSubclassOf<AInventoryItem> ItemClass : Items)
-	{
-		/*skip blank entries*/
-		if (ItemClass == nullptr)
-			continue;
-
-
-		/*create the initial stored item state*/
-		UInventoryItemSlot* NewItem = CreateInventorySlot(ItemClass);
-
-		if (NewItem)
-		{
-			InventorySlots.Add(NewItem);			
-		}
-
-
-
-		/*spawn item*/
-		AInventoryItem* Item = SpawnInventoryItem(ItemClass);
-
-
-
-		if (Item)
-		{
-			if (UInventoryItemComponent* ItemComp = GetItemComponent(Item))
-			{
-				AInventoryItem* OwningItem = Cast<AInventoryItem>(GetOwner());
-				AddItem(OwningItem);
-
-
-				if (ShouldAutoEquip(Item))
-					AutoEquip = Item;
-			}
-		}
-	}
-
-	if (AutoEquip != nullptr)
-		Equip(AutoEquip);
-
-	/*force net update since we have no Subobjects to replicate*/
-	if (AActor* Owner = GetOwner())
-		Owner->ForceNetUpdate();
+        Entry.ItemClass = ItemClass;
+        Entries.Add(Entry);
+    }
+    SpawnInventoryItems(Entries);
 }
 
 AInventoryItem* UInventoryManagerComponent::SpawnInventoryItem(TSubclassOf<AInventoryItem> ItemClass)
 {
-	/*safety/server-check*/
-	if (Cast<AInventoryItem>(GetOwner()) == nullptr || GetNetMode() == NM_Client)
-		return nullptr;
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !ItemClass)
+        return nullptr;
+    // Prevent recursive default loadouts from spawning endlessly.
+    int32 ContainerDepth = 0;
+    TSet<AActor*> Parents;
 
-	/*initialize*/
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.bNoFail = true;
-	SpawnParams.Owner = Cast<AInventoryItem>(GetOwner());
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	FTransform SpawnTransform;
-	SpawnTransform.SetLocation(Cast<AInventoryItem>(GetOwner())->GetActorLocation());
-	SpawnTransform.SetRotation(Cast<AInventoryItem>(GetOwner())->GetActorRotation().Quaternion());
-	SpawnTransform.SetScale3D(FVector(1));
+    for (AActor* Parent = GetOwner(); Parent; Parent = Parent->GetOwner())
+    {
+        if (Parents.Contains(Parent))
+            return nullptr;
+        Parents.Add(Parent);
+        if (Cast<AInventoryItem>(Parent) && ++ContainerDepth > 2)
+        {
+            UE_LOG(LogInventoryModule, Warning, TEXT("Default inventory nesting exceeds supported depth."));
+            return nullptr;
+        }
+    }
 
-	return GetWorld()->SpawnActor<AInventoryItem>(ItemClass, SpawnTransform, SpawnParams);
+    FActorSpawnParameters Params;
+
+    Params.Owner = GetOwner();
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    return GetWorld()->SpawnActor<AInventoryItem>(ItemClass, GetOwner()->GetActorTransform(), Params);
 }
 
 void UInventoryManagerComponent::ClearInventory()
 {
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+        return;
 
+    TArray<AInventoryItem*> Items;
+
+    for (UInventoryItemSlot* Slot : InventorySlots)
+        if (Slot && Slot->InventoryItem.IsValid()) Items.Add(Slot->InventoryItem.Get());
+    for (AInventoryItem* Item : Items) DropItem(Item);
+    // Clear entries that represented unspawned items.
+    InventorySlots.Empty();
+    NativeOnInventoryUpdated();
 }
 
 AInventoryItem* UInventoryManagerComponent::GetEquippedItem()
 {
-	return EquippedItem;
+    for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+        if (IsValid(Slot) && Slot->Config.SlotKind == EInventoryEquipmentSlotKind::MainHand)
+            return Slot->GetAttachedItem();
+    return nullptr;
 }
 
-
-
-//======================================
-//===============VICINITY===============
-//======================================
-
+//================================================
+//====================VICINITY====================
+//================================================
 
 void UInventoryManagerComponent::UpdateInventoryItemsInVicinity()
 {
@@ -356,7 +380,10 @@ void UInventoryManagerComponent::UpdateInventoryManagersInVicinity()
 	{		
 		FVector OwnerLocation = GetOwner()->GetActorLocation();
 		FInventoryManagerVicinityCheckParameters VicinityCheckParams;
+
 		VicinityCheckParams.IgnoredActors.Add(GetOwner());
+        VicinityCheckParams.bAutoIgnoreRecursive = true;
+
 		TArray<UInventoryManagerComponent*> NewManagerList = ISS->GetInventoryManagersNearby(OwnerLocation, MaxVicinityItemDistance, VicinityCheckParams);
 		
 		/*check for differences*/
@@ -375,113 +402,124 @@ TArray< UInventoryManagerComponent*> UInventoryManagerComponent::GetInventoryMan
 	return ManagersInVicinity;
 }
 
+//================================================
+//================EQUIPMENT SLOTS=================
+//================================================
 
+void UInventoryManagerComponent::InitializeEquipmentSlots()
+{
+    if (bEquipmentInitialized || !GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    bEquipmentInitialized = true;
 
+    TSet<FName> IDs;
 
+    for (const FInventoryEquipmentSlotConfig& Entry : EquipmentSlotConfigs)
+    {
+        if (Entry.SlotID.IsNone() || IDs.Contains(Entry.SlotID))
+        {
+            UE_LOG(LogInventoryModule, Warning, TEXT("Ignoring empty or duplicate equipment slot ID."));
+            continue;
+        }
+        IDs.Add(Entry.SlotID);
 
-//=====================================
-//==============EQUIPPING==============
-//=====================================
+        UClass* SlotClass = EquipmentSlotComponentClass ? EquipmentSlotComponentClass.Get() : UInventoryAttachmentComponent::StaticClass();
+        UInventoryAttachmentComponent* Slot = NewObject<UInventoryAttachmentComponent>(GetOwner(), SlotClass, MakeUniqueObjectName(GetOwner(), SlotClass, Entry.SlotID), RF_Transient);
+
+        Slot->Config = Entry;
+        Slot->InventoryManager = this;
+        if (Slot->Config.SlotKind == EInventoryEquipmentSlotKind::MainHand && Slot->Config.AttachmentSocket.IsNone())
+            if (AFirstPersonCharacter* Character = Cast<AFirstPersonCharacter>(GetOwner()))
+                Slot->Config.AttachmentSocket = Character->RightHandSocketName;
+        EquipmentSlots.Add(Slot);
+        Slot->RegisterComponent();
+    }
+    // Registration never spawns items; only this manager owns default initialization.
+    for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+        if (Slot->Config.DefaultItemClass)
+        {
+            AInventoryItem* Item = SpawnInventoryItem(Slot->Config.DefaultItemClass);
+
+            if (Item && !CommitEquipment(Item, Slot) && !AddItem(Item))
+                UE_LOG(LogInventoryModule, Warning, TEXT("Default equipment %s could not fit; left in world."), *GetNameSafe(Item));
+        }
+}
+
+UInventoryAttachmentComponent* UInventoryManagerComponent::FindEquipmentSlot(AInventoryItem* Item, bool bIncludeHands) const
+{
+    if (!IsValid(Item))
+        return nullptr;
+    // Specialized slots across this manager and its directly equipped containers come before hands.
+    for (UInventoryManagerComponent* Manager : GetSearchManagers())
+        if (!Manager->WouldCreateContainmentCycle(Item))
+            for (UInventoryAttachmentComponent* Slot : Manager->EquipmentSlots)
+                if (IsValid(Slot) && Slot->Config.SlotKind == EInventoryEquipmentSlotKind::Equipment && Slot->CanAcceptItem(Item))
+                    return Slot;
+    if (bIncludeHands && !WouldCreateContainmentCycle(Item))
+        for (EInventoryEquipmentSlotKind Kind : {EInventoryEquipmentSlotKind::MainHand, EInventoryEquipmentSlotKind::OffHand})
+            for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+                if (IsValid(Slot) && Slot->Config.SlotKind == Kind && Slot->CanAcceptItem(Item))
+                    return Slot;
+    return nullptr;
+}
+
+UInventoryAttachmentComponent* UInventoryManagerComponent::GetEquipmentSlot(FName ID)
+{
+    for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+        if (IsValid(Slot) && Slot->Config.SlotID == ID)
+            return Slot;
+    return nullptr;
+}
+
+UInventoryAttachmentComponent* UInventoryManagerComponent::GetEquipmentSlotByClass(TSubclassOf<AInventoryItem> ItemClass)
+{
+    if (!ItemClass)
+        return nullptr;
+    for (UInventoryAttachmentComponent* Slot : EquipmentSlots)
+        if (IsValid(Slot) && Slot->Config.AcceptedItemClass && ItemClass->IsChildOf(Slot->Config.AcceptedItemClass))
+            return Slot;
+    return nullptr;
+}
+
+//================================================
+//===================EQUIPPING====================
+//================================================
 
 void UInventoryManagerComponent::Equip(AInventoryItem* Item)
 {
-	bool bInstantComplete = false;
-
-	/*validation check*/
-	if (!bCanEquipItems || Item == nullptr)
-	{
-#if WITH_EDITOR
-		if (bCanEquipItems == false)
-		{
-			UE_LOG(LogInventoryModule, Warning, TEXT("!!!%s::Equip() called but InventoryManager has bCanEquipItems set false!!!"), *GetName());
-		}
-		else if (Item == nullptr)
-		{
-			UE_LOG(LogInventoryModule, Warning, TEXT("!!!%s::Equip() called but item is null!"), *GetName());
-		}
-#endif
-
-		return;
-	}
-
-	/*ensure-registration is complete*/
-	RegisterItem(Item);
-
-	/*if we already have the item equipped - go ahead and auto-unequip it*/
-	if (Item == EquippedItem)
-	{
-		Unequip(EquippedItem);
-		return;
-	}
-
-	/*unequip anything we already have first*/
-	if (EquippedItem != nullptr)
-	{
-		PendingEquip = Item;
-		Unequip(Item);
-		return;
-	}
-
-	/*mark this item as pending equip*/
-	PendingEquip = Item;
-
-	/*notify the component it's being equipped */
-	if (UInventoryItemComponent* ItemComp = GetItemComponent(Item))
-	{
-		ItemComp->BeginEquip();
-	}
+    TryEquipItem(Item);
 }
 
-
-void UInventoryManagerComponent::EquipToEquipmentSlot(AInventoryItem* Item, UInventoryEquipmentSlot* EquipmentSlot)
+void UInventoryManagerComponent::EquipToEquipmentSlot(AInventoryItem* Item, UInventoryAttachmentComponent* EquipmentSlot)
 {
-	if (!Item || !EquipmentSlot)
-		return;
-
-	EquipmentSlot->InventoryItem = Item;
+    CommitEquipment(Item, EquipmentSlot);
 }
 
 /*callback function - should be triggered by the item itself*/
 void UInventoryManagerComponent::OnEquipFinished(AInventoryItem* Item)
 {
-	if (Item == nullptr)
-		return;
+    if (!IsValid(Item))
+        return;
 
-	EquippedItem = Item;
-	PendingEquip = nullptr;
+    UInventoryItemComponent* Component = GetItemComponent(Item);
 
-	/*event/delegate notifications*/
-	if (EquippedItem != nullptr && OnItemEquipped.IsBound()) // any item
-		OnItemEquipped.Broadcast(EquippedItem);
-	if (EquippedItem != nullptr && EquippedItem == PrimaryWeapon && OnPrimaryEquipped.IsBound()) //primary weapon
-		OnPrimaryEquipped.Broadcast(EquippedItem);
-	if (EquippedItem != nullptr && EquippedItem == SecondaryWeapon && OnSecondaryEquipped.IsBound()) //secondary weapon
-		OnSecondaryEquipped.Broadcast(EquippedItem);
-	if (EquippedItem != nullptr && EquippedItem == AlternativeWeapon && OnAlternativeEquipped.IsBound()) //alternative wepaon
-		OnAlternativeEquipped.Broadcast(EquippedItem);
+    if (!Component || !Component->AttachmentSlot)
+        return;
+    if (Component->AttachmentSlot->Config.SlotKind == EInventoryEquipmentSlotKind::MainHand)
+        EquippedItem = Item;
+    PendingEquip = nullptr;
+    OnItemEquipped.Broadcast(Item);
 }
 
 void UInventoryManagerComponent::Unequip(AInventoryItem* Item)
 {
-	/*safetry check*/
-	if (Item == nullptr)
-		return;
-
-	if (UInventoryItemComponent* ItemComp = GetItemComponent(Item))
-	{
-		ItemComp->BeginUnequip();
-	}
+    TryPutAwayItem(Item);
 }
 
 void UInventoryManagerComponent::OnUnequipFinished(AInventoryItem* Item)
 {
-	EquippedItem = nullptr;
-
-	/*if we're waiting to equip anything - go ahead*/
-	if (PendingEquip)
-	{
-		Equip(PendingEquip);
-	}
+    if (EquippedItem == Item) EquippedItem = nullptr;
+    NativeOnInventoryUpdated();
 }
 
 bool UInventoryManagerComponent::ShouldAutoEquip(AInventoryItem* Item, bool bItemPickedUp)
@@ -498,10 +536,75 @@ bool UInventoryManagerComponent::ShouldAutoEquip(AInventoryItem* Item, bool bIte
 	return false;
 }
 
-//============================================
-//=================QUICKSLOTS=================
-//============================================
+bool UInventoryManagerComponent::TryEquipItem(AInventoryItem* Item)
+{
+    UInventoryAttachmentComponent* Slot = FindEquipmentSlot(Item);
 
+    return Slot && Slot->InventoryManager && Slot->InventoryManager->CommitEquipment(Item, Slot, Cast<AFirstPersonCharacter>(GetOwner()));
+}
+
+bool UInventoryManagerComponent::TryPutAwayItem(AInventoryItem* Item)
+{
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+        return false;
+
+    UInventoryItemComponent* Component = GetItemComponent(Item);
+
+    if (!Component || !Component->AttachmentSlot)
+        return false;
+
+    const TArray<UInventoryManagerComponent*> Accessible = GetSearchManagers();
+    UInventoryManagerComponent* Destination = Component->PreviousStorage.Get();
+
+    if (!Accessible.Contains(Destination) || !IsValid(Destination) || !Destination->CanStoreLocally(Item))
+        Destination = FindStorageForItem(Item);
+    if (!Destination)
+        return false;
+    // A successful put-away releases the equipment slot only after a destination has been validated.
+    UInventoryManagerComponent* Holder = Component->InventoryManager;
+    IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(Item);
+    AFirstPersonCharacter* User = Cast<AFirstPersonCharacter>(GetOwner());
+
+    if (Interface) Interface->StartUnequipping(User, Component, Holder);
+
+    const bool bStored = Destination->CommitStorage(Item);
+
+    if (Interface) Interface->StopUnequipping(User, Component, Holder, bStored ? EInventoryItemOperationEndReason::Completed : EInventoryItemOperationEndReason::Interrupted);
+    if (bStored) NativeOnInventoryUpdated();
+    return bStored;
+}
+
+bool UInventoryManagerComponent::CommitEquipment(AInventoryItem* Item, UInventoryAttachmentComponent* Slot, AFirstPersonCharacter* User)
+{
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !bCanEquipItems || !IsValid(Slot) ||
+        Slot->InventoryManager != this || !EquipmentSlots.Contains(Slot) || !Slot->CanAcceptItem(Item) ||
+        WouldCreateContainmentCycle(Item))
+        return false;
+
+    UInventoryItemComponent* Component = GetItemComponent(Item);
+
+    if (!Component)
+        return false;
+
+    UInventoryManagerComponent* Previous = Component->InventoryManager;
+
+    if (Previous) Previous->ReleaseItem(Item);
+    RegisterItem(Item);
+    Slot->AttachedItem = Item;
+    Component->AttachmentSlot = Slot;
+    Component->SetItemPresence(EItemPresence::Attached);
+    Component->DisableCollision();
+    Slot->ApplyAttachment();
+    if (Slot->Config.SlotKind == EInventoryEquipmentSlotKind::MainHand) EquippedItem = Item;
+    if (Previous && Previous != this) Previous->NativeOnInventoryUpdated();
+    Component->BeginEquip(User);
+    NativeOnInventoryUpdated();
+    return true;
+}
+
+//================================================
+//===================QUICKSLOTS===================
+//================================================
 
 AInventoryItem* UInventoryManagerComponent::GetPrimaryWeapon()
 {
@@ -517,7 +620,7 @@ void UInventoryManagerComponent::AssignPrimaryWeapon(AInventoryItem* Weapon)
 		PrimaryWeapon = Weapon;
 
 	if (OnPrimaryAssigned.IsBound())
-		OnPrimaryAssigned.Broadcast(this, Cast<AInventoryItem>(GetOwner()), PrimaryWeapon);
+		OnPrimaryAssigned.Broadcast(this, GetOwner(), PrimaryWeapon);
 }
 
 void UInventoryManagerComponent::EquipPrimaryWeapon()
@@ -541,7 +644,7 @@ void UInventoryManagerComponent::AssignSecondaryWeapon(AInventoryItem* Weapon)
 
 
 	if (OnSecondaryAssigned.IsBound())
-		OnSecondaryAssigned.Broadcast(this, Cast<AInventoryItem>(GetOwner()), SecondaryWeapon);
+		OnSecondaryAssigned.Broadcast(this, GetOwner(), SecondaryWeapon);
 }
 
 void UInventoryManagerComponent::EquipSecondaryWeapon()
@@ -565,17 +668,14 @@ void UInventoryManagerComponent::AssignAlternativeWeapon(AInventoryItem* Weapon)
 
 
 	if (OnAlternativeAssigned.IsBound())
-		OnAlternativeAssigned.Broadcast(this, Cast<AInventoryItem>(GetOwner()), AlternativeWeapon);
+		OnAlternativeAssigned.Broadcast(this, GetOwner(), AlternativeWeapon);
 }
-
 
 void UInventoryManagerComponent::EquipAlternativeWeapon()
 {
 	if (bCanEquipItems && bEnableAlternativeWeapon && AlternativeWeapon)
 		Equip(AlternativeWeapon);
 }
-
-
 
 void UInventoryManagerComponent::AssignToQuickslot(AInventoryItem* ActorToAssign, EQuickslot Quickslot)
 {
@@ -597,13 +697,14 @@ AInventoryItem* UInventoryManagerComponent::GetQuickslotItem(EQuickslot Quickslo
 	return Quickslots[(uint8)Quickslot];
 }
 
-
+//================================================
+//================ITEM MANAGEMENT=================
+//================================================
 
 //const TArray<AInventoryItem*> UInventoryManagerComponent::GetInventory() const
 //{
 //	return Inventory;
 //}
-
 const TArray<class UInventoryItemSlot*> UInventoryManagerComponent::GetInventorySlots() const
 {
 	return InventorySlots;
@@ -629,10 +730,6 @@ const TArray<class UInventoryItemSlot*> UInventoryManagerComponent::GetInventory
 	return FilteredItems;
 }
 
-//=======================================
-//============ITEM MANAGEMENT============
-//=======================================
-
 bool UInventoryManagerComponent::ContainsItem(AInventoryItem* Item)
 {
 	/*safety check*/
@@ -654,144 +751,248 @@ bool UInventoryManagerComponent::ContainsItem(AInventoryItem* Item)
 
 bool UInventoryManagerComponent::AddItem(AInventoryItem* Item)
 {
-	if (!Item)
-		return false;
+    if (!GetOwner() || !GetOwner()->HasAuthority())
+        return false;
 
+    UInventoryManagerComponent* Destination = FindStorageForItem(Item);
 
-	UInventoryItemSlot* ItemSlot = NewObject<UInventoryItemSlot>();
-	
-	if (ItemSlot)
-	{
-		ItemSlot->InventoryItem = Item;
-		ItemSlot->ItemClass = Item->GetClass();
-		
-		InventorySlots.Add(ItemSlot);
-
-		RegisterItem(Item);
-		StoreItem(Item);
-		NativeOnInventoryUpdated();
-
-		/*if (OnItemAdded.IsBound())
-			OnItemAdded.Broadcast(this, Cast<AInventoryItem>(GetOwner()), Item);*/
-
-		return true;
-	}
-
-	else
-		return false;
+    return Destination && Destination->CommitStorage(Item);
 }
 
 bool UInventoryManagerComponent::RemoveItem(AInventoryItem* Item)
 {
-	if (!Item)
-		return false;
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !IsValid(Item))
+        return false;
 
-	Item->SetOwner(nullptr);
-	NativeOnInventoryUpdated();
+    UInventoryItemComponent* Component = GetItemComponent(Item);
 
-	return false;
+    if (!Component || Component->InventoryManager != this)
+        return false;
+    ReleaseItem(Item);
+    Component->SetItemPresence(EItemPresence::World);
+    Component->EquipState = EEquipState::NONE;
+    Item->SetOwner(nullptr);
+    NativeOnInventoryUpdated();
+    return true;
 }
 
-void UInventoryManagerComponent::PickupItem(AInventoryItem* Item)
+bool UInventoryManagerComponent::CanPickup(AInventoryItem* Item, bool bLongHeld)
 {
-	/*safety check*/
-	if (!Item)
-		return;
+    if (!IsValid(Item))
+        return false;
 
-	AddItem(Item);
+    UInventoryItemComponent* Component = GetItemComponent(Item);
 
-	/*automatically equip the item if that seems appropriate for our lives*/
-	if (ShouldAutoEquip(Item, true))
-		Equip(Item);
-
-
-	/*broadcast we've picked the item up*/
-	if (OnItemPickedUp.IsBound())
-		OnItemPickedUp.Broadcast(this, Cast<AInventoryItem>(GetOwner()), Item);
-
-	/*notify item it's been picked up*/
-	Item->OnItemPickedUp(GetOwner());
-
-	NativeOnInventoryUpdated();
+    if (!Component || Component->GetItemPresence() != EItemPresence::World ||
+        !IInventoryItemInterface::Execute_CanBePickedUp(Item))
+        return false;
+    return bLongHeld ? FindEquipmentSlot(Item) != nullptr : FindStorageForItem(Item) != nullptr;
 }
 
-bool UInventoryManagerComponent::CanPickup(AInventoryItem* Item)
+bool UInventoryManagerComponent::PickupItem(AInventoryItem* Item, const FInteractionContext& Context)
 {
-	if (!Item)
-		return false;
-
-	return Item->CanBePickedUp();
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !CanPickup(Item, Context.bLongHeld))
+        return false;
+    if (!(Context.bLongHeld ? TryEquipItem(Item) : AddItem(Item)))
+        return false;
+    OnItemPickedUp.Broadcast(this, GetOwner(), Item);
+    if (IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(Item))
+        Interface->OnItemPickedUp(GetOwner(), Context);
+    NativeOnInventoryUpdated();
+    return true;
 }
 
 void UInventoryManagerComponent::DropItem(AInventoryItem* Item)
 {
-	/*safety check*/
-	if (!Item)
-		return;
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !IsValid(Item))
+        return;
 
-	Item->OnItemDropped(GetOwner());
+    UInventoryItemComponent* Component = GetItemComponent(Item);
 
-	/*make sure we remove it from us*/
-	RemoveItem(Item);
-
-	/*trigger event*/
-	NativeOnInventoryUpdated();
+    if (!Component || Component->InventoryManager != this)
+        return;
+    if (IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(Item))
+        Interface->StartDrop(Cast<AFirstPersonCharacter>(GetOwner()), Component, this);
+    if (!RemoveItem(Item))
+        return;
+    if (IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(Item))
+    {
+        Interface->OnItemDropped(GetOwner());
+        Interface->StopDrop(Cast<AFirstPersonCharacter>(GetOwner()), Component, this, EInventoryItemOperationEndReason::Completed);
+    }
 }
-
-
 
 void UInventoryManagerComponent::StoreItem(AInventoryItem* Item)
 {
-	if (UInventoryItemComponent* ItemComp = Cast<UInventoryItemComponent>(Item->GetComponentByClass(UInventoryItemComponent::StaticClass())))
-	{
-		/*safety check*/
-		if (ContainsItem(Item) == false)
-		{
-			AddItem(Item);
-		}
-
-		ItemComp->SetItemState(EItemState::InStorage);
-		ItemComp->DisableCollision();
-
-		NativeOnInventoryUpdated();
-		//ItemComp->DisableVisibility();
-	}
+    AddItem(Item);
 }
 
 void UInventoryManagerComponent::RegisterItem(AInventoryItem* Item)
 {
-	if (!Item)
-		return;
-
-	if (UInventoryItemComponent* ItemComp = Cast<UInventoryItemComponent>(Item->GetComponentByClass(UInventoryItemComponent::StaticClass())))
-	{
-		Item->SetOwner(Cast<AInventoryItem>(GetOwner()));
-		ItemComp->InventoryManager = this;
-	}
+    if (UInventoryItemComponent* Component = GetItemComponent(Item))
+    {
+        Item->SetOwner(GetOwner());
+        Component->InventoryManager = this;
+    }
 }
 
-//===================
-//=======SLOTS=======
-//===================
+UInventoryManagerComponent* UInventoryManagerComponent::FindStorageForItem(AInventoryItem* Item) const
+{
+    for (UInventoryManagerComponent* Manager : GetSearchManagers())
+        if (IsValid(Manager) && Manager->CanStoreLocally(Item))
+            return Manager;
+    return nullptr;
+}
+
+bool UInventoryManagerComponent::CanStoreLocally(AInventoryItem* Item) const
+{
+    if (!IsValid(Item) || !Item->FindComponentByClass<UInventoryItemComponent>() || WouldCreateContainmentCycle(Item))
+        return false;
+    for (UInventoryItemSlot* Slot : InventorySlots)
+        if (Slot && Slot->InventoryItem == Item)
+            return true;
+    return GetItemSlotSize(Item->GetItemSize()) <= GetRemainingSlotCapacity();
+}
+
+bool UInventoryManagerComponent::WouldCreateContainmentCycle(AInventoryItem* Item) const
+{
+    TSet<const UInventoryManagerComponent*> Visited;
+    const UInventoryManagerComponent* Current = this;
+
+    while (Current)
+    {
+        if (Visited.Contains(Current) || Current->GetOwner() == Item)
+            return true;
+        Visited.Add(Current);
+
+        const AInventoryItem* Parent = Cast<AInventoryItem>(Current->GetOwner());
+        const UInventoryItemComponent* ParentItem = Parent ? Parent->FindComponentByClass<UInventoryItemComponent>() : nullptr;
+
+        Current = ParentItem ? ParentItem->InventoryManager : nullptr;
+    }
+    return false;
+}
+
+UInventoryItemComponent* UInventoryManagerComponent::GetItemComponent(AInventoryItem* Item)
+{
+	if (!Item)
+		return nullptr;
+
+	return IsValid(Item) ? Item->FindComponentByClass<UInventoryItemComponent>() : nullptr;
+}
+
+void UInventoryManagerComponent::NativeOnInventoryUpdated()
+{
+    UWorld* World = GetWorld();
+
+    // World subsystems and Blueprint/UI listeners may already be gone during component destruction.
+    if (IsGarbageCollecting() || HasAnyFlags(RF_BeginDestroyed | RF_FinishDestroyed) || !IsValid(World) || World->bIsTearingDown)
+        return;
+
+    if (UInventorySubsystem* Subsystem = World->GetSubsystem<UInventorySubsystem>())
+        Subsystem->NativeOnSelectedInventoryManagerUpdated(this);
+
+    if (OnInventoryUpdated.IsBound())
+        OnInventoryUpdated.Broadcast();
+}
+
+TArray<UInventoryManagerComponent*> UInventoryManagerComponent::GetSearchManagers() const
+{
+    TArray<UInventoryManagerComponent*> Result;
+    TArray<UInventoryAttachmentComponent*> Ordered = EquipmentSlots;
+
+    const auto SortSlotsByPriority = [](const UInventoryAttachmentComponent& A, const UInventoryAttachmentComponent& B)
+    {
+        return A.Config.StoragePriority > B.Config.StoragePriority;
+    };
+
+    Result.Add(const_cast<UInventoryManagerComponent*>(this));
+    Ordered.RemoveAll([](UInventoryAttachmentComponent* Slot) { return !IsValid(Slot); });
+    Ordered.StableSort(SortSlotsByPriority);
+    for (UInventoryAttachmentComponent* Slot : Ordered)
+        if (IsValid(Slot))
+            if (UInventoryManagerComponent* Child = Slot->GetAttachedInventoryManager())
+                Result.AddUnique(Child);
+    return Result;
+}
+
+bool UInventoryManagerComponent::CommitStorage(AInventoryItem* Item)
+{
+    if (!GetOwner() || !GetOwner()->HasAuthority() || !CanStoreLocally(Item))
+        return false;
+    if (ContainsItem(Item))
+        return true;
+
+    UInventoryItemComponent* Component = GetItemComponent(Item);
+    UInventoryManagerComponent* Previous = Component->InventoryManager;
+
+    // Allocate destination before releasing the source. No failure paths mutate the item.
+    UInventoryItemSlot* Entry = NewObject<UInventoryItemSlot>(this);
+
+    if (!Entry)
+        return false;
+    Entry->InventoryItem = Item;
+    Entry->ItemClass = Item->GetClass();
+    Entry->SetOwner(this);
+
+    if (Previous) Previous->ReleaseItem(Item);
+    InventorySlots.Add(Entry);
+    RegisterItem(Item);
+    Component->EquipState = EEquipState::NONE;
+    Component->SetItemPresence(EItemPresence::Storage);
+    Component->DisableCollision();
+    if (IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(Item))
+        Interface->OnItemStored(GetOwner());
+    if (Previous && Previous != this) Previous->NativeOnInventoryUpdated();
+    NativeOnInventoryUpdated();
+    return true;
+}
+
+void UInventoryManagerComponent::ReleaseItem(AInventoryItem* Item)
+{
+    UInventoryItemComponent* Component = GetItemComponent(Item);
+
+    if (!Component || Component->InventoryManager != this)
+        return;
+    if (Component->ItemPresence == EItemPresence::Storage)
+        Component->PreviousStorage = this;
+    for (int32 Index = InventorySlots.Num() - 1; Index >= 0; --Index)
+        if (InventorySlots[Index] && InventorySlots[Index]->InventoryItem == Item)
+        {
+            InventorySlots[Index]->SetOwner(nullptr);
+            InventorySlots.RemoveAt(Index);
+        }
+    if (Component->AttachmentSlot)
+    {
+        Component->AttachmentSlot->AttachedItem = nullptr;
+        Component->AttachmentSlot = nullptr;
+    }
+    if (EquippedItem == Item) EquippedItem = nullptr;
+    Component->InventoryManager = nullptr;
+}
+
+//================================================
+//=====================SLOTS======================
+//================================================
 
 void UInventoryManagerComponent::MoveInventorySlotToInventory(UInventoryItemSlot* InventorySlot)
 {
-	/*safety checks*/
-	if (!InventorySlot || InventorySlots.Contains(InventorySlot) || !CanInventorySlotFitInInventory(InventorySlot))
-		return;
+    if (!InventorySlot || !GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    if (InventorySlot->InventoryItem.IsValid())
+    {
+        AddItem(InventorySlot->InventoryItem.Get());
+        return;
+    }
+    if (!CanInventorySlotFitInInventory(InventorySlot))
+        return;
 
+    UInventoryManagerComponent* Previous = InventorySlot->GetOwner();
 
-	
-	bool bRemoveFromPreviousManager = IsValid(InventorySlot->GetOwner());
-	class UInventoryManagerComponent* PreviousManager = IsValid(InventorySlot->GetOwner()) ? InventorySlot->GetOwner() : nullptr;
-	
-
-	AddInventorySlotToInventory(InventorySlot);
-	
-	/*make sure we remove it from the previous owner*/
-	if (bRemoveFromPreviousManager)
-		PreviousManager->RemoveInventorySlotFromInventory(InventorySlot);
-	
+    if (Previous == this)
+        return;
+    if (Previous) Previous->RemoveInventorySlotFromInventory(InventorySlot);
+    AddInventorySlotToInventory(InventorySlot);
 }
 
 bool UInventoryManagerComponent::CanInventorySlotFitInInventory(UInventoryItemSlot* InventorySlot)
@@ -807,24 +1008,19 @@ bool UInventoryManagerComponent::CanInventorySlotFitInInventory(UInventoryItemSl
 
 void UInventoryManagerComponent::AddInventorySlotToInventory(UInventoryItemSlot* InventorySlot)
 {
-	if (!InventorySlot || !GetOwner()->HasAuthority())
-		return;
-
-	/*initialize*/
-	AInventoryItem* Item = InventorySlot->InventoryItem.IsValid() ? InventorySlot->InventoryItem.Get() : nullptr;
-
-	
-	int32 AddedIndex = InventorySlots.Add(InventorySlot);
-	InventorySlot->SetOwner(this);
-	InventorySlot->OnAddedToInventoryManager(this);
-	
-	/*if an instance exists*/
-	if (Item)
-	{		
-		Item->OnItemStored(GetOwner());
-	}
-	
-	NativeOnInventoryUpdated();
+    if (!InventorySlot || !GetOwner() || !GetOwner()->HasAuthority())
+        return;
+    if (InventorySlot->InventoryItem.IsValid())
+    {
+        AddItem(InventorySlot->InventoryItem.Get());
+        return;
+    }
+    if (InventorySlots.Contains(InventorySlot) || !CanInventorySlotFitInInventory(InventorySlot))
+        return;
+    InventorySlots.Add(InventorySlot);
+    InventorySlot->SetOwner(this);
+    InventorySlot->OnAddedToInventoryManager(this);
+    NativeOnInventoryUpdated();
 }
 
 void UInventoryManagerComponent::RemoveInventorySlotFromInventory(UInventoryItemSlot* InventorySlot)
@@ -860,6 +1056,8 @@ int32 UInventoryManagerComponent::GetUsedSlotCapacity() const
 	
 	for (UInventoryItemSlot* ItemSlot : InventorySlots)
 	{
+        if (!IsValid(ItemSlot)) continue;
+
 		const int32 ItemSize = GetItemSlotSize(ItemSlot->GetItemSize());
 
 		UsedSlots += ItemSize;
@@ -867,7 +1065,6 @@ int32 UInventoryManagerComponent::GetUsedSlotCapacity() const
 
 	return UsedSlots;
 }
-
 
 int32 UInventoryManagerComponent::GetMaxItemCountForSize(EItemSize Size) const
 {
@@ -927,18 +1124,6 @@ int32 UInventoryManagerComponent::GetItemSlotSize(EItemSize Size) const
 	}
 }
 
-UInventoryEquipmentSlot* UInventoryManagerComponent::GetEquipmentSlot(FName ID)
-{
-	for (UInventoryEquipmentSlot* Slot : EquipmentSlots)
-	{
-		if (Slot->SlotID == ID)
-			return Slot;
-	}
-
-	return nullptr;
-}
-
-
 /* CreateInventoryItemSlot() - Creates an Inventory Item Slot
 *
 *
@@ -947,43 +1132,22 @@ UInventoryEquipmentSlot* UInventoryManagerComponent::GetEquipmentSlot(FName ID)
 */
 UInventoryItemSlot* UInventoryManagerComponent::CreateInventoryItemSlot(FInventoryItemSpawnParams ItemSpawnParams, bool bSpawnInstance)
 {
-	TSubclassOf<AInventoryItem> ItemClass = ItemSpawnParams.ItemClass;
-	bool bEquipOnSpawn = ItemSpawnParams.bEquipOnSpawn;
+    if (!ItemSpawnParams.ItemClass || !GetOwner() || !GetOwner()->HasAuthority())
+        return nullptr;
 
-	if (GetNetMode() == NM_Client || ItemClass == nullptr)
-		return nullptr;
+    UInventoryItemSlot* Entry = NewObject<UInventoryItemSlot>(this);
 
-	UInventoryItemSlot* ItemSlot = NewObject<UInventoryItemSlot>(this);
+    Entry->ItemClass = ItemSpawnParams.ItemClass;
+    if (bSpawnInstance || ItemSpawnParams.bEquipOnSpawn)
+    {
+        AInventoryItem* Item = SpawnInventoryItem(ItemSpawnParams.ItemClass);
 
-	ItemSlot->ItemClass = ItemClass;
-
-	if (bSpawnInstance || bEquipOnSpawn) //we have to spawn to auto-equip
-	{
-		FVector SpawnLocation = GetOwner()->GetActorLocation();
-		FRotator SpawnRotation = GetOwner()->GetActorRotation();
-		FActorSpawnParameters ActorSpawnParams;
-		ActorSpawnParams.Owner = GetOwner();
-		ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-		AInventoryItem* ItemInstance = GetWorld()->SpawnActor<AInventoryItem>(ItemClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
-
-		if (ItemInstance)
-		{
-			ItemSlot->InventoryItem = ItemInstance;
-
-			ItemInstance->SetActorEnableCollision(false);
-
-			if (bEquipOnSpawn)
-			{
-				if (UInventoryEquipmentSlot* EquipmentSlot = GetEquipmentSlotByClass(ItemClass))
-				{
-					EquipToEquipmentSlot(ItemInstance, EquipmentSlot);
-				}
-			}
-		}		
-	}
-
-	return ItemSlot;
+        if (!Item)
+            return nullptr;
+        Entry->InventoryItem = Item;
+        if (ItemSpawnParams.bEquipOnSpawn) TryEquipItem(Item);
+    }
+    return Entry;
 }
 
 UInventoryItemSlot* UInventoryManagerComponent::CreateInventorySlot(TSubclassOf<class AInventoryItem> ItemClass)
@@ -993,67 +1157,24 @@ UInventoryItemSlot* UInventoryManagerComponent::CreateInventorySlot(TSubclassOf<
 		return nullptr;
 
 	UInventoryItemSlot* NewItem = NewObject<UInventoryItemSlot>(this);
+
 	NewItem->ItemClass = ItemClass;
 
 	return NewItem;
 }
 
-UInventoryEquipmentSlot* UInventoryManagerComponent::GetEquipmentSlotByClass(TSubclassOf<AInventoryItem> ItemClass)
-{
-	for (UInventoryEquipmentSlot* Slot : EquipmentSlots)
-	{
-		if (Slot && Slot->ItemType->IsChildOf(ItemClass))
-			return Slot;
-	}
-
-	return nullptr;
-}
-
-
-UInventoryEquipmentSlot* UInventoryManagerComponent::CreateDefaultEquipmentSlot(FName SubobjectName, TSubclassOf<class AInventoryItem> ItemType)
-{
-	UInventoryEquipmentSlot* Slot = CreateDefaultSubobject<UInventoryEquipmentSlot>(SubobjectName);
-
-	Slot->ItemType = ItemType;
-	Slot->SlotID = SubobjectName;
-
-	return Slot;
-}
-
-
-void UInventoryManagerComponent::NativeOnInventoryUpdated()
-{
-	if (UInventorySubsystem* ISS = GetWorld()->GetSubsystem<UInventorySubsystem>())
-	{
-		ISS->NativeOnSelectedInventoryManagerUpdated(this); //notify the Inventory Subsystem so it can do its thing as needed
-	}
-
-	/*notify anyone listening*/
-	if (OnInventoryUpdated.IsBound())
-		OnInventoryUpdated.Broadcast();
-
-}
-
-
-//==============================
-//=============GRID=============
-//==============================
-
+//================================================
+//======================GRID======================
+//================================================
 
 void UInventoryManagerComponent::UpdateGridKey(FIntPoint NewGridKey)
 {
 	RegisteredGridKey = NewGridKey;
 }
 
-UInventoryItemComponent* UInventoryManagerComponent::GetItemComponent(AInventoryItem* Item)
-{
-	if (!Item)
-		return nullptr;
-
-	return Cast<UInventoryItemComponent>(Item->GetComponentByClass(UInventoryItemComponent::StaticClass()));
-}
-
-
+//================================================
+//=======================UI=======================
+//================================================
 
 void UInventoryManagerComponent::InitializeInventoryWidget(APlayerController* Controller)
 {
@@ -1081,10 +1202,6 @@ UMaterialInterface* UInventoryManagerComponent::GetInventoryIcon()
 {
 	return PrestineInventoryIcon;
 }
-
-//==============================
-//==============UI==============
-//==============================
 
 void UInventoryManagerComponent::OpenInventoryWidget()
 {
@@ -1145,11 +1262,9 @@ bool UInventoryManagerComponent::IsInventoryWidgetOpen()
 	return InventoryWidget->IsInViewport();
 }
 
-
-
-//==================================
-//===========REGISTRATION===========
-//==================================
+//================================================
+//==================REGISTRATION==================
+//================================================
 
 /*register ourselves with the Inventory Subsystem so they know we exist*/
 void UInventoryManagerComponent::RegisterInventoryManager()

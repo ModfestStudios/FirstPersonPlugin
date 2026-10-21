@@ -73,42 +73,6 @@ protected:
 		class UPlayerInventoryManagerComponent* InventoryManager;
 
 
-	/*equipment slots*/
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Undershirt;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Underwear;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Pants;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Shirt;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Headwear;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Jacket;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Shoes;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Glasses;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Backpack;	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Vest;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Mask;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Gloves;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Watch;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Primary;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Secondary;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInventoryAttachmentComponent* Alternative;
-
-
 	/*AI*/
 private:
 	UPROPERTY(VisibleAnywhere, Category = "AI")
@@ -322,6 +286,8 @@ public:
 	//=========================================================================================================================================================
 public:
 	// Sets default values for this character's properties
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	AFirstPersonCharacter(const FObjectInitializer& ObjectInitializer);
 
 protected:
@@ -459,8 +425,6 @@ public:
 	//=========EQUIPMENT=========
 	//===========================
 public:
-	UFUNCTION()
-		virtual void OnItemEquipped(class AInventoryItem* Item, class UInventoryAttachmentComponent* EquippedComponent);
 	/*returns the first equipment component for the desired itemtype*/
 	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment")
 		virtual class UInventoryAttachmentComponent* GetEquipmentSlot(TSubclassOf<AInventoryItem> ItemType);

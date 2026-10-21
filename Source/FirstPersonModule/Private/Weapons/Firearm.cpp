@@ -23,6 +23,7 @@
 #include "Net/UnrealNetwork.h"
 
 /*setup replication*/
+
 void AFirearm::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -41,13 +42,16 @@ AFirearm::AFirearm(const FObjectInitializer& ObjectInitializer)
 	//}
 }
 
+//================================================
+//=====================FIRING=====================
+//================================================
+
 /*BeginFire() - function that is called from the owner (usually the Player/Pawn) that initiates the weapon to begin the chain of events
 to perform all the firing logic
 *
 *
 *
 */
-
 void AFirearm::BeginFire()
 {
 	Super::BeginFire();
@@ -97,6 +101,7 @@ void AFirearm::SpawnProjectile()
 		GetProjectileSpawnLocation(Location, Direction);
 
 		FProjectile Projectile = FProjectile(GetProjectileType(), Location, Direction, this, GetOwningPawn(), GetOwningPlayerController());
+
 		GetProjectileSubsystem()->SpawnProjectile(Projectile);
 	}
 }
@@ -121,20 +126,13 @@ bool AFirearm::CanFire()
 	return true;
 }
 
-
-void AFirearm::OnEquip_Implementation()
-{
-	Super::OnEquip_Implementation();
-
-}
-
-//===================================================
-//====================PROJECTILES====================
-//===================================================
+//================================================
+//==================PROJECTILES===================
+//================================================
 
 UProjectileSubsystem* AFirearm::GetProjectileSubsystem()
 {
-	return ProjectileSubsystem ? ProjectileSubsystem : GetWorld()->GetSubsystem<UProjectileSubsystem>(); 
+	return ProjectileSubsystem ? ProjectileSubsystem : GetWorld()->GetSubsystem<UProjectileSubsystem>();
 }
 
 void AFirearm::GetProjectileSpawnLocation(FVector& Location, FVector& Direction)

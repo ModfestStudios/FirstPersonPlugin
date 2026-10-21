@@ -16,6 +16,7 @@ void UInventoryItemSlot::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 
 	DOREPLIFETIME(UInventoryItemSlot, InventoryItem);
 	DOREPLIFETIME(UInventoryItemSlot, ItemClass);
+    DOREPLIFETIME(UInventoryItemSlot, Owner);
 	
 }
 

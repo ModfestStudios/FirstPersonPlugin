@@ -14,6 +14,10 @@ class FIRSTPERSONMODULE_API AEquipment : public AInventoryItem
 {
 	GENERATED_BODY()
 public:
+    AEquipment(const FObjectInitializer& ObjectInitializer);
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Inventory")
+        class UInventoryManagerComponent* InventoryManager;
+public:
 
 
 	

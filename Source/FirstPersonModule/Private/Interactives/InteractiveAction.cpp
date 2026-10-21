@@ -32,29 +32,30 @@ void UInteractiveAction::Initialize(class UInteractiveComponent* OwningComponent
 	bEnabled = Config.bEnabled;
 	InteractionType = Config.InteractionType;
 	ActionDuration = Config.ActionDuration;
+    LongHeldActionDuration = Config.LongHeldActionDuration;
 	FunctionType = Config.FunctionType;
 	FunctionToCall = Config.FunctionToCall;
 }
 
-void UInteractiveAction::NativeOnInteractionStarted(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User) const
+void UInteractiveAction::NativeOnInteractionStarted(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User, const FInteractionContext& Context) const
 {
 	
 
 	/*notify blueprint*/
-	BP_OnInteractionStarted(InteractiveComponent, InteractiveActor, User);
+	BP_OnInteractionStarted(InteractiveComponent, InteractiveActor, User, Context);
 }
 
-void UInteractiveAction::NativeOnInteractionCompleted(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User) const
+void UInteractiveAction::NativeOnInteractionCompleted(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User, const FInteractionContext& Context) const
 {
 
 	/*notify blueprint*/
-	BP_OnInteractionCompleted(InteractiveComponent,InteractiveActor,User);
+	BP_OnInteractionCompleted(InteractiveComponent,InteractiveActor,User,Context);
 }
 
-void UInteractiveAction::NativeOnInteractionCanceled(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User, bool bInterrupted) const
+void UInteractiveAction::NativeOnInteractionCanceled(UInteractiveComponent* InteractiveComponent, AActor* InteractiveActor, AFirstPersonCharacter* User, const FInteractionContext& Context) const
 {
 	/*notify blueprint*/
-	BP_OnInteractionCanceled(InteractiveComponent,InteractiveActor,User,bInterrupted);
+	BP_OnInteractionCanceled(InteractiveComponent,InteractiveActor,User,Context);
 }
 
 bool UInteractiveAction::IsActionAvailable_Implementation(const UInteractiveComponent* InteractiveComponent,const AActor* InteractiveActor,const AFirstPersonCharacter* User) const

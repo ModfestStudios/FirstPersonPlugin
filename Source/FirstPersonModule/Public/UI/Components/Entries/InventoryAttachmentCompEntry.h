@@ -26,7 +26,7 @@ public:
 
 
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory Attachment")
-		class UInventoryAttachmentComponent* AttachmentComponent;
+		class UInventoryAttachmentComponent* AttachmentComponent = nullptr;
 
 
 	//===========================================================================================================================================================================
@@ -34,17 +34,28 @@ public:
 	//===========================================================================================================================================================================
 
 	virtual void NativeOnInitialized() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
 
-	/*object is passed in - should be converted to UMapInfo and setse MapInfo*/
+	/*assigns the runtime attachment component represented by this list entry*/
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 
 
 
+	/*retries automatic binding when the owning pawn or runtime slots become available*/
+	UFUNCTION(BlueprintCallable, Category = "Inventory Attachment")
+		bool RefreshAttachmentComponent();
+
 	UFUNCTION(BlueprintCallable, Category = "Inventory Attachment")
 		virtual void SetAttachmentComponent(class UInventoryAttachmentComponent* NewAttachment);
+	UFUNCTION(BlueprintPure, Category = "Inventory Attachment")
+		bool HasValidAttachedItem() const;
+
 	UFUNCTION()
 		virtual void OnAttachmentComponentChanged();
 	UFUNCTION(BlueprintImplementableEvent, category = "Inventory Attachment", meta = (DisplayName = "OnAttachmentComponentChanged"))
 		void BP_OnAttachmentComponentChanged();
+private:
+	bool bUsesListItemBinding = false;
 };
