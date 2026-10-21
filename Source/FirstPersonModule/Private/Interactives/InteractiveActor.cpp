@@ -58,17 +58,17 @@ void AInteractiveActor::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AInteractiveActor::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void AInteractiveActor::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	UE_LOG(LogTemp,Warning,TEXT("%s::NativeOnInteractionStarted() WAS NOT OVERRIDDEN"), *GetName());
 }
 
-void AInteractiveActor::NativeOnInteractionCompleted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void AInteractiveActor::NativeOnInteractionCompleted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	UE_LOG(LogTemp, Warning, TEXT("%s::NativeOnInteractionCompleted() WAS NOT OVERRIDDEN"), *GetName());
 }
 
-void AInteractiveActor::NativeOnInteractionCanceled(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, bool bInterrupted)
+void AInteractiveActor::NativeOnInteractionCanceled(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	UE_LOG(LogTemp, Warning, TEXT("%s::NativeOnInteractionCanceled() WAS NOT OVERRIDDEN"), *GetName());
 }

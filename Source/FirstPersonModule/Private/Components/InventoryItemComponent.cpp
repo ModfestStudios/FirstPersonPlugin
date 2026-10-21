@@ -4,6 +4,8 @@
 #include "Components/InventoryItemComponent.h"
 #include "Components/InventoryManagerComponent.h"
 #include "Inventory/InventoryItem.h"
+#include "Characters/FirstPersonCharacter.h"
+#include "Components/InventoryAttachmentComponent.h"
 //#include "Events/ItemEvent.h"
 
 /*interface*/
@@ -33,6 +35,10 @@ void UInventoryItemComponent::GetLifetimeReplicatedProps(TArray<FLifetimePropert
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UInventoryItemComponent, bCollisionEnabled);
+    DOREPLIFETIME(UInventoryItemComponent, InventoryManager);
+    DOREPLIFETIME(UInventoryItemComponent, AttachmentSlot);
+    DOREPLIFETIME(UInventoryItemComponent, ItemPresence);
+    DOREPLIFETIME(UInventoryItemComponent, EquipState);
 }
 
 // Sets default values for this component's properties
@@ -45,7 +51,6 @@ UInventoryItemComponent::UInventoryItemComponent()
 	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
-
 // Called when the game starts
 void UInventoryItemComponent::BeginPlay()
 {
@@ -53,6 +58,10 @@ void UInventoryItemComponent::BeginPlay()
 	
 	RegisterInventoryItem();
 }
+
+//================================================
+//====================DETAILS=====================
+//================================================
 
 FText UInventoryItemComponent::GetItemName() const
 {
@@ -89,72 +98,92 @@ EItemSize UInventoryItemComponent::GetItemSize() const
 	return Size;
 }
 
+//================================================
+//======================POS=======================
+//================================================
+
 bool UInventoryItemComponent::IsSellable()
 {
 	return bSellableItem;
 }
 
-//====================================
-//===============STATES===============
-//====================================
+//================================================
+//=====================STATES=====================
+//================================================
 
 EItemPresence UInventoryItemComponent::GetItemPresence()
 {
 	return ItemPresence;
 }
 
-
 void UInventoryItemComponent::SetItemPresence(EItemPresence NewPresence)
 {
 	ItemPresence = NewPresence;
 }
 
-
-//=================================
-//============EQUIPPING============
-//=================================
-
-
-
-void UInventoryItemComponent::SetItemState(EItemState NewState)
+void UInventoryItemComponent::OnRep_ItemPresence()
 {
-	/*no need to update if already in this state*/
-	if (NewState == ItemState)
-		return;
+    if (!GetOwner())
+        return;
 
-	PreviousItemState = ItemState;
-	ItemState = NewState;
+    AActor* Holder = IsValid(InventoryManager) ? InventoryManager->GetOwner() : nullptr;
+
+    if (ItemPresence != EItemPresence::World && !IsValid(Holder))
+        return;
+    if (ItemPresence == EItemPresence::Attached && (EquipState != EEquipState::Equipped || !AttachmentSlot))
+        return;
+    if (LastNotifiedPresence == ItemPresence && LastNotifiedHolder.Get() == Holder)
+        return;
+    LastNotifiedPresence = ItemPresence;
+    LastNotifiedHolder = Holder;
+    if (IInventoryItemInterface* Interface = Cast<IInventoryItemInterface>(GetOwner()))
+    {
+        if (ItemPresence == EItemPresence::Storage) Interface->OnItemStored(Holder);
+        else if (ItemPresence == EItemPresence::Attached)
+            Interface->StopEquipping(nullptr, this, InventoryManager, EInventoryItemOperationEndReason::Completed);
+        else Interface->OnItemDropped(nullptr);
+    }
 }
 
-
+//================================================
+//===================EQUIPPING====================
+//================================================
 
 /*BeginEquip() - Called by the InventoryManager as a generic entry for any Inventory Item to provide an easy universal way across different Actor-types to receive
 * equipping notifications without needing to extend from a base case
-* Will call the Interface-based "OnEquip" on the owning actor so they can execute their own code
+* Actor lifecycle notifications are dispatched through InventoryItemInterface.
 * It's ASSUMED the Actor will then notify this ItemComponent it's completed via EndEquip() so it can notify the InventoryManager and update the Items State
 */
-void UInventoryItemComponent::BeginEquip()
+void UInventoryItemComponent::BeginEquip(AFirstPersonCharacter* User)
 {
-	EquipState = EEquipState::Equipping;
+	if (EquipState == EEquipState::Equipping)
+		return;
+    EquipRequestUser = User ? User : Cast<AFirstPersonCharacter>(GetOwningActor());
+    EquipState = EEquipState::Equipping;
 	
 	/*unhide mesh*/
 	if (bAutoUnhideOnEquip && GetOwner()->IsHidden())
 		GetOwner()->SetActorHiddenInGame(false);
 
-		/*notify owner (if using interface) of Equip*/
-	if (GetOwner()->Implements<UInventoryItemInterface>())
-		IInventoryItemInterface::Execute_OnEquip(GetOwner());
-
 	if (OnEquipBegin.IsBound())
 		OnEquipBegin.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
-}
 
+	if (IInventoryItemInterface* ItemInterface = Cast<IInventoryItemInterface>(GetOwner()))
+		ItemInterface->StartEquipping(EquipRequestUser.Get(), this, GetInventoryManager());
+    if (bCompleteEquipAutomatically && EquipState == EEquipState::Equipping) EndEquip();
+}
 
 void UInventoryItemComponent::EndEquip()
 {
+	if (EquipState != EEquipState::Equipping)
+		return;
 	EquipState = EEquipState::Equipped;
-	ItemState = EItemState::InUse;
-	InventoryManager->OnEquipFinished(Cast<AInventoryItem>(GetOwner()));
+	if (IInventoryItemInterface* ItemInterface = Cast<IInventoryItemInterface>(GetOwner()))
+		ItemInterface->StopEquipping(EquipRequestUser.Get(), this, GetInventoryManager(), EInventoryItemOperationEndReason::Completed);
+
+    EquipRequestUser.Reset();
+	if (InventoryManager)
+		InventoryManager->OnEquipFinished(Cast<AInventoryItem>(GetOwner()));
 
 	if (OnEquipEnd.IsBound())
 		OnEquipEnd.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
@@ -164,26 +193,33 @@ void UInventoryItemComponent::BeginUnequip()
 {
 	EquipState = EEquipState::Unequipping;
 
-	/*easy hook using interfaces*/
-	if (GetOwner()->Implements<UInventoryItemInterface>())
-		IInventoryItemInterface::Execute_OnUnequip(GetOwner());
-
 	if (OnUnequipBegin.IsBound())
 		OnUnequipBegin.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
-}
 
+	if (IInventoryItemInterface* ItemInterface = Cast<IInventoryItemInterface>(GetOwner()))
+		ItemInterface->StartUnequipping(Cast<AFirstPersonCharacter>(GetOwningActor()), this, GetInventoryManager());
+}
 
 /*should be called by actor to complete equipping*/
 void UInventoryItemComponent::EndUnequip()
 {
 	EquipState = EEquipState::NONE;
-	InventoryManager->OnUnequipFinished(Cast<AInventoryItem>(GetOwner()));
+	if (IInventoryItemInterface* ItemInterface = Cast<IInventoryItemInterface>(GetOwner()))
+		ItemInterface->StopUnequipping(Cast<AFirstPersonCharacter>(GetOwningActor()), this, GetInventoryManager(), EInventoryItemOperationEndReason::Completed);
+
+	if (InventoryManager)
+		InventoryManager->OnUnequipFinished(Cast<AInventoryItem>(GetOwner()));
 
 
 	if (OnUnequipEnd.IsBound())
 		OnUnequipEnd.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
 
 }
+
+//================================================
+//====================STORAGE=====================
+//================================================
+
 //
 //bool UInventoryItemComponent::CanBePickedUp()
 //{
@@ -194,18 +230,6 @@ void UInventoryItemComponent::EndUnequip()
 //	return true;
 //}
 //
-//void UInventoryItemComponent::PickedUp(AActor* Instigator, UInventoryManagerComponent* InstigatorInvManager)
-//{
-//	if (GetOwner()->Implements<UInventoryItemInterface>())
-//		IInventoryItemInterface::Execute_OnPickedUp(GetOwner());
-//
-//	/*notify loot subsystem we've been picked up*/
-//	UnregisterGridLocation();
-//
-//	/*send notification*/
-//	if (OnPickedUp.IsBound())
-//		OnPickedUp.Broadcast(GetOwner(), this, GetInventoryManager(), GetOwner()->GetOwner());
-//}
 //
 //void UInventoryItemComponent::OnDropped()
 //{
@@ -219,8 +243,6 @@ void UInventoryItemComponent::EndUnequip()
 //
 //
 //}
-
-
 AActor* UInventoryItemComponent::GetOwningActor()
 {
 	if (GetInventoryManager())
@@ -261,7 +283,6 @@ void UInventoryItemComponent::UnregisterGridLocation()
 		LootSubsystem->UnregisterDroppedItem(this, RegisteredGridKey);
 	}
 }
-
 
 void UInventoryItemComponent::EnableCollision()
 {

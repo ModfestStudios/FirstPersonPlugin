@@ -22,38 +22,31 @@
 
 UPlayerInventoryManagerComponent::UPlayerInventoryManagerComponent()
 {
-	if (HasAnyFlags(RF_ClassDefaultObject))
-	{
-		
-	}
-	
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Headwear", AHeadwear::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Vest", AVest::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Backpack", ABackpack::StaticClass()));
+    SlotCapacity = 0;
+    auto AddSlot = [this](FName ID, TSubclassOf<AInventoryItem> Type,
+                         EInventoryEquipmentSlotKind Kind = EInventoryEquipmentSlotKind::Equipment)
+    {
+        FInventoryEquipmentSlotConfig Config;
 
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Glasses", AGlasses::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Gloves", AGloves::StaticClass()));
-
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Jacket", AJacket::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Shirt", AShirt::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Pants", APants::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Shoes", AShoes::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Undershirt", AUndershirt::StaticClass()));
-	EquipmentSlots.Add(CreateDefaultEquipmentSlot("Underwear", AUnderwear::StaticClass()));
-	
-	
-
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Backpack",ABackpack::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Glasses",AGlasses::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Mask", AMask::StaticClass()));
-
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Jacket",AJacket::StaticClass()));		
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Shirt", AShirt::StaticClass())); 
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Pants",APants::StaticClass()));
-	//
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Shoes", AShoes::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Undershirt", AUndershirt::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Underwear", AUnderwear::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Vets",AVest::StaticClass()));
-	//EquipmentSlots.Add(FInventoryEquipmentSlot("Watch",AWatch::StaticClass()));
+        Config.SlotID = ID;
+        Config.DisplayName = FText::FromName(ID);
+        Config.AcceptedItemClass = Type;
+        Config.SlotKind = Kind;
+        EquipmentSlotConfigs.Add(Config);
+    };
+    AddSlot("Headwear", AHeadwear::StaticClass());
+    AddSlot("Vest", AVest::StaticClass());
+    AddSlot("Backpack", ABackpack::StaticClass());
+    AddSlot("Glasses", AGlasses::StaticClass());
+    AddSlot("Gloves", AGloves::StaticClass());
+    AddSlot("Jacket", AJacket::StaticClass());
+    AddSlot("Shirt", AShirt::StaticClass());
+    AddSlot("Pants", APants::StaticClass());
+    AddSlot("Shoes", AShoes::StaticClass());
+    AddSlot("Undershirt", AUndershirt::StaticClass());
+    AddSlot("Underwear", AUnderwear::StaticClass());
+    AddSlot("Mask", AMask::StaticClass());
+    AddSlot("Watch", AWatch::StaticClass());
+    AddSlot("MainHand", nullptr, EInventoryEquipmentSlotKind::MainHand);
+    // OffHand is opt-in through EquipmentSlotConfigs.
 }

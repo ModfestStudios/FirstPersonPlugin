@@ -27,25 +27,25 @@ class FIRSTPERSONMODULE_API IInteractiveActorInterface
 public:
 	/*called by the InteractiveComponent whenever someone tries to use this - don't override these use the NativeOn events instead*/
 	
-	void StartInteraction(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
-	void StopInteraction(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, EInteractionEndReason EndReason);
+	void StartInteraction(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
+	void StopInteraction(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, EInteractionEndReason EndReason, const FInteractionContext& Context);
 	
 
 protected:
 	/*override these in your actor*/
-	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
-	virtual void NativeOnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
-	virtual void NativeOnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, bool bInterrupted);
+	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
+	virtual void NativeOnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
+	virtual void NativeOnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 
 
 	/*blueprint version - be sure to call this in your class during interaction to allow Blueprint hooks*/
 protected:	
 	UFUNCTION(BlueprintImplementableEvent, Category = "Interactions", meta=(DisplayName="On Interaction Started", BlueprintProtected))
-		void BP_OnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
+		void BP_OnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Interactions", meta = (DisplayName = "On Interaction Completed", BlueprintProtected))
-		void BP_OnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
+		void BP_OnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	UFUNCTION(BlueprintImplementableEvent, Category = "Interactions", meta = (DisplayName = "On Interaction Canceled", BlueprintProtected))
-		void BP_OnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, bool bInterrupted);
+		void BP_OnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 		
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Interactions")

@@ -2,7 +2,7 @@
 
 
 #include "UI/Components/Entries/InventoryEquipmentSlotEntry.h"
-#include "Inventory/InventoryEquipmentSlot.h"
+#include "Components/InventoryAttachmentComponent.h"
 
 #include "Characters/FirstPersonCharacter.h"
 
@@ -16,7 +16,7 @@
 #include "InputCoreTypes.h"
 #include "GameFramework/InputSettings.h"
 
-bool UInventoryEquipmentSlotEntry::IsItemEquipped()
+bool UInventoryAttachmentComponentEntry::IsItemEquipped()
 {
     if (!EquipmentSlot)
         return false;
@@ -24,18 +24,18 @@ bool UInventoryEquipmentSlotEntry::IsItemEquipped()
         return EquipmentSlot->IsItemEquipped();
 }
 
-UInventoryEquipmentSlot* UInventoryEquipmentSlotEntry::GetEquipmentSlot()
+UInventoryAttachmentComponent* UInventoryAttachmentComponentEntry::GetEquipmentSlot()
 {
     return EquipmentSlot;
 }
 
-void UInventoryEquipmentSlotEntry::SetEquipmentSlot(UInventoryEquipmentSlot* NewEquipmentSlot)
+void UInventoryAttachmentComponentEntry::SetEquipmentSlot(UInventoryAttachmentComponent* NewEquipmentSlot)
 {
     EquipmentSlot = NewEquipmentSlot;
 
 }
 
-void UInventoryEquipmentSlotEntry::NativeOnInitialized()
+void UInventoryAttachmentComponentEntry::NativeOnInitialized()
 {
     /*auto-*/
     if (bAutoInitializeSlot && !EquipmentSlotID.IsNone())
@@ -50,11 +50,12 @@ void UInventoryEquipmentSlotEntry::NativeOnInitialized()
     Super::NativeOnInitialized();
 }
 
-FReply UInventoryEquipmentSlotEntry::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+FReply UInventoryAttachmentComponentEntry::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
     if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
     {
         UDragDropOperation* DragDropOp = NewObject<UDragDropOperation>();
+
         DragDropOp->DefaultDragVisual = this; // Set this widget as the visual.
         DragDropOp->Payload = this; // Attach any data you need (e.g., item reference).
 
@@ -64,23 +65,23 @@ FReply UInventoryEquipmentSlotEntry::NativeOnMouseButtonDown(const FGeometry& In
     return FReply::Unhandled();
 }
 
-void UInventoryEquipmentSlotEntry::NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+void UInventoryAttachmentComponentEntry::NativeOnDragEnter(const FGeometry& InGeometry, const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 }
 
-void UInventoryEquipmentSlotEntry::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
+void UInventoryAttachmentComponentEntry::NativeOnDragLeave(const FDragDropEvent& InDragDropEvent, UDragDropOperation* InOperation)
 {
 }
 
-void UInventoryEquipmentSlotEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
+void UInventoryAttachmentComponentEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
-    if (ListItemObject->IsA<UInventoryEquipmentSlot>())
-        SetEquipmentSlot(Cast<UInventoryEquipmentSlot>(ListItemObject));
+    if (ListItemObject->IsA<UInventoryAttachmentComponent>())
+        SetEquipmentSlot(Cast<UInventoryAttachmentComponent>(ListItemObject));
 
     Execute_OnListItemObjectSet(Cast<UObject>(this), ListItemObject);
 }
 
-void UInventoryEquipmentSlotEntry::NativeOnItemSelectionChanged(bool bIsSelected)
+void UInventoryAttachmentComponentEntry::NativeOnItemSelectionChanged(bool bIsSelected)
 {
     Execute_BP_OnItemSelectionChanged(Cast<UObject>(this), bIsSelected);
 

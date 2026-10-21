@@ -2,7 +2,7 @@
 
 
 #include "UI/Components/Entries/InventorySlotEntry.h"
-#include "Inventory/InventoryEquipmentSlot.h"
+#include "Components/InventoryAttachmentComponent.h"
 
 #include "Characters/FirstPersonCharacter.h"
 
@@ -27,7 +27,7 @@ bool UInventorySlotEntry::IsItemEquipped()
         return EquipmentSlot->IsItemEquipped();
 }
 
-void UInventorySlotEntry::SetEquipmentSlot(UInventoryEquipmentSlot* NewEquipmentSlot)
+void UInventorySlotEntry::SetEquipmentSlot(UInventoryAttachmentComponent* NewEquipmentSlot)
 {
     EquipmentSlot = NewEquipmentSlot;
 }
@@ -52,6 +52,7 @@ FReply UInventorySlotEntry::NativeOnMouseButtonDown(const FGeometry& InGeometry,
     if (InMouseEvent.IsMouseButtonDown(EKeys::LeftMouseButton))
     {
         UDragDropOperation* DragDropOp = NewObject<UDragDropOperation>();
+
         DragDropOp->DefaultDragVisual = this; // Set this widget as the visual.
         DragDropOp->Payload = this; // Attach any data you need (e.g., item reference).
 
@@ -71,8 +72,8 @@ void UInventorySlotEntry::NativeOnDragLeave(const FDragDropEvent& InDragDropEven
 
 void UInventorySlotEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 {
-    if (ListItemObject->IsA<UInventoryEquipmentSlot>())
-        SetEquipmentSlot(Cast<UInventoryEquipmentSlot>(ListItemObject));
+    if (ListItemObject->IsA<UInventoryAttachmentComponent>())
+        SetEquipmentSlot(Cast<UInventoryAttachmentComponent>(ListItemObject));
 
     Execute_OnListItemObjectSet(Cast<UObject>(this), ListItemObject);
 }

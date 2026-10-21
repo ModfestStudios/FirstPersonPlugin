@@ -14,6 +14,7 @@
 #include "Net/UnrealNetwork.h"
 
 // Sets default values
+
 ADoor::ADoor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UDoorComponent>(TEXT("Interactive Component")))
 {	
@@ -72,25 +73,28 @@ void ADoor::Close()
 	}
 }
 
+//================================================
+//====================ACTIONS=====================
+//================================================
 
-void ADoor::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void ADoor::NativeOnInteractionStarted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
-	Super::NativeOnInteractionStarted(User,Interactive,Action);
+	Super::NativeOnInteractionStarted(User,Interactive,Action,Context);
 }
 
-void ADoor::NativeOnInteractionCompleted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void ADoor::NativeOnInteractionCompleted(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	if(Action->IsA<UOpenAction>())
 		Open();
 	if(Action->IsA<UCloseAction>())
 		Close();
 	
-	Super::NativeOnInteractionCompleted(User, Interactive, Action);
+	Super::NativeOnInteractionCompleted(User, Interactive, Action, Context);
 }
 
-void ADoor::NativeOnInteractionCanceled(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, bool bInterrupted)
+void ADoor::NativeOnInteractionCanceled(AFirstPersonCharacter* User, UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
-	Super::NativeOnInteractionCanceled(User, Interactive, Action, bInterrupted);
+	Super::NativeOnInteractionCanceled(User, Interactive, Action, Context);
 }
 
 bool ADoor::IsActionAvailable_Implementation(const AFirstPersonCharacter* User,const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const
@@ -99,6 +103,7 @@ bool ADoor::IsActionAvailable_Implementation(const AFirstPersonCharacter* User,c
 		return false;
 
 	const UDoorComponent* DoorComponent = Cast<UDoorComponent>(Interactive);
+
 	//if (Interactive != InteractiveComponent)
 	//	return true;
 
@@ -121,5 +126,4 @@ bool ADoor::IsActionAvailable_Implementation(const AFirstPersonCharacter* User,c
 
 	return true;
 }
-
 

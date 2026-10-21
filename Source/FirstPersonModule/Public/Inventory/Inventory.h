@@ -3,7 +3,6 @@
 #pragma once
 #include "CoreMinimal.h"
 //#include "Inventory/InventoryItem.h"
-#include "../Interfaces/InventoryItemInterface.h"
 #include "../Interfaces/PrimaryWeaponInterface.h"
 #include "../Interfaces/SecondaryWeaponInterface.h"
 #include "../Interfaces/AlternativeWeaponInterface.h"
@@ -55,6 +54,49 @@ public:
 	FInventoryGridDebugData() {}
 };
 
+
+UENUM(BlueprintType)
+enum class EInventoryEquipmentSlotKind : uint8
+{
+    Equipment,
+    MainHand,
+    OffHand
+};
+
+/** Editor configuration only. Slot components are created at runtime by the manager. */
+USTRUCT(BlueprintType)
+struct FInventoryEquipmentSlotConfig
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    FName SlotID;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    FText DisplayName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    EInventoryEquipmentSlotKind SlotKind = EInventoryEquipmentSlotKind::Equipment;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot", meta = (AllowAbstract = "true"))
+    TSubclassOf<class AInventoryItem> AcceptedItemClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot", meta = (DisplayName = "Default Item Class to Spawn", ToolTip = "Inventory item actor class spawned during default inventory initialization at startup. The manager tries to equip it into this slot, then falls back to storage. Leave empty to start without a default item."))
+    TSubclassOf<class AInventoryItem> DefaultItemClass;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    FName AttachmentSocket;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    FName AttachmentComponentName;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    FTransform AttachmentTransform = FTransform::Identity;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Equipment Slot")
+    int32 StoragePriority = 0;
+};
+
 UENUM(BlueprintType)
 enum class EItemPresence : uint8
 {
@@ -78,8 +120,11 @@ struct FInventoryManagerVicinityCheckParameters
 public:
 
 
-	UPROPERTY(BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, meta = (ToolTip = "Actors explicitly excluded from nearby inventory results."))
 		TArray<AActor*> IgnoredActors;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ToolTip = "Also ignore actors equipped in the supplied IgnoredActors inventory equipment slots, recursively through nested equipment. Does not automatically choose an actor to ignore."))
+		bool bAutoIgnoreRecursive = false;
 
 	FInventoryManagerVicinityCheckParameters() {}
 };
@@ -96,6 +141,15 @@ public:
 		TArray<TWeakObjectPtr<class UInventoryManagerComponent>> Managers;
 };
 
+/** Terminal result of a pickup, drop, equipping, or unequipping operation. */
+UENUM(BlueprintType)
+enum class EInventoryItemOperationEndReason : uint8
+{
+	Completed,
+	Canceled,
+	Interrupted
+};
+
 UENUM(BlueprintType)
 enum class EEquipCompletionLogic : uint8
 {
@@ -110,14 +164,6 @@ enum class EEquipState : uint8 {
 	Equipping,
 	Unequipping,
 	Equipped
-};
-
-UENUM(BlueprintType)
-enum class EItemState : uint8 {
-	NONE,
-	AsPickup,
-	InStorage,
-	InUse
 };
 
 UENUM(BLueprintType)

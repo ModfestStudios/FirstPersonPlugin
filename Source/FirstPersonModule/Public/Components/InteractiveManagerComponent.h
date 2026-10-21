@@ -13,7 +13,6 @@
 #include "InteractiveManagerComponent.generated.h"
 
 
-
 UENUM()
 enum class EInteractiveTraceType : uint8
 {
@@ -47,7 +46,6 @@ public:
 };
 
 
-
 UCLASS(BlueprintType, ClassGroup = (Interactives), meta = (BlueprintSpawnableComponent))
 class FIRSTPERSONMODULE_API UInteractiveManagerComponent : public UActorComponent
 {
@@ -63,7 +61,8 @@ public:
 		float TraceLength;
 	UPROPERTY(EditDefaultsOnly, Category = "Interactions")
 		float ProbeSize = 2.0f;
-
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Interactions|Input", meta=(ClampMin="0.01"))
+        float LongPressThreshold = 0.25f;
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "Interactions|Debug")
@@ -86,7 +85,6 @@ private:
 		class UInteractiveComponent* FocusedInteractive;
 
 
-
 	/*the current interaction we're actively using (may be cleared instantly if the interaction was fire and forget)*/
 	UPROPERTY()
 		class UInteractiveComponent* ActiveInteractive;
@@ -95,6 +93,13 @@ private:
 		class UInteractiveAction* ActiveAction = nullptr;
 	/*the world timestamp given when we started performing an action*/
 	float InteractionStartTime = 0.0f;
+    UPROPERTY(Transient)
+        FInteractionContext ActiveContext;
+    bool bInteractionInputDown = false;
+    bool bAwaitingPressClassification = false;
+    double InteractionPressStartTime = 0.0;
+    TWeakObjectPtr<UInteractiveComponent> PressInteractive;
+    TWeakObjectPtr<UInteractiveAction> PressAction;
 
 	/*index-key for which current interaction in the stack we're looking at*/
 	UPROPERTY()
@@ -113,7 +118,6 @@ public:
 		FOnInteraction OnInteractionDenied;
 
 
-
 	//=============================================================================================================================================================================================
 	//==========================================================================================FUNCTIONS==========================================================================================
 	//=============================================================================================================================================================================================
@@ -125,6 +129,7 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 	// Called every frame
@@ -135,29 +140,39 @@ public:
 	//==================INTERACTIONS==================
 	//================================================
 public:
+    UFUNCTION(BlueprintPure, Category="Interactions")
+        FInteractionContext GetInteractionContext(const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const;
+
 	/*returns the interactive component we're currently focused on with our view*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interactions|Interactives")
 		virtual class UInteractiveComponent* GetFocusedInteractive();
 
 	UFUNCTION(BlueprintCallable, Category = "Interactions|Interactives")
-		virtual void StartInteraction(class UInteractiveComponent* Interactive, class UInteractiveAction* Action);
+		virtual void StartInteraction(class UInteractiveComponent* Interactive, class UInteractiveAction* Action, const FInteractionContext& Context);
+    UFUNCTION(BlueprintCallable, Category="Interactions|Input")
+        void BeginInteractionPress();
+    UFUNCTION(BlueprintCallable, Category="Interactions|Input")
+        void EndInteractionPress();
 	UFUNCTION()
-		virtual void StopInteraction(class UInteractiveComponent* Interactive, class UInteractiveAction* Action, bool bWasInterrupted = false);
+		virtual void StopInteraction(class UInteractiveComponent* Interactive, class UInteractiveAction* Action, const FInteractionContext& Context);
 
 	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void Server_StartInteraction(class UInteractiveComponent* Interactive, const FGuid& ID);
+		virtual void Server_StartInteraction(class UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context);
 	UFUNCTION(Server, Reliable, WithValidation)
-		virtual void Server_StopInteraction(class UInteractiveComponent* Interactive, const FGuid& ID);
+		virtual void Server_StopInteraction(class UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context);
 
+
+private:
+    void UpdateInteractionPress();
 
 protected:
 	/*callbacks for the manager - called by the component itself */
 	UFUNCTION()
-		virtual void NativeOnInteractionStarted(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
+		virtual void NativeOnInteractionStarted(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	UFUNCTION()
-		virtual void NativeOnInteractionCompleted(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action);
+		virtual void NativeOnInteractionCompleted(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	UFUNCTION()
-		virtual void NativeOnInteractionCancelled(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, bool bInterrupted);
+		virtual void NativeOnInteractionCancelled(class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	UFUNCTION()
 		virtual void NativeOnInteractionDenied(class UInteractiveComponent* Interactive, class UInteractiveAction* Action);
 
@@ -166,6 +181,8 @@ protected:
 	//===============ACTIONS===============
 	//=====================================
 public:
+
+
 	/*gets a list of all actions our current interactive contains (will show disabled/non-usable actions if bIncludeUnusables is checked)*/
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Interactions|Actions")
 		TArray<UInteractiveAction*> GetFocusedInteractiveActions() const;
@@ -180,7 +197,6 @@ public:
 	/*simple helper function that sets the Pending Action reference based on the Index (refreshing its pointer)*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions|Actions")
 		virtual void UpdatePendingActionReference();
-
 
 
 	//============================================

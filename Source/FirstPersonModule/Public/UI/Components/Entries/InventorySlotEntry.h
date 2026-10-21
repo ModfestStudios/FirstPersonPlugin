@@ -38,7 +38,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Equipment Slot")
 		FName EquipmentSlotID;
 	UPROPERTY()
-		class UInventoryEquipmentSlot* EquipmentSlot;
+		class UInventoryAttachmentComponent* EquipmentSlot;
 
 	//=======================================================================================================================================================
 	//=======================================================================FUNCTIONS=======================================================================
@@ -48,7 +48,7 @@ public:
 		virtual bool IsItemEquipped();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment Slot")
-		virtual void SetEquipmentSlot(class UInventoryEquipmentSlot* NewEquipmentSlot);
+		virtual void SetEquipmentSlot(class UInventoryAttachmentComponent* NewEquipmentSlot);
 
 
 

@@ -31,6 +31,8 @@ public:
         EInteractionType InteractionType;
     UPROPERTY(BlueprintReadOnly, Category = "Interaction")
         float ActionDuration;
+    UPROPERTY(BlueprintReadOnly, Category="Interaction")
+        float LongHeldActionDuration = 1.0f;
     UPROPERTY(BlueprintReadOnly, Category = "Interaction")
         EInteractionFunctionType FunctionType;
     UPROPERTY(BlueprintReadOnly, Category = "Interaction")
@@ -48,11 +50,11 @@ public:
 
 
     UFUNCTION()
-        virtual void NativeOnInteractionStarted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User) const;
+        virtual void NativeOnInteractionStarted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
     UFUNCTION()
-        virtual void NativeOnInteractionCompleted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User) const;
+        virtual void NativeOnInteractionCompleted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
     UFUNCTION()
-        virtual void NativeOnInteractionCanceled(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, bool bInterrupted) const;
+        virtual void NativeOnInteractionCanceled(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
     UFUNCTION(BlueprintNativeEvent, Category = "Interaction", meta = (DisplayName = "Is Action Available"))
         bool IsActionAvailable(const class UInteractiveComponent* InteractiveComponent, const class AActor* InteractiveActor, const class AFirstPersonCharacter* User) const;
 
@@ -61,13 +63,13 @@ public:
 
 protected:
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Interaction", meta = (DisplayName = "On Interaction Started"))
-        void BP_OnInteractionStarted(class UInteractiveComponent* InteractiveComponent,class AActor* InteractiveActor,class AFirstPersonCharacter* User) const;
+        void BP_OnInteractionStarted(class UInteractiveComponent* InteractiveComponent,class AActor* InteractiveActor,class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
     /*interaction has fully completed*/
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Interaction", meta = (DisplayName = "On Interaction Completed"))
-        void BP_OnInteractionCompleted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User) const;
+        void BP_OnInteractionCompleted(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
     /*user prematurely stopped interaction*/
     UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Interaction", meta = (DisplayName = "On Interaction Canceled"))
-        void BP_OnInteractionCanceled(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, bool bInterrupted) const;
+        void BP_OnInteractionCanceled(class UInteractiveComponent* InteractiveComponent, class AActor* InteractiveActor, class AFirstPersonCharacter* User, const FInteractionContext& Context) const;
 
 
 

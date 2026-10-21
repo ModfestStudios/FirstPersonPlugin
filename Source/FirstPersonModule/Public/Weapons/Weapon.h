@@ -5,25 +5,19 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Inventory/InventoryItem.h"
-#include "Interfaces/InteractiveActorInterface.h"
 #include "Weapon.generated.h"
 
 UCLASS(abstract)
-class FIRSTPERSONMODULE_API AWeapon : public AInventoryItem, public IInteractiveActorInterface
+class FIRSTPERSONMODULE_API AWeapon : public AInventoryItem
 {
 	GENERATED_BODY()
 public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Third Person")
-		USkeletalMeshComponent* Mesh;
+		class USkeletalMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "First Person")
 		class UFirstPersonItemComponent* FirstPersonComponent;
 
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	//	class UInventoryItemComponent* ItemComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-		class UInteractiveCollisionComponent* InteractionCollision;
 
 public:
 	// Sets default values for this actor's properties
@@ -45,15 +39,6 @@ public:
 		virtual void EndFire();
 
 
-	//=================================
-	//============EQUIPPING============
-	//=================================
-public:
-	/*Inventory Item interface stuff*/
-	virtual void OnEquip_Implementation() override;
-	virtual void OnUnequip_Implementation() override;
-	virtual void OnPickedUp_Implementation() override;
-
 	//===================================
 	//============ATTACHMENTS============
 	//===================================
@@ -70,14 +55,6 @@ public:
 		virtual void OnAnimNotify_AttachFirstPersonMesh();
 	UFUNCTION()
 		virtual void OnAnimNotify_AttachThirdPersonMesh();
-
-	//===============================
-	//==========INTERACTION==========
-	//===============================
-public:
-	
-		//virtual void OnInteraction_Implementation(class AFirstPersonCharacter* User, class UInteractiveAction* Action) override;	
-		//virtual bool IsInteractionAvailable_Implementation(class AFirstPersonCharacter* User, class UInteractiveAction* Action) override;
 
 
 

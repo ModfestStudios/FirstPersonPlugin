@@ -12,15 +12,6 @@
 #include "Curves/CurveFloat.h"
 
 /*clothing*/
-#include "Clothing/Undershirt.h"
-#include "Clothing/Underwear.h"
-#include "Clothing/Pants.h"
-#include "Clothing/Headwear.h"
-#include "Clothing/Glasses.h"
-#include "Clothing/Jacket.h"
-#include "Clothing/Shirt.h"
-#include "Clothing/Shoes.h"
-#include "Clothing/Gloves.h"
 
 
 /*components*/
@@ -39,10 +30,6 @@
 #include "Engine/World.h"
 
 /*equipment*/
-#include "Equipment/Backpack.h"
-#include "Equipment/Vest.h"
-#include "Equipment/Mask.h"
-#include "Equipment/Watch.h"
 
 
 /*framwork*/
@@ -102,8 +89,6 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Kismet/GameplayStatics.h"
 
-
-
 void AFirstPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -117,7 +102,6 @@ void AFirstPersonCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>
 	DOREPLIFETIME_CONDITION(AFirstPersonCharacter,LeanState,COND_SimulatedOnly);
 }
 
-
 // Sets default values
 AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer.SetDefaultSubobjectClass<UFirstPersonMovementComponent>(CharacterMovementComponentName))
@@ -125,14 +109,14 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	FirstPersonView = ObjectInitializer.CreateDefaultSubobject<UFirstPersonViewComponent>(this, FirstPersonViewComponentName);
 	if (FirstPersonView)
 	{
-		
+
 		static ConstructorHelpers::FObjectFinder<USkeletalMesh> armMeshAsset(TEXT("/FirstPersonModule/Characters/Mesh/MaleMannequin_Quin_FirstPersonArms.MaleMannequin_Quin_FirstPersonArms"));
 		if (armMeshAsset.Succeeded())
 			FirstPersonView->SetFirstPersonArms(armMeshAsset.Object);
 
 		FirstPersonView->bAllowZoom = true;
 		FirstPersonView->bAllowFreeLook = true;
-		FirstPersonView->bAutoCalcVerticalFreeLook = true;	
+		FirstPersonView->bAutoCalcVerticalFreeLook = true;
 
 		static ConstructorHelpers::FClassFinder<UPlayerHUDWidget> hudAsset(TEXT("/FirstPersonModule/UI/Blueprints/BP_DefaultPlayerHud"));
 		if (hudAsset.Succeeded())
@@ -141,12 +125,13 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		static ConstructorHelpers::FObjectFinder<UMaterial> ppAsset(TEXT("/FirstPersonModule/Materials/Overlays/PP_Overlay_RectangularVignette_SoftCenter_MasterMaterial"));
 		static ConstructorHelpers::FObjectFinder<UCurveFloat> curveAsset(TEXT("/FirstPersonModule/Blueprints/Curves/RampUpDown"));
 		if (ppAsset.Succeeded() && curveAsset.Succeeded())
-		{			
+		{
 			UMaterialInterface* Material = ppAsset.Object.Get();
 			UCurveFloat* Curve = curveAsset.Object.Get();
+
 			FirstPersonView->DamageIndicators.Add(FDamageIndicator(Material,1.0f, 1.0f, Curve));
 		}
-		
+
 	}
 
 	VitalsComponent = ObjectInitializer.CreateDefaultSubobject<UVitalsComponent>(this, VitalsComponentName);
@@ -164,137 +149,6 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 		InventoryManager->SlotCapacity = 0;
 	}
 
-	Undershirt = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Undershirt"));
-	if (Undershirt)
-	{
-		Undershirt->AttachmentName = NSLOCTEXT("Player Character", "UndershirtSlot", "Undershirt");
-		Undershirt->AttachmentID = "Undershirt";
-		Undershirt->AttachmentType = AUndershirt::StaticClass();
-
-	}
-
-	Underwear = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Underwear"));
-	if (Underwear)
-	{
-		Underwear->AttachmentName = NSLOCTEXT("Player Character", "UnderwearSlot", "Underwear");
-		Underwear->AttachmentID = "Underwear";
-		Underwear->AttachmentType = AUnderwear::StaticClass();
-	}
-
-	Pants = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Pants"));
-	if (Pants)
-	{
-		Pants->AttachmentName = NSLOCTEXT("Player Character", "PantsSlot", "Pants");
-		Pants->AttachmentID = "Pants";
-		Pants->AttachmentType = APants::StaticClass();
-	}
-
-	Shirt = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Shirt"));
-	if (Shirt)
-	{
-		Shirt->AttachmentName = NSLOCTEXT("Player Character", "ShirtSlot", "Shirt");
-		Shirt->AttachmentID = "Shirt";
-		Shirt->AttachmentType = AShirt::StaticClass();
-	}
-
-
-	Jacket = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Jacket"));
-	if (Jacket)
-	{
-		Jacket->AttachmentName = NSLOCTEXT("Player Character", "JacketSlot", "Jacket");
-		Jacket->AttachmentID = "Jacket";
-		Jacket->AttachmentType = AJacket::StaticClass();
-	}
-
-	Shoes = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Shoes"));
-	if (Shoes)
-	{
-		Shoes->AttachmentName = NSLOCTEXT("Player Character", "ShoesSlot", "Shoes");
-		Shoes->AttachmentID = "Shoes";
-		Shoes->AttachmentType = AShoes::StaticClass();
-	}
-
-
-	Headwear = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Headwear"));
-	if (Headwear)
-	{
-		Headwear->AttachmentName = NSLOCTEXT("Player Character", "HeadwearSlot", "Headwear");
-		Headwear->AttachmentID = "Headwear";
-		Headwear->AttachmentType = AHeadwear::StaticClass();
-	}
-
-	Backpack = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Backpack"));
-	if (Backpack)
-	{
-		Backpack->AttachmentName = NSLOCTEXT("Player Character", "BackpackSlot", "Backpack");
-		Backpack->AttachmentID = "Backpack";
-		Backpack->AttachmentType = ABackpack::StaticClass();
-	}
-
-	Vest = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Vest"));
-	if (Vest)
-	{
-		Vest->AttachmentName = NSLOCTEXT("Player Character", "VestSlot", "Vest");
-		Vest->AttachmentID = "Vest";
-		Vest->AttachmentType = AVest::StaticClass();
-	}
-
-	Glasses = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Glasses"));
-	if (Glasses)
-	{
-		Glasses->AttachmentName = NSLOCTEXT("Player Character", "GlassesSlot", "Glasses");
-		Glasses->AttachmentID = "Glasses";
-		Glasses->AttachmentType = AGlasses::StaticClass();
-	}
-
-	Mask = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Mask"));
-	if (Mask)
-	{
-		Mask->AttachmentName = NSLOCTEXT("Player Character", "MaskSlot", "Mask");
-		Mask->AttachmentID = "Mask";
-		Mask->AttachmentType = AMask::StaticClass();
-	}
-
-	Gloves = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Gloves"));
-	if (Gloves)
-	{
-		Gloves->AttachmentName = NSLOCTEXT("Player Character", "GlovesSlot", "Gloves");
-		Gloves->AttachmentID = "Gloves";
-		Gloves->AttachmentType = AGloves::StaticClass();
-	}
-
-	Watch = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Watch"));
-	if (Watch)
-	{
-		Watch->AttachmentName = NSLOCTEXT("Player Character", "WatchSlot", "Watch");
-		Watch->AttachmentID = "Watch";
-		Watch->AttachmentType = AWatch::StaticClass();
-	}
-
-	Primary = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Primary"));
-	if (Primary)
-	{
-		Primary->AttachmentName = NSLOCTEXT("Player Character", "PrimarySlot", "Primary");
-		Primary->AttachmentID = "Primary";
-		//Primary->AttachmentType = AWatch::StaticClass();
-	}
-
-	Secondary = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Secondary"));
-	if (Secondary)
-	{
-		Secondary->AttachmentName = NSLOCTEXT("Player Character", "SecondarySlot", "Secondary");
-		Secondary->AttachmentID = "Secondary";
-		//Primary->AttachmentType = AWatch::StaticClass();
-	}
-
-	Alternative = ObjectInitializer.CreateDefaultSubobject<UInventoryAttachmentComponent>(this, TEXT("Alternative"));
-	if (Alternative)
-	{
-		Alternative->AttachmentName = NSLOCTEXT("Player Character", "AlternativeSlot", "Alternative");
-		Alternative->AttachmentID = "Alternative";
-		//Primary->AttachmentType = AWatch::StaticClass();
-	}
-
 	BehaviorComponent = ObjectInitializer.CreateDefaultSubobject<UBehaviorComponent>(this, FName("Behavior Component"));
 	if (BehaviorComponent)
 	{
@@ -310,7 +164,7 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 	InteractiveManager = ObjectInitializer.CreateDefaultSubobject<UInteractiveManagerComponent>(this, InteractiveManagerComponentName);
 	if (InteractiveManager)
 	{
-		
+
 	}
 
 	GoreComponent = ObjectInitializer.CreateDefaultSubobject<UGoreComponent>(this, GibComponentName);
@@ -448,7 +302,7 @@ AFirstPersonCharacter::AFirstPersonCharacter(const FObjectInitializer& ObjectIni
 
 
 
-	
+
 	PrimaryActorTick.bCanEverTick = true;
 }
 
@@ -471,10 +325,8 @@ void AFirstPersonCharacter::BeginPlay()
 
 	if(UAIBehaviorSubsystem* BSS = GetWorld()->GetSubsystem<UAIBehaviorSubsystem>())
 		BSS->RegisterActor(this);
-	
+
 }
-
-
 
 void AFirstPersonCharacter::PossessedBy(AController* NewController)
 {
@@ -496,7 +348,7 @@ void AFirstPersonCharacter::UnPossessed()
 		FirstPersonView->UpdateFirstPersonVisibility();
 
 	if (GetInventoryManager())
-		GetInventoryManager()->OnOwnerUnPossessed();		
+		GetInventoryManager()->OnOwnerUnPossessed();
 }
 
 void AFirstPersonCharacter::NotifyControllerChanged()
@@ -555,7 +407,7 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	Input->BindAction(ToggleSprintAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndSprint);
 	Input->BindAction(ToggleSprintAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndSprint);
 
-	
+
 	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::BeginSlowWalk);
 	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndSlowWalk);
 	Input->BindAction(ToggleSlowWalkAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndSlowWalk);
@@ -577,7 +429,9 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	Input->BindAction(EndFireAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::EndFire);
 
 	/*interactions*/
-	Input->BindAction(BeginInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::BeginInteraction);
+	Input->BindAction(BeginInteractionAction, ETriggerEvent::Started, this, &AFirstPersonCharacter::BeginInteraction);
+    Input->BindAction(BeginInteractionAction, ETriggerEvent::Completed, this, &AFirstPersonCharacter::EndInteraction);
+    Input->BindAction(BeginInteractionAction, ETriggerEvent::Canceled, this, &AFirstPersonCharacter::EndInteraction);
 	Input->BindAction(EndInteractionAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::EndInteraction);
 	Input->BindAction(CycleInteractiveAction, ETriggerEvent::Triggered,this, &AFirstPersonCharacter::CycleInteractiveActions);
 
@@ -585,9 +439,458 @@ void AFirstPersonCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	Input->BindAction(ToggleInventoryAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacter::ToggleInventory);
 }
 
-//========================
-//========MOVEMENT========
-//========================
+//================================================
+//==================FIRST PERSON==================
+//================================================
+
+UFirstPersonViewComponent* AFirstPersonCharacter::GetFirstPersonView()
+{
+	return FirstPersonView;
+}
+
+//================================================
+//=====================HEALTH=====================
+//================================================
+
+const float AFirstPersonCharacter::GetHealth() const
+{
+	return Health;
+}
+
+const float AFirstPersonCharacter::GetBloodLevel() const
+{
+	return BloodLevel;
+}
+
+void AFirstPersonCharacter::SetHealth(float NewHealth)
+{
+	float OriginalHealth = Health;
+
+	Health = NewHealth;
+
+	if (NewHealth < OriginalHealth)
+	{
+		UDamageType* GenericDamageType = NewObject<UDamageType>();
+
+		if (FirstPersonView)
+			FirstPersonView->FlashDamageIndicator(UDamageType::StaticClass());
+
+			if (Health <= 0.0f && !IsPlayerDead())
+			{
+
+				Kill(GenericDamageType, nullptr, nullptr);
+			}
+	}
+}
+
+void AFirstPersonCharacter::OnReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	/*we don't want to do anything against non-damage*/
+	if (Damage <= 0.0f)
+		return;
+
+	/*flash damage indicators*/
+	if (FirstPersonView && DamageType)
+	{
+		FirstPersonView->FlashDamageIndicator(DamageType->GetClass());
+	}
+
+	Health -= Damage;
+
+
+
+	if (Health <= 0.0f && !IsPlayerDead())
+		Kill(DamageType,DamageCauser,InstigatedBy);
+
+
+	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceiveDamage()"), *GetName());
+	//FString DamageText = FString::Printf(TEXT("OnReceiveDamage(% f)"), Damage);
+	//GEngine->AddOnScreenDebugMessage(626, 1.0f, FColor::Emerald, DamageText);
+}
+
+void AFirstPersonCharacter::OnReceivePointDamage(AActor* DamagedActor, float Damage, AController* InstigatedBy, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
+{
+
+	FString DamageText = FString::Printf(TEXT("OnReceivePOINTDamage(%f,%s,%s,%s,%s)"), Damage, *GetNameSafe(InstigatedBy), *HitLocation.ToString(), *GetNameSafe(FHitComponent), *BoneName.ToString());
+
+	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceivePointDamage(DAMAGE: %f, INSTIGATOR: %s, HITLOCATION: %s, COMPONENT: %s, BONE: %s)"), *GetName(), Damage, *GetNameSafe(InstigatedBy), *HitLocation.ToString(), *GetNameSafe(FHitComponent), *BoneName.ToString());
+	//GEngine->AddOnScreenDebugMessage(627, 1.0f, FColor::Emerald, DamageText);
+
+}
+
+void AFirstPersonCharacter::OnReceiveRadialDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, AController* InstigatedBy, AActor* DamageCauser)
+{
+	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceiveRadialDamage()"), *GetName());
+	//FString DamageText = FString::Printf(TEXT("OnReceiveRADIALdamage(% f)"), Damage);
+	//GEngine->AddOnScreenDebugMessage(628, 1.0f, FColor::Emerald, DamageText);
+}
+
+float AFirstPersonCharacter::CalculateFallDamage(const FHitResult& Hit) const
+{
+	const float ImpactSpeed = FMath::Max(0.0f,-FVector::DotProduct(GetVelocity(),Hit.ImpactNormal));
+
+	if(ImpactSpeed <= MinFallDamageSpeed)
+		return 0.0f;
+
+	const float DamageAlpha = FMath::Clamp((ImpactSpeed - MinFallDamageSpeed) /	(LethalFallDamageSpeed - MinFallDamageSpeed),0.0f,1.0f);
+
+	const float CurvedDamageAlpha =
+		FMath::Pow(DamageAlpha, 2.0f);
+
+	return MaxFallDamage * CurvedDamageAlpha;
+}
+
+UVitalsComponent* AFirstPersonCharacter::GetVitalsComponent()
+{
+	return VitalsComponent;
+}
+
+//================================================
+//====================STAMINA=====================
+//================================================
+
+float AFirstPersonCharacter::GetStamina() const
+{
+	if(VitalsComponent)
+		return VitalsComponent->GetCurrentStamina();
+	else
+		return 0.0f;
+}
+
+float AFirstPersonCharacter::GetMaxStamina() const
+{
+	if(VitalsComponent)
+		return VitalsComponent->GetMaxStamina();
+	else
+		return 0.0f;
+}
+
+float AFirstPersonCharacter::GetReserveStamina() const
+{
+	if (VitalsComponent)
+		return VitalsComponent->GetReserveStamina();
+	else
+		return 0.0f;
+}
+
+//================================================
+//=====================ENERGY=====================
+//================================================
+
+const float AFirstPersonCharacter::GetEnergyLevel() const
+{
+	return Energy;
+}
+
+const float AFirstPersonCharacter::GetHydrationLevel() const
+{
+	return Hydration;
+}
+
+//================================================
+//==================TEMPERATURE===================
+//================================================
+
+const float AFirstPersonCharacter::GetTemperature() const
+{
+	return VitalsComponent->GetPlayerTemperature();;
+}
+
+//================================================
+//=====================DEATH======================
+//================================================
+
+bool AFirstPersonCharacter::IsPlayerDead()
+{
+	return bDead;
+}
+
+void AFirstPersonCharacter::Kill(const UDamageType* DamageType, AActor* DamageCauser, AController* DamageInstigator)
+{
+	/*flag as dead*/
+	bDead = true;
+
+	/*generate the death info that gets sent to clients that can then be used to replicate the death on their end*/
+	UDamageType* Damage = const_cast<UDamageType*>(DamageType);
+
+	ReplicatedDeath = FDeathInfo(Damage,DamageInstigator,DamageInstigator); //this is a replicated variable that triggers Client logic
+
+
+	/*call event to handle death animations and ragdolling*/
+	OnDeath(ReplicatedDeath, DamageCauser, DamageInstigator);
+}
+
+/* OnDeath() - Called by the Server Directly, or on a Client upon receiving the replicated variable DeathInfo (OnRep_OnReceiveDeathInfo)
+* this is the safe version of "Kill" where we can modify what happens to a character upon death
+*
+*
+*/
+void AFirstPersonCharacter::OnDeath(const FDeathInfo DeathInfo, AActor* DamageCauser, AController* DamageInstigator)
+{
+
+	/*prevent player from moving any further*/
+	DisableInput(GetController<AFirstPersonPlayerController>());
+
+	if (GetFirstPersonView())
+	{
+		/*attach camera to head to follow animation*/
+		GetFirstPersonView()->AttachCameraToHead();
+		/*hide first person arms*/
+		GetFirstPersonView()->GetArmsMeshComponent()->SetVisibility(false);
+	}
+
+	/*enable visiblity of mesh*/
+	if (GetMesh())
+	{
+		GetMesh()->SetOwnerNoSee(false);
+	}
+
+	///*notify 3rd person animation instance*/
+	//if (UThirdPersonAnimInstance* AnimInstance = GetThirdPersonAnimBlueprint())
+	//	AnimInstance->OnDeath(DeathInfo);
+
+	/*if this was a player-controlled pawn - notify Character so it can provide an event*/
+	if (IsPlayerControlled())
+		GetGameInstance()->GetSubsystem<UCharacterSubsystem>()->OnNotifiedOfPlayerDeath(GetFirstPersonController(), this, DamageCauser, DamageInstigator,DeathInfo.DamageType);
+
+	//if (GetFirstPersonController() && GetNetMode() < NM_Client)
+		//GetFirstPersonController()->EnterSpectatorMode();
+
+	/*call the local blueprint event*/
+	BP_OnDeath(DeathInfo, DamageCauser,DamageInstigator);
+}
+
+/*OnRep_ReceivedDeathInfo() - This function is called whenever a Client receives Networked Death information in order to simulate how this character died*/
+void AFirstPersonCharacter::OnRep_ReceivedDeathInfo()
+{
+	/*flag that this character is dead*/
+	bDead = true;
+
+	/*take the replicated variable and pass it to our OnDeath() function to be simulated on the client's end*/
+	OnDeath(ReplicatedDeath,ReplicatedDeath.DamageCauser,ReplicatedDeath.DamageInstigator);
+}
+
+void AFirstPersonCharacter::Ragdoll()
+{
+	/*bails out of the function if no character mesh exists - to avoid confusion*/
+	if (!GetMesh())
+		return;
+
+	if (GetMesh())
+	{
+		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+		GetMesh()->SetSimulatePhysics(true);
+		GetMesh()->SetAllBodiesSimulatePhysics(true);
+		GetMesh()->WakeAllRigidBodies();
+	}
+
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->StopMovementImmediately();
+		GetCharacterMovement()->DisableMovement();
+		GetCharacterMovement()->SetComponentTickEnabled(false);
+	}
+
+	DisableCapsuleCollision();
+
+}
+
+void AFirstPersonCharacter::EnableCapsuleCollision()
+{
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	}
+}
+
+void AFirstPersonCharacter::DisableCapsuleCollision()
+{
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	}
+}
+
+//================================================
+//===================INVENTORY====================
+//================================================
+
+bool AFirstPersonCharacter::HasItemEquipped()
+{
+	if (InventoryManager)
+	{
+		if (IsValid(InventoryManager->GetEquippedItem()))
+			return true;
+	}
+
+	return false;
+}
+
+AInventoryItem* AFirstPersonCharacter::GetEquippedItem()
+{
+	if (IsValid(InventoryManager))
+	{
+		if(AInventoryItem* Item = InventoryManager->GetEquippedItem())
+			return IsValid(Item) ? Item : nullptr;
+	}
+
+	return nullptr;
+}
+
+void AFirstPersonCharacter::ToggleInventory()
+{
+	if (InventoryManager)
+	{
+		if (InventoryManager->IsInventoryWidgetOpen())
+			InventoryManager->CloseInventoryWidget();
+		else
+			InventoryManager->OpenInventoryWidget();
+	}
+}
+
+float AFirstPersonCharacter::GetEncumbrance()
+{
+	return Encumbrance;
+}
+
+float AFirstPersonCharacter::GetMaxEncumbrance()
+{
+	return MaxEncumbrance;
+}
+
+//================================================
+//===================EQUIPMENT====================
+//================================================
+
+UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlot(TSubclassOf<AInventoryItem> ItemType)
+{
+    return InventoryManager ? InventoryManager->GetEquipmentSlotByClass(ItemType) : nullptr;
+}
+
+UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlotByID(FName EquipmentID)
+{
+    return InventoryManager ? InventoryManager->GetEquipmentSlot(EquipmentID) : nullptr;
+}
+
+void AFirstPersonCharacter::OnInventoryManagerOpened()
+{
+	/*hide the player hud*/
+	if (FirstPersonView)
+		FirstPersonView->HidePlayerHUD();
+
+}
+
+void AFirstPersonCharacter::OnInventoryManagerClosed()
+{
+	if (FirstPersonView)
+		FirstPersonView->ShowPlayerHUD();
+}
+
+//================================================
+//==================INTERACTIVES==================
+//================================================
+
+void AFirstPersonCharacter::BeginInteraction()
+{
+    if (GetInteractionsManager()) GetInteractionsManager()->BeginInteractionPress();
+}
+
+void AFirstPersonCharacter::EndInteraction()
+{
+    if (GetInteractionsManager()) GetInteractionsManager()->EndInteractionPress();
+}
+
+void AFirstPersonCharacter::CycleInteractiveActions(const FInputActionValue& Value)
+{
+	const float ScrollValue = Value.Get<float>();
+
+	if(FMath::IsNearlyZero(ScrollValue) || !GetInteractionsManager())
+		return;
+
+	if(ScrollValue > 0.0)
+		GetInteractionsManager()->PreviousPendingAction();
+	else
+		GetInteractionsManager()->NextPendingAction();
+}
+
+//================================================
+//====================ATTACKS=====================
+//================================================
+
+void AFirstPersonCharacter::Attack(UAttackAsset* Attack)
+{
+	if(!Attack)
+		return;
+
+	if (UCombatSubsystem* CSS = GetWorld()->GetSubsystem<UCombatSubsystem>())
+	{
+		CSS->InitiateAttack(Attack,this);
+	}
+}
+
+bool AFirstPersonCharacter::CanPerformAttack(UAttackAsset* Attack)
+{
+	return false;
+}
+
+void AFirstPersonCharacter::PerformAttacK(UAttackAsset* Attack)
+{
+
+}
+
+//================================================
+//====================WEAPONS=====================
+//================================================
+
+void AFirstPersonCharacter::BeginFire()
+{
+	if (InventoryManager)
+	{
+		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
+			Firearm->BeginFire();
+	}
+}
+
+void AFirstPersonCharacter::EndFire()
+{
+	if (InventoryManager)
+	{
+		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
+			Firearm->EndFire();
+	}
+}
+
+bool AFirstPersonCharacter::HasWeaponEquipped()
+{
+	if (InventoryManager)
+	{
+		if (AActor* InHand = InventoryManager->GetEquippedItem())
+		{
+			if (InHand->IsA<AWeapon>())
+				return true;
+		}
+	}
+
+	return false;
+}
+
+//================================================
+//===================ANIMATIONS===================
+//================================================
+
+UThirdPersonAnimInstance* AFirstPersonCharacter::GetThirdPersonAnimBlueprint()
+{
+	if (GetMesh() == nullptr)
+		return nullptr;
+
+	return Cast<UThirdPersonAnimInstance>(GetMesh()->GetAnimInstance());
+}
+
+//================================================
+//====================MOVEMENT====================
+//================================================
+
 void AFirstPersonCharacter::MoveForward(const FInputActionValue& Value)
 {
 	if (!CanMove())
@@ -601,6 +904,7 @@ void AFirstPersonCharacter::MoveForward(const FInputActionValue& Value)
 		return;
 
 	FVector inputVector = GetActorForwardVector() * inputValue;
+
 	GetCharacterMovement()->AddInputVector(inputVector);
 }
 
@@ -617,6 +921,7 @@ void AFirstPersonCharacter::MoveRight(const FInputActionValue& Value)
 		return;
 
 	FVector inputVector = GetActorRightVector() * inputValue;
+
 	GetCharacterMovement()->AddInputVector(inputVector);
 }
 
@@ -637,11 +942,7 @@ float AFirstPersonCharacter::GetStrafeDirection() const
 	if (Acceleration.IsNearlyZero())
 		return 0.0f;
 
-	const FVector HorizontalAcceleration(
-		Acceleration.X,
-		Acceleration.Y,
-		0.0f
-	);
+	const FVector HorizontalAcceleration(Acceleration.X, Acceleration.Y, 0.0f);
 
 	if (HorizontalAcceleration.IsNearlyZero())
 		return 0.0f;
@@ -743,7 +1044,6 @@ void AFirstPersonCharacter::SetIsProne(const bool bInIsProne)
 	bIsProne = bInIsProne;
 }
 
-
 void AFirstPersonCharacter::ToggleProne()
 {
 	GetCharacterMovement<UFirstPersonMovementComponent>()->ToggleProne();
@@ -762,7 +1062,6 @@ bool AFirstPersonCharacter::CanMove()
 
 	return true;
 }
-
 
 void AFirstPersonCharacter::BeginSprint()
 {
@@ -817,10 +1116,10 @@ void AFirstPersonCharacter::Jump()
 	{
 		float JumpStaminaCost = VitalsComponent->GetStaminaCostForJump();
 		float CurrentStamina = VitalsComponent->GetCurrentStamina();
-		
+
 		/*block the jump if it's too much*/
 		if(JumpStaminaCost > CurrentStamina)
-			return;		
+			return;
 	}
 
 	Super::Jump();
@@ -833,7 +1132,7 @@ void AFirstPersonCharacter::OnJumped_Implementation()
 	if (VitalsComponent)
 	{
 		float JumpStaminaCost = VitalsComponent->GetStaminaCostForJump();
-		
+
 		VitalsComponent->ConsumeStamina(JumpStaminaCost);
 	}
 }
@@ -851,7 +1150,7 @@ void AFirstPersonCharacter::Landed(const FHitResult& Hit)
 	float FallDamage = CalculateFallDamage(Hit);
 
 	if (FallDamage > 0.0f)
-	{		
+	{
 		UGameplayStatics::ApplyDamage(this, FallDamage,GetController(),this,UDamageType_FallDamage::StaticClass());
 		GetFirstPersonView()->PlayFallDamageCameraAnimation();
 
@@ -870,7 +1169,7 @@ void AFirstPersonCharacter::Landed(const FHitResult& Hit)
 			if(VitalsComponent)
 				VitalsComponent->ConsumeStamina(VitalsComponent->GetStaminaCostForSoftLanding());
 		}
-			
+
 	}
 }
 
@@ -881,6 +1180,10 @@ bool AFirstPersonCharacter::IsFalling() const
 	else
 		return false;
 }
+
+//================================================
+//======================VIEW======================
+//================================================
 
 void AFirstPersonCharacter::PitchView(const FInputActionValue& Value)
 {
@@ -907,6 +1210,7 @@ void AFirstPersonCharacter::RotateView(const FInputActionValue& Value)
 
 	/*initialize*/
 	float inputValue = Value.Get<float>();
+
 	/*sensitivity hack*/
 	inputValue *= 1.0f;
 
@@ -944,7 +1248,7 @@ void AFirstPersonCharacter::BeginFreeLook()
 
 void AFirstPersonCharacter::EndFreeLook()
 {
-	if (UFirstPersonViewComponent* FPV = GetFirstPersonView())		
+	if (UFirstPersonViewComponent* FPV = GetFirstPersonView())
 		FPV->DisableFreeLook();
 }
 
@@ -958,10 +1262,18 @@ float AFirstPersonCharacter::GetDesiredEyeHeight() const
 	return BaseEyeHeight;
 }
 
+//================================================
+//===================CONTROLLER===================
+//================================================
+
 AFirstPersonPlayerController* AFirstPersonCharacter::GetFirstPersonController()
 {
 	return Cast<AFirstPersonPlayerController>(GetController());
 }
+
+//================================================
+//=======================AI=======================
+//================================================
 
 UBehaviorComponent* AFirstPersonCharacter::GetBehaviorComponent()
 {
@@ -971,468 +1283,4 @@ UBehaviorComponent* AFirstPersonCharacter::GetBehaviorComponent()
 USensesComponent* AFirstPersonCharacter::GetSensesComponent()
 {
 	return SensesComponent;
-}
-
-//========================
-//======FIRST PERSON======
-//========================
-UFirstPersonViewComponent* AFirstPersonCharacter::GetFirstPersonView()
-{
-	return FirstPersonView;
-}
-
-
-
-//============================
-//===========DAMAGE===========
-//============================
-
-const float AFirstPersonCharacter::GetHealth() const
-{
-	return Health;
-}
-
-const float AFirstPersonCharacter::GetBloodLevel() const
-{
-	return BloodLevel;
-}
-
-void AFirstPersonCharacter::SetHealth(float NewHealth)
-{
-	float OriginalHealth = Health;
-	Health = NewHealth;
-
-	if (NewHealth < OriginalHealth)
-	{
-		UDamageType* GenericDamageType = NewObject<UDamageType>();
-
-		if (FirstPersonView)
-			FirstPersonView->FlashDamageIndicator(UDamageType::StaticClass());
-
-			if (Health <= 0.0f && !IsPlayerDead())
-			{
-
-				Kill(GenericDamageType, nullptr, nullptr);
-			}
-	}	
-}
-
-void AFirstPersonCharacter::OnReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
-{
-	/*we don't want to do anything against non-damage*/
-	if (Damage <= 0.0f)
-		return;
-	
-	/*flash damage indicators*/
-	if (FirstPersonView && DamageType)
-	{
-		FirstPersonView->FlashDamageIndicator(DamageType->GetClass());
-	}
-	
-	Health -= Damage;
-
-
-
-	if (Health <= 0.0f && !IsPlayerDead())
-		Kill(DamageType,DamageCauser,InstigatedBy);
-
-
-	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceiveDamage()"), *GetName());
-	//FString DamageText = FString::Printf(TEXT("OnReceiveDamage(% f)"), Damage);
-	//GEngine->AddOnScreenDebugMessage(626, 1.0f, FColor::Emerald, DamageText);
-}
-
-void AFirstPersonCharacter::OnReceivePointDamage(AActor* DamagedActor, float Damage, AController* InstigatedBy, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
-{
-
-	FString DamageText = FString::Printf(TEXT("OnReceivePOINTDamage(%f,%s,%s,%s,%s)"), Damage, *GetNameSafe(InstigatedBy), *HitLocation.ToString(), *GetNameSafe(FHitComponent), *BoneName.ToString());
-	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceivePointDamage(DAMAGE: %f, INSTIGATOR: %s, HITLOCATION: %s, COMPONENT: %s, BONE: %s)"), *GetName(), Damage, *GetNameSafe(InstigatedBy), *HitLocation.ToString(), *GetNameSafe(FHitComponent), *BoneName.ToString());
-	//GEngine->AddOnScreenDebugMessage(627, 1.0f, FColor::Emerald, DamageText);
-
-}
-
-void AFirstPersonCharacter::OnReceiveRadialDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, AController* InstigatedBy, AActor* DamageCauser)
-{
-	//UE_LOG(LogTemp, Log, TEXT("%s::OnReceiveRadialDamage()"), *GetName());
-	//FString DamageText = FString::Printf(TEXT("OnReceiveRADIALdamage(% f)"), Damage);
-	//GEngine->AddOnScreenDebugMessage(628, 1.0f, FColor::Emerald, DamageText);
-}
-
-float AFirstPersonCharacter::CalculateFallDamage(const FHitResult& Hit) const
-{
-	const float ImpactSpeed = FMath::Max(0.0f,-FVector::DotProduct(GetVelocity(),Hit.ImpactNormal));
-
-	if(ImpactSpeed <= MinFallDamageSpeed)
-		return 0.0f;
-
-	const float DamageAlpha = FMath::Clamp((ImpactSpeed - MinFallDamageSpeed) /	(LethalFallDamageSpeed - MinFallDamageSpeed),0.0f,1.0f);
-
-	const float CurvedDamageAlpha =
-		FMath::Pow(DamageAlpha, 2.0f);
-
-	return MaxFallDamage * CurvedDamageAlpha;
-}
-
-
-UVitalsComponent* AFirstPersonCharacter::GetVitalsComponent()
-{
-	return VitalsComponent;
-}
-
-float AFirstPersonCharacter::GetStamina() const
-{
-	if(VitalsComponent)
-		return VitalsComponent->GetCurrentStamina();
-	else
-		return 0.0f;
-}
-
-float AFirstPersonCharacter::GetMaxStamina() const
-{
-	if(VitalsComponent)
-		return VitalsComponent->GetMaxStamina();
-	else
-		return 0.0f;
-}
-
-float AFirstPersonCharacter::GetReserveStamina() const
-{
-	if (VitalsComponent)
-		return VitalsComponent->GetReserveStamina();
-	else
-		return 0.0f;
-}
-
-const float AFirstPersonCharacter::GetEnergyLevel() const
-{
-	return Energy;
-}
-
-const float AFirstPersonCharacter::GetHydrationLevel() const
-{
-	return Hydration;
-}
-
-const float AFirstPersonCharacter::GetTemperature() const
-{
-	return VitalsComponent->GetPlayerTemperature();;
-}
-
-
-bool AFirstPersonCharacter::IsPlayerDead()
-{
-	return bDead;
-}
-
-void AFirstPersonCharacter::Kill(const UDamageType* DamageType, AActor* DamageCauser, AController* DamageInstigator)
-{
-	/*flag as dead*/
-	bDead = true;
-
-	/*generate the death info that gets sent to clients that can then be used to replicate the death on their end*/
-	UDamageType* Damage = const_cast<UDamageType*>(DamageType);
-	ReplicatedDeath = FDeathInfo(Damage,DamageInstigator,DamageInstigator); //this is a replicated variable that triggers Client logic
-		 
-
-	/*call event to handle death animations and ragdolling*/
-	OnDeath(ReplicatedDeath, DamageCauser, DamageInstigator);
-}
-
-/* OnDeath() - Called by the Server Directly, or on a Client upon receiving the replicated variable DeathInfo (OnRep_OnReceiveDeathInfo)
-* this is the safe version of "Kill" where we can modify what happens to a character upon death
-*
-*
-*/
-void AFirstPersonCharacter::OnDeath(const FDeathInfo DeathInfo, AActor* DamageCauser, AController* DamageInstigator)
-{	
-	
-	/*prevent player from moving any further*/
-	DisableInput(GetController<AFirstPersonPlayerController>());
-	
-	if (GetFirstPersonView())
-	{
-		/*attach camera to head to follow animation*/
-		GetFirstPersonView()->AttachCameraToHead();
-		/*hide first person arms*/
-		GetFirstPersonView()->GetArmsMeshComponent()->SetVisibility(false);
-	}
-
-	/*enable visiblity of mesh*/
-	if (GetMesh())
-	{
-		GetMesh()->SetOwnerNoSee(false);
-	}
-
-	///*notify 3rd person animation instance*/
-	//if (UThirdPersonAnimInstance* AnimInstance = GetThirdPersonAnimBlueprint())
-	//	AnimInstance->OnDeath(DeathInfo);
-	
-	/*if this was a player-controlled pawn - notify Character so it can provide an event*/
-	if (IsPlayerControlled())
-		GetGameInstance()->GetSubsystem<UCharacterSubsystem>()->OnNotifiedOfPlayerDeath(GetFirstPersonController(), this, DamageCauser, DamageInstigator,DeathInfo.DamageType);
-
-	//if (GetFirstPersonController() && GetNetMode() < NM_Client)
-		//GetFirstPersonController()->EnterSpectatorMode();
-
-	/*call the local blueprint event*/
-	BP_OnDeath(DeathInfo, DamageCauser,DamageInstigator);
-}
-
-/*OnRep_ReceivedDeathInfo() - This function is called whenever a Client receives Networked Death information in order to simulate how this character died*/
-void AFirstPersonCharacter::OnRep_ReceivedDeathInfo()
-{	
-	/*flag that this character is dead*/
-	bDead = true;
-
-	/*take the replicated variable and pass it to our OnDeath() function to be simulated on the client's end*/
-	OnDeath(ReplicatedDeath,ReplicatedDeath.DamageCauser,ReplicatedDeath.DamageInstigator);
-}
-
-void AFirstPersonCharacter::Ragdoll()
-{
-	/*bails out of the function if no character mesh exists - to avoid confusion*/
-	if (!GetMesh())
-		return;
-	
-	if (GetMesh())
-	{
-		GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
-		GetMesh()->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);		
-		GetMesh()->SetSimulatePhysics(true);
-		GetMesh()->SetAllBodiesSimulatePhysics(true);
-		GetMesh()->WakeAllRigidBodies();
-	}
-
-	if (GetCharacterMovement())
-	{
-		GetCharacterMovement()->StopMovementImmediately();
-		GetCharacterMovement()->DisableMovement();
-		GetCharacterMovement()->SetComponentTickEnabled(false);
-	}
-
-	DisableCapsuleCollision();
-
-}
-
-void AFirstPersonCharacter::EnableCapsuleCollision()
-{
-	if (GetCapsuleComponent())
-	{
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	}
-}
-
-void AFirstPersonCharacter::DisableCapsuleCollision()
-{
-	if (GetCapsuleComponent())
-	{
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	}
-}
-
-//=========================
-//========INVENTORY========
-//=========================
-
-bool AFirstPersonCharacter::HasItemEquipped()
-{
-	if (InventoryManager)
-	{
-		if (IsValid(InventoryManager->GetEquippedItem()))
-			return true;
-	}
-
-	return false;
-}
-
-AInventoryItem* AFirstPersonCharacter::GetEquippedItem()
-{
-	if (IsValid(InventoryManager))
-	{
-		if(AInventoryItem* Item = InventoryManager->GetEquippedItem())
-			return IsValid(Item) ? Item : nullptr;
-	}
-
-	return nullptr;
-}
-
-void AFirstPersonCharacter::ToggleInventory()
-{
-	if (InventoryManager)
-	{
-		if (InventoryManager->IsInventoryWidgetOpen())
-			InventoryManager->CloseInventoryWidget();
-		else
-			InventoryManager->OpenInventoryWidget();
-	}
-}
-
-float AFirstPersonCharacter::GetEncumbrance()
-{
-	return Encumbrance;
-}
-
-float AFirstPersonCharacter::GetMaxEncumbrance()
-{
-	return MaxEncumbrance;
-}
-
-void AFirstPersonCharacter::OnItemEquipped(AInventoryItem* Item, UInventoryAttachmentComponent* EquippedComponent)
-{
-
-}
-
-UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlot(TSubclassOf<AInventoryItem> ItemType)
-{
-	for (UActorComponent* Component : GetComponents())
-	{
-		if (UInventoryAttachmentComponent* AttachmentComponent = Cast<UInventoryAttachmentComponent>(Component))
-		{
-			if (AttachmentComponent->AttachmentType == ItemType)
-				return AttachmentComponent;
-		}
-	}
-
-	return nullptr;
-}
-
-UInventoryAttachmentComponent* AFirstPersonCharacter::GetEquipmentSlotByID(FName EquipmentID)
-{
-	for (UActorComponent* Component : GetComponents())
-	{
-		if (UInventoryAttachmentComponent* AttachmentComponent = Cast<UInventoryAttachmentComponent>(Component))
-		{
-			if (AttachmentComponent->AttachmentID == EquipmentID)
-				return AttachmentComponent;
-		}
-	}
-
-	return nullptr;
-}
-
-void AFirstPersonCharacter::OnInventoryManagerOpened()
-{
-	/*hide the player hud*/
-	if (FirstPersonView)	
-		FirstPersonView->HidePlayerHUD();
-	
-}
-
-void AFirstPersonCharacter::OnInventoryManagerClosed()
-{
-	if (FirstPersonView)
-		FirstPersonView->ShowPlayerHUD();
-}
-
-//============================
-//========INTERACTIONS========
-//============================
-
-
-void AFirstPersonCharacter::BeginInteraction()
-{
-	if (GetInteractionsManager())
-	{
-		UInteractiveComponent* Interactive = GetInteractionsManager()->GetFocusedInteractive();
-		UInteractiveAction* Action = GetInteractionsManager()->GetPendingInteractiveAction();
-
-		if(Interactive && Action)
-			GetInteractionsManager()->StartInteraction(Interactive,Action);
-	}
-}
-
-void AFirstPersonCharacter::EndInteraction()
-{
-	if (GetInteractionsManager())
-	{
-		UInteractiveComponent* Interactive = GetInteractionsManager()->GetFocusedInteractive();
-		UInteractiveAction* Action = GetInteractionsManager()->GetPendingInteractiveAction();
-		GetInteractionsManager()->StopInteraction(Interactive, Action);
-	}
-}
-
-void AFirstPersonCharacter::CycleInteractiveActions(const FInputActionValue& Value)
-{
-	const float ScrollValue = Value.Get<float>();
-
-	if(FMath::IsNearlyZero(ScrollValue) || !GetInteractionsManager())
-		return;
-
-	if(ScrollValue > 0.0)
-		GetInteractionsManager()->PreviousPendingAction();
-	else
-		GetInteractionsManager()->NextPendingAction();
-}
-
-
-
-//=======================
-//========ATTACKS========
-//=======================
-
-void AFirstPersonCharacter::Attack(UAttackAsset* Attack)
-{
-	if(!Attack)
-		return;
-
-	if (UCombatSubsystem* CSS = GetWorld()->GetSubsystem<UCombatSubsystem>())
-	{
-		CSS->InitiateAttack(Attack,this);
-	}
-}
-
-bool AFirstPersonCharacter::CanPerformAttack(UAttackAsset* Attack)
-{
-	return false;
-}
-
-void AFirstPersonCharacter::PerformAttacK(UAttackAsset* Attack)
-{
-
-}
-
-
-
-//=========================
-//========WEAPONS==========
-//=========================
-
-void AFirstPersonCharacter::BeginFire()
-{
-	if (InventoryManager)
-	{
-		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
-			Firearm->BeginFire();
-	}
-}
-
-void AFirstPersonCharacter::EndFire()
-{
-	if (InventoryManager)
-	{
-		if (AFirearm* Firearm = Cast<AFirearm>(InventoryManager->GetEquippedItem()))
-			Firearm->EndFire();
-	}
-}
-
-bool AFirstPersonCharacter::HasWeaponEquipped()
-{
-	if (InventoryManager)
-	{
-		if (AActor* InHand = InventoryManager->GetEquippedItem())
-		{
-			if (InHand->IsA<AWeapon>())
-				return true;
-		}
-	}
-
-	return false;
-}
-
-UThirdPersonAnimInstance* AFirstPersonCharacter::GetThirdPersonAnimBlueprint()
-{
-	if (GetMesh() == nullptr)
-		return nullptr;
-
-	return Cast<UThirdPersonAnimInstance>(GetMesh()->GetAnimInstance());	
 }

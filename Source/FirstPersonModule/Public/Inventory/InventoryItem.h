@@ -6,11 +6,12 @@
 #include "Inventory/Inventory.h"
 #include "GameFramework/Actor.h"
 #include "Interfaces/InventoryItemInterface.h"
+#include "Interfaces/InteractiveActorInterface.h"
 #include "InventoryItem.generated.h"
 
 
 UCLASS(abstract)
-class FIRSTPERSONMODULE_API AInventoryItem : public AActor, public IInventoryItemInterface
+class FIRSTPERSONMODULE_API AInventoryItem : public AActor, public IInventoryItemInterface, public IInteractiveActorInterface
 {
 	GENERATED_BODY()
 public:
@@ -26,16 +27,14 @@ public:
 	FIntPoint RegisteredGridKey;
 
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interactive")
+		class UInteractiveComponent* InteractiveComponent;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
 		class UInventoryItemComponent* ItemComponent;
 
 	//=====================================================================================================================================
 	//==============================================================FUNCTIONS==============================================================
 	//=====================================================================================================================================
-
-	virtual void OnEquip_Implementation() override;
-	virtual void OnUnequip_Implementation() override;
-	virtual void OnPickedUp_Implementation() override;
 
 
 public:	
@@ -51,6 +50,18 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 
+
+	//===================================================
+	//====================INTERACTION====================
+	//===================================================
+
+protected:
+	virtual void NativeOnInteractionStarted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context) override;
+	virtual void NativeOnInteractionCompleted(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context) override;
+	virtual void NativeOnInteractionCanceled(class AFirstPersonCharacter* User, class UInteractiveComponent* Interactive, const class UInteractiveAction* Action, const FInteractionContext& Context) override;
+	virtual bool IsActionAvailable_Implementation(const AFirstPersonCharacter* User, const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const override;
+
+public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
 		FText GetItemName();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
@@ -64,21 +75,20 @@ public:
 		EItemPresence GetItemPresence();
 
 
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
-		virtual bool CanBePickedUp();
+	virtual bool CanBePickedUp_Implementation() const override;
 
 
-	UFUNCTION()
-		virtual void OnItemStored(class AActor* StorageActor);
-	UFUNCTION()
-		virtual void OnItemPickedUp(class AActor* ReceivingActor);
-	UFUNCTION()
-		virtual void OnItemDropped(class AActor* RejectingActor);
+protected:
+	virtual void NativeOnItemStored(AActor* StorageActor) override;
+    virtual void NativeOnEquippingCompleted(AFirstPersonCharacter* User, UInventoryItemComponent* Component, UInventoryManagerComponent* Manager) override;
+	virtual void NativeOnItemPickedUp(AActor* ReceivingActor, const FInteractionContext& Context) override;
+	virtual void NativeOnItemDropped(AActor* RejectingActor) override;
 
 
 
 
 
+public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Inventory Item")
 		class UInventoryItemComponent* GetItemComponent();
 

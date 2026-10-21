@@ -6,25 +6,23 @@
 /*components*/
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
-#include "Components/StaticMeshComponent.h"
 
 
 /*first person*/
-#include "Components/FirstPersonViewComponent.h"
 #include "Components/FirstPersonItemComponent.h"
 #include "Characters/FirstPersonCharacter.h"
 
 
 /*inventory*/
-#include "Components/InventoryManagerComponent.h"
 #include "Components/InventoryItemComponent.h"
 
 /*interaction*/
-#include "Components/InteractiveCollisionComponent.h"
+#include "Components/InteractiveComponent.h"
 #include "GameFramework/Character.h"
 
 
 // Sets default values
+
 AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
 	:Super(ObjectInitializer)
 {
@@ -32,25 +30,25 @@ AWeapon::AWeapon(const FObjectInitializer& ObjectInitializer)
 	Mesh = ObjectInitializer.CreateDefaultSubobject<USkeletalMeshComponent>(this, TEXT("MeshComp"));
 	if (Mesh)
 	{
+		USceneComponent* ItemRoot = GetRootComponent();
+
 		SetRootComponent(Mesh);
+		if (ItemRoot)
+			ItemRoot->SetupAttachment(Mesh);
 
 		Mesh->bOwnerNoSee = true;
 	}
 
 	/*generate first person mesh*/
 	FirstPersonComponent = ObjectInitializer.CreateDefaultSubobject<UFirstPersonItemComponent>(this, TEXT("FirstPersonComponent"));
-		
+
 	if (ItemComponent)
 	{
 		ItemComponent->bAutoEquip = true;
 	}
 
-	InteractionCollision = ObjectInitializer.CreateDefaultSubobject<UInteractiveCollisionComponent>(this, TEXT("InteractiveCollisionComponent"));
-	if (InteractionCollision)
-	{
-		InteractionCollision->SetupAttachment(GetRootComponent());
-		//InteractionCollision->SetBoxExtent(FVector())
-	}
+	if (InteractiveComponent)
+		InteractiveComponent->SetupAttachment(GetRootComponent());
 
 	bReplicates = true;
 	NetPriority = 3.0f; //similar to PlayerController
@@ -83,43 +81,9 @@ void AWeapon::EndFire()
 
 }
 
-/*OnEquip() - Called by the ItemComponent whenever the InventoryManager attempts to equip it - allowing Weapon specific code to be called
-* @note - the ItemComponent puts itself into limbo and expects its Actor (the Weapon) to call the ItemComponent->EndEquip() in order to finalize
-* its states for replication and syncing
-*
-*/
-void AWeapon::OnEquip_Implementation()
-{
-	/*@todo: eventually we'll want a transitional period between grabbing the weapon  immedietely and having an animation play where the hands are reaching for the gun
-	prior to it actually attaching to the socket*/
-
-
-	AttachThirdPersonMesh();
-	AttachFirstPersonMesh();
-
-	/*disable collision*/
-	DisableCollision(); //prevents players getting stuck on an item they're holding
-	SetActorHiddenInGame(false); //show model again
-
-	/*notify the ItemComponent we've finished equipping so it updates states*/
-	if (ItemComponent)
-		ItemComponent->EndEquip();
-}
-
-void AWeapon::OnUnequip_Implementation()
-{
-
-}
-
-void AWeapon::OnPickedUp_Implementation()
-{
-
-}
-
-//===================================
-//============ATTACHMENTS============
-//===================================
-
+//================================================
+//==================ATTACHMENTS===================
+//================================================
 
 void AWeapon::AttachFirstPersonMesh()
 {
@@ -128,7 +92,6 @@ void AWeapon::AttachFirstPersonMesh()
 		FirstPersonComponent->AttachFirstPersonMesh(ItemComponent->GetOwningActor());
 }
 
-
 void AWeapon::AttachThirdPersonMesh()
 {
 	/*equip core actor to third person*/
@@ -136,10 +99,9 @@ void AWeapon::AttachThirdPersonMesh()
 		AttachToComponent(OwningChar->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, OwningChar->RightHandSocketName);
 }
 
-
-//==================================
-//============ANIMATIONS============
-//==================================
+//================================================
+//===================ANIMATIONS===================
+//================================================
 
 void AWeapon::OnAnimNotify_AttachFirstPersonMesh()
 {
@@ -150,32 +112,18 @@ void AWeapon::OnAnimNotify_AttachThirdPersonMesh()
 {
 }
 
-
-//===============================
-//==========INTERACTION==========
-//===============================
-
-//void AWeapon::OnInteraction_Implementation(AFirstPersonCharacter* User)
-//{
-//	/*notify inventory manager to pick us up*/
-//	if (User)
-//	{
-//		if (UInventoryManagerComponent* InvManager = User->GetInventoryManager())
-//		{
-//			InvManager->PickupItem(this);
-//		}
-//	}
-//}
-//
-//bool AWeapon::IsInteractionAvailable_Implementation(AFirstPersonCharacter* User)
-//{
-//	return true;
-//}
+//================================================
+//===================COLLISION====================
+//================================================
 
 void AWeapon::DisableCollision()
 {
 	SetActorEnableCollision(false);
 }
+
+//================================================
+//===================OWNERSHIP====================
+//================================================
 
 bool AWeapon::IsLocallyControlled()
 {

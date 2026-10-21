@@ -64,6 +64,8 @@ public:
 	//=====================================FUNCTIONS=======================================
 	//=====================================================================================
 public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	AFirearm(const FObjectInitializer& ObjectInitializer);
 
 
@@ -90,10 +92,6 @@ public:
 
 
 
-	//=================================
-	//============EQUIPPING============
-	//=================================
-	virtual void OnEquip_Implementation() override;
 
 
 

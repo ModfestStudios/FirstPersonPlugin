@@ -15,6 +15,9 @@
 
 /*engine*/
 #include "Engine/World.h"
+#include "Interactives/Actions/PickupAction.h"
+#include "Components/PlayerInventoryManagerComponent.h"
+#include "Inventory/InventoryItem.h"
 
 /*utilities*/
 #include "Kismet/GameplayStatics.h"
@@ -34,13 +37,26 @@ UInteractiveManagerComponent::UInteractiveManagerComponent()
 	PrimaryComponentTick.TickInterval = 0.15f;
 }
 
-
 void UInteractiveManagerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
+void UInteractiveManagerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    bInteractionInputDown = false;
+    bAwaitingPressClassification = false;
+    PressInteractive.Reset();
+    PressAction.Reset();
+    if (GetOwner() && GetOwner()->HasAuthority() && IsValid(ActiveInteractive) && IsValid(ActiveAction))
+    {
+        FInteractionContext InterruptedContext = ActiveContext;
 
+        InterruptedContext.bInterrupted = true;
+        StopInteraction(ActiveInteractive, ActiveAction, InterruptedContext);
+    }
+    Super::EndPlay(EndPlayReason);
+}
 
 void UInteractiveManagerComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
@@ -58,105 +74,202 @@ void UInteractiveManagerComponent::TickComponent(float DeltaTime, ELevelTick Tic
 
 	/**/
 	UpdateActiveInteractiveStatus();
+
+	/*classify a pending pickup press once its threshold is reached*/
+	UpdateInteractionPress();
 }
 
 //================================================
 //==================INTERACTIONS==================
 //================================================
 
+FInteractionContext UInteractiveManagerComponent::GetInteractionContext(const UInteractiveComponent* Interactive, const UInteractiveAction* Action) const
+{
+    return ActiveInteractive == Interactive && ActiveAction == Action ? ActiveContext : FInteractionContext();
+}
+
 UInteractiveComponent* UInteractiveManagerComponent::GetFocusedInteractive()
 {
 	return FocusedInteractive;
 }
 
-void UInteractiveManagerComponent::StartInteraction(UInteractiveComponent* Interactive, UInteractiveAction* Action)
+void UInteractiveManagerComponent::StartInteraction(UInteractiveComponent* Interactive, UInteractiveAction* Action, const FInteractionContext& Context)
 {
-	if(!Interactive || !GetOwner())
+    if (!IsValid(Interactive) || !IsValid(Action) || !GetOwner())
 		return;
 
-	/*simple notifier for when a user tries to do something that isn't allowed - we don't CANCEL the interaction because we want the interactive itself to provide feedback*/
-	if (!Interactive->IsActionAvailable(GetCharacterOwner(), Action))
-	{		
-		NativeOnInteractionDenied(Interactive, Action);
-		return; //stop the itneraction here
-	}
-		
-	/*perform interaction*/	
-	if (GetOwner()->HasAuthority()) /*server*/
-	{
-		/*notify the interactive it was being used*/
-		Interactive->NativeOnBeginInteraction(GetCharacterOwner(), Action);
-	}
-	else /*clients*/
-	{
-		/*request server to run the interaction*/
-		const FGuid& InteractiveID = Action->ID;
-		Server_StartInteraction(Interactive, InteractiveID);
-	}
-}
-
-void UInteractiveManagerComponent::StopInteraction(UInteractiveComponent* Interactive, UInteractiveAction* Action, bool bWasInterrupted)
-{
-	if(!Interactive)
+    if (IsValid(ActiveInteractive) && IsValid(ActiveAction) && ActiveInteractive->IsActionInProgress(ActiveAction))
 		return;
 
-	EInteractionEndReason EndReason = bWasInterrupted ? EInteractionEndReason::Interrupted : EInteractionEndReason::Canceled;
-	Interactive->NativeOnStopInteraction(GetCharacterOwner(), Action, EndReason);	
+    if (!Interactive->IsActionAvailable(GetCharacterOwner(), Action))
+    {
+        NativeOnInteractionDenied(Interactive, Action);
+        return;
+    }
+
+    if (Action->IsA<UPickupAction>())
+    {
+        AFirstPersonCharacter* Character = GetCharacterOwner();
+        AInventoryItem* Item = Cast<AInventoryItem>(Interactive->GetOwner());
+        UInventoryManagerComponent* Inventory = Character ? Character->GetInventoryManager() : nullptr;
+
+        if (!Inventory || !Inventory->CanPickup(Item, Context.bLongHeld))
+        {
+            NativeOnInteractionDenied(Interactive, Action);
+            return;
+        }
+    }
+
+    FInteractionContext StartedContext = Context;
+
+    StartedContext.bInterrupted = false;
+
+    if (GetOwner()->HasAuthority())
+        Interactive->NativeOnBeginInteraction(GetCharacterOwner(), Action, StartedContext);
+    else
+    {
+        ActiveInteractive = Interactive;
+        ActiveAction = Action;
+        ActiveContext = StartedContext;
+        Server_StartInteraction(Interactive, Interactive->RuntimeActions.IndexOfByKey(Action), StartedContext);
+    }
 }
 
-
-bool UInteractiveManagerComponent::Server_StartInteraction_Validate(UInteractiveComponent* Interactive, const FGuid& ID)
+void UInteractiveManagerComponent::BeginInteractionPress()
 {
-	return true;
-}
-
-void UInteractiveManagerComponent::Server_StartInteraction_Implementation(UInteractiveComponent* Interactive, const FGuid& ID)
-{
-	if(!Interactive || !ID.IsValid())
+    if (bInteractionInputDown || !IsValid(FocusedInteractive) || !IsValid(PendingAction))
 		return;
-	
-	UInteractiveAction* Action = Interactive->GetActionByID(ID);
-	StartInteraction(Interactive,Action);
+
+
+    bInteractionInputDown = true;
+    PressInteractive = FocusedInteractive;
+    PressAction = PendingAction;
+    bAwaitingPressClassification = PendingAction->IsA<UPickupAction>();
+
+    if (bAwaitingPressClassification)
+        InteractionPressStartTime = GetWorld()->GetTimeSeconds();
+    else
+        StartInteraction(FocusedInteractive, PendingAction, FInteractionContext());
 }
 
-bool UInteractiveManagerComponent::Server_StopInteraction_Validate(UInteractiveComponent* Interactive, const FGuid& ID)
+void UInteractiveManagerComponent::EndInteractionPress()
 {
-	return true;
-}
-
-void UInteractiveManagerComponent::Server_StopInteraction_Implementation(UInteractiveComponent* Interactive, const FGuid& ID)
-{
-	if(!Interactive || !ID.IsValid())
+    if (!bInteractionInputDown)
 		return;
 
-	UInteractiveAction* Action = Interactive->GetActionByID(ID);
-	StopInteraction(Interactive, Action);
+    const bool bWasAwaitingClassification = bAwaitingPressClassification;
+    UInteractiveComponent* Interactive = PressInteractive.Get();
+    UInteractiveAction* Action = PressAction.Get();
+
+    bInteractionInputDown = false;
+    bAwaitingPressClassification = false;
+    PressInteractive.Reset();
+    PressAction.Reset();
+
+    if (bWasAwaitingClassification && IsValid(Interactive) && IsValid(Action) && Interactive == FocusedInteractive)
+    {
+        // Release can arrive after the threshold but before the next component tick.
+        const bool bLongHeld = GetWorld()->GetTimeSeconds() - InteractionPressStartTime >= FMath::Max(0.01f, LongPressThreshold);
+
+        StartInteraction(Interactive, Action, FInteractionContext(bLongHeld));
+    }
+    else if (IsValid(ActiveAction) && !ActiveAction->IsA<UPickupAction>())
+        StopInteraction(ActiveInteractive, ActiveAction, GetInteractionContext(ActiveInteractive, ActiveAction));
 }
 
+void UInteractiveManagerComponent::StopInteraction(UInteractiveComponent* Interactive, UInteractiveAction* Action, const FInteractionContext& Context)
+{
+    if (!IsValid(Interactive) || !IsValid(Action) || !GetOwner())
+        return;
 
+    FInteractionContext StopContext = GetInteractionContext(Interactive, Action);
 
+    StopContext.bInterrupted = Context.bInterrupted;
+
+    if (GetOwner()->HasAuthority())
+        Interactive->NativeOnStopInteraction(GetCharacterOwner(), Action, StopContext.bInterrupted ? EInteractionEndReason::Interrupted : EInteractionEndReason::Canceled, StopContext);
+    else
+        Server_StopInteraction(Interactive, Interactive->RuntimeActions.IndexOfByKey(Action), StopContext);
+}
+
+bool UInteractiveManagerComponent::Server_StartInteraction_Validate(UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context)
+{
+    return ActionIndex >= 0 && ActionIndex < 1024;
+}
+
+void UInteractiveManagerComponent::Server_StartInteraction_Implementation(UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context)
+{
+    if (!IsValid(Interactive) || !Interactive->RuntimeActions.IsValidIndex(ActionIndex) || !GetOwner())
+        return;
+
+    if (FVector::DistSquared(Interactive->GetComponentLocation(), GetOwner()->GetActorLocation()) > FMath::Square(TraceLength + 150.0f))
+        return;
+
+    StartInteraction(Interactive, Interactive->RuntimeActions[ActionIndex], Context);
+}
+
+bool UInteractiveManagerComponent::Server_StopInteraction_Validate(UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context)
+{
+    return ActionIndex >= 0 && ActionIndex < 1024;
+}
+
+void UInteractiveManagerComponent::Server_StopInteraction_Implementation(UInteractiveComponent* Interactive, int32 ActionIndex, const FInteractionContext& Context)
+{
+    if (!IsValid(Interactive) || !Interactive->RuntimeActions.IsValidIndex(ActionIndex))
+        return;
+
+    UInteractiveAction* Action = Interactive->RuntimeActions[ActionIndex];
+
+    if (ActiveInteractive != Interactive || ActiveAction != Action)
+        return;
+    StopInteraction(Interactive, Action, Context);
+}
+
+void UInteractiveManagerComponent::UpdateInteractionPress()
+{
+    // Only pending pickup presses need timing work; classified holds never trigger again.
+    if (!bInteractionInputDown || !bAwaitingPressClassification)
+        return;
+    if (GetWorld()->GetTimeSeconds() - InteractionPressStartTime < FMath::Max(0.01f, LongPressThreshold))
+        return;
+
+    UInteractiveComponent* Interactive = PressInteractive.Get();
+    UInteractiveAction* Action = PressAction.Get();
+
+    bAwaitingPressClassification = false;
+    PressInteractive.Reset();
+    PressAction.Reset();
+    if (IsValid(Interactive) && IsValid(Action) && Interactive == FocusedInteractive)
+        StartInteraction(Interactive, Action, FInteractionContext(true));
+}
 
 /*NativeOnInteractionStarted() - Event Hook called by the Interactive Component when the actual interaction has started
 * @NOTE: should only be used to help manage the state of the manager - not drive logic
 *
 *
 **/
-
-void UInteractiveManagerComponent::NativeOnInteractionStarted(UInteractiveComponent* Interactive, const UInteractiveAction* Action)
+void UInteractiveManagerComponent::NativeOnInteractionStarted(UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	ActiveInteractive = Interactive;
 	ActiveAction = const_cast<UInteractiveAction*>(Action);
 	InteractionStartTime = GetWorld()->GetTimeSeconds();
+    ActiveContext = Context;
 }
 
-void UInteractiveManagerComponent::NativeOnInteractionCompleted(UInteractiveComponent* Interactive, const UInteractiveAction* Action)
-{
-	InteractionStartTime = 0.0f;	
-}
-
-void UInteractiveManagerComponent::NativeOnInteractionCancelled(UInteractiveComponent* Interactive, const UInteractiveAction* Action, bool bInterrupted)
+void UInteractiveManagerComponent::NativeOnInteractionCompleted(UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
 {
 	InteractionStartTime = 0.0f;
+    ActiveContext = FInteractionContext();
+    ActiveInteractive = nullptr;
+    ActiveAction = nullptr;
+}
+
+void UInteractiveManagerComponent::NativeOnInteractionCancelled(UInteractiveComponent* Interactive, const UInteractiveAction* Action, const FInteractionContext& Context)
+{
+    InteractionStartTime = 0.0f;
+    ActiveContext = FInteractionContext();
+    ActiveInteractive = nullptr;
+    ActiveAction = nullptr;
 }
 
 void UInteractiveManagerComponent::NativeOnInteractionDenied(UInteractiveComponent* Interactive, UInteractiveAction* Action)
@@ -165,10 +278,9 @@ void UInteractiveManagerComponent::NativeOnInteractionDenied(UInteractiveCompone
 	//	OnInteractionDenied.Broadcast(DeniedActor, GetOwner());
 }
 
-
-//=====================================
-//===============ACTIONS===============
-//=====================================
+//================================================
+//====================ACTIONS=====================
+//================================================
 
 TArray<UInteractiveAction*> UInteractiveManagerComponent::GetFocusedInteractiveActions() const
 {
@@ -194,6 +306,7 @@ TArray<FText> UInteractiveManagerComponent::GetInteractiveActions()
 void UInteractiveManagerComponent::NextPendingAction()
 {
 	const TArray<UInteractiveAction*> Actions = GetFocusedInteractiveActions();
+
 	if (Actions.IsEmpty())
 		PendingInteractiveIndex = INDEX_NONE;
 	else
@@ -207,9 +320,9 @@ void UInteractiveManagerComponent::PreviousPendingAction()
 {
 	const TArray<UInteractiveAction*> Actions = GetFocusedInteractiveActions();
 
-	if (Actions.IsEmpty())	
-		PendingInteractiveIndex = INDEX_NONE;			
-	else	
+	if (Actions.IsEmpty())
+		PendingInteractiveIndex = INDEX_NONE;
+	else
 		PendingInteractiveIndex = (PendingInteractiveIndex - 1 + Actions.Num()) % Actions.Num();
 
 	UpdatePendingActionReference();
@@ -230,11 +343,9 @@ void UInteractiveManagerComponent::UpdatePendingActionReference()
 	PendingAction = Actions[PendingInteractiveIndex];
 }
 
-
-
-//============================================
-//===========INTERACTIVES MANAGEMENT==========
-//============================================
+//================================================
+//============INTERACTIVES MANAGEMENT=============
+//================================================
 
 void UInteractiveManagerComponent::CalcFocusedInteractive()
 {
@@ -259,12 +370,19 @@ void UInteractiveManagerComponent::CalcFocusedInteractive()
 		PendingInteractiveIndex = 0;
 
 		UpdatePendingActionReference();
-	}	
+	}
 }
 
 void UInteractiveManagerComponent::CalcInteractives()
 {
 	TArray<UInteractiveComponent*> ToRemove = NearbyInteractives;
+
+	const auto RemoveUnhoveredInteractive = [&](UInteractiveComponent* Interactive)
+		{
+			RemoveInteractive(Interactive);
+			NotifyInteractiveOfUnhover(Interactive);
+			return true;  // Remove from array
+		};
 
 	// Add new interactives from traced results
 	for (UInteractiveComponent* TracedInteractive : TracedInteractives)
@@ -280,12 +398,7 @@ void UInteractiveManagerComponent::CalcInteractives()
 
 	/*cleanup no-longer valid interactives*/
 	// Safely remove interactives that are no longer valid
-	ToRemove.RemoveAll([&](UInteractiveComponent* Interactive)
-		{
-			RemoveInteractive(Interactive);
-			NotifyInteractiveOfUnhover(Interactive);
-			return true;  // Remove from array
-		});
+	ToRemove.RemoveAll(RemoveUnhoveredInteractive);
 }
 
 bool UInteractiveManagerComponent::IsInteractive(UInteractiveComponent* Interactive)
@@ -340,7 +453,6 @@ void UInteractiveManagerComponent::NotifyInteractiveOfUnhover(UInteractiveCompon
 		Interactive->NativeOnUnhovered(GetCharacterOwner());
 }
 
-
 UInteractiveComponent* UInteractiveManagerComponent::GetCurrentInteractive() const
 {
 	if (NearbyInteractives.Num() <= 0)
@@ -358,9 +470,33 @@ AActor* UInteractiveManagerComponent::GetCurrentInteractiveOwner()
 		return GetCurrentInteractive()->GetOwner();
 }
 
-//===============================
-//============TRACING============
-//===============================
+bool UInteractiveManagerComponent::IsActiveInteractionComplete()
+{
+	/*safety check*/
+	if (ActiveInteractive == nullptr)
+		return true;
+
+	/*initialize & check*/
+	IInteractiveShapeInterface* Interactive = Cast<IInteractiveShapeInterface>(ActiveInteractive);
+
+	if (Interactive == nullptr)
+		return false;
+
+	if (Interactive->GetRemainingInteractionTime() <= 0)
+		return true;
+	else
+		return false;
+}
+
+bool UInteractiveManagerComponent::IsInteracting()
+{
+	return IsValid(ActiveInteractive) && IsValid(ActiveAction);
+}
+
+//================================================
+//====================TRACING=====================
+//================================================
+
 void UInteractiveManagerComponent::TraceForInteractives()
 {
 	if (!GetCharacterOwner())
@@ -376,6 +512,7 @@ void UInteractiveManagerComponent::TraceForInteractives()
 			/*initialize properties*/
 			TArray<FHitResult> HitResults;
 			FCollisionQueryParams CollisionParams;
+
 			CollisionParams.AddIgnoredActor(GetOwner()); //ignore whoever owns us so we dont' hit ourselves
 
 			if (GetWorld()->SweepMultiByChannel(HitResults, GetTraceStart(), GetTraceEnd(), GetTraceRotation().Quaternion(), GetTraceChannel(), FCollisionShape::MakeBox(FVector(ProbeSize)), CollisionParams))
@@ -394,12 +531,12 @@ void UInteractiveManagerComponent::TraceForInteractives()
 
 						/*debugging*/
 						#if WITH_EDITOR
-						if (bDebugTrace) 
+						if (bDebugTrace)
 						{
 							DrawDebugSphere(GetWorld(), HitResult.Location, ProbeSize, 12, FColor::Cyan, false, 0.5f);
 							UE_LOG(LogTemp, Warning, TEXT("\t Interactive Check: %s"), *GetNameSafe(InteractiveComponent));
 						}
-							
+
 
 						#endif
 
@@ -413,7 +550,7 @@ void UInteractiveManagerComponent::TraceForInteractives()
 							UE_LOG(LogTemp, Warning, TEXT("\t Interactive Check: %s"), *GetNameSafe(HitResult.GetComponent()));
 							DrawDebugSphere(GetWorld(), HitResult.Location, ProbeSize, 12, FColor::Red, false, 0.5f);
 						}
-							
+
 					#endif
 					}
 				}
@@ -426,7 +563,7 @@ void UInteractiveManagerComponent::TraceForInteractives()
 				DrawDebugLine(GetWorld(), GetTraceStart(), GetTraceEnd(), FColor::Blue, false, 0.3f, (uint8)0U, 3.0f);
 			}*/
 #endif
-		}	
+		}
 }
 
 FVector UInteractiveManagerComponent::GetTraceStart()
@@ -439,6 +576,7 @@ FVector UInteractiveManagerComponent::GetTraceStart()
 	if (TraceType == EInteractiveTraceType::Controller)
 	{
 		AFirstPersonCharacter* Character = GetCharacterOwner();
+
 		if (Character && Character->GetController())
 		{
 			Character->GetController()->GetPlayerViewPoint(StartLocation, Rotation);
@@ -448,6 +586,7 @@ FVector UInteractiveManagerComponent::GetTraceStart()
 	else if (TraceType == EInteractiveTraceType::Camera && GetOwnerCamera())
 	{
 		FMinimalViewInfo ViewInfo;
+
 		GetOwnerCamera()->GetCameraView(UGameplayStatics::GetWorldDeltaSeconds(this), ViewInfo);
 		StartLocation = ViewInfo.Location;
 	}
@@ -494,6 +633,7 @@ FRotator UInteractiveManagerComponent::GetTraceRotation()
 	if (TraceType == EInteractiveTraceType::Controller && Cast<APawn>(GetOwner()))
 	{
 		APawn* Pawn = Cast<APawn>(GetOwner());
+
 		if (Pawn && Pawn->GetController())
 		{
 			Pawn->GetController()->GetPlayerViewPoint(Location, TraceRotation);
@@ -503,6 +643,7 @@ FRotator UInteractiveManagerComponent::GetTraceRotation()
 	else if (TraceType == EInteractiveTraceType::Camera && GetOwnerCamera())
 	{
 		FMinimalViewInfo ViewInfo;
+
 		GetOwnerCamera()->GetCameraView(UGameplayStatics::GetWorldDeltaSeconds(this), ViewInfo);
 		TraceRotation = ViewInfo.Rotation;
 	}
@@ -515,30 +656,9 @@ ECollisionChannel UInteractiveManagerComponent::GetTraceChannel()
 	return UEngineTypes::ConvertToCollisionChannel(TraceChannel);
 }
 
-
-
-bool UInteractiveManagerComponent::IsActiveInteractionComplete()
-{
-	/*safety check*/
-	if (ActiveInteractive == nullptr)
-		return true;
-
-	/*initialize & check*/
-	IInteractiveShapeInterface* Interactive = Cast<IInteractiveShapeInterface>(ActiveInteractive);
-	if (Interactive == nullptr)
-		return false;
-
-	if (Interactive->GetRemainingInteractionTime() <= 0)
-		return true;
-	else
-		return false;
-}
-
-bool UInteractiveManagerComponent::IsInteracting()
-{
-	return IsValid(ActiveInteractive) && IsValid(ActiveAction);
-}
-
+//================================================
+//===================UTILITIES====================
+//================================================
 
 UInteractiveComponent* UInteractiveManagerComponent::GetInteractiveComponentFromHit(const FHitResult& HitResult) const
 {

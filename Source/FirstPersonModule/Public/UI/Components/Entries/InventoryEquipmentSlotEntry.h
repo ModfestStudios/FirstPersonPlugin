@@ -11,7 +11,7 @@
  * 
  */
 UCLASS()
-class FIRSTPERSONMODULE_API UInventoryEquipmentSlotEntry : public UUserWidget, public IUserObjectListEntry
+class FIRSTPERSONMODULE_API UInventoryAttachmentComponentEntry : public UUserWidget, public IUserObjectListEntry
 {
 	GENERATED_BODY()
 public:
@@ -24,7 +24,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Equipment Slot")
 		FName EquipmentSlotID;
 	UPROPERTY(BlueprintReadOnly, Category = "Equipment Slot")
-		class UInventoryEquipmentSlot* EquipmentSlot;
+		class UInventoryAttachmentComponent* EquipmentSlot;
 
 	//===============================================================================================================================================
 	//===================================================================FUNCTIONS===================================================================
@@ -35,10 +35,10 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment Slot")
 		virtual bool IsItemEquipped();
 	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment Slot")
-		class UInventoryEquipmentSlot* GetEquipmentSlot();
+		class UInventoryAttachmentComponent* GetEquipmentSlot();
 
 	UFUNCTION(BlueprintCallable, Category = "Equipment Slot")
-		virtual void SetEquipmentSlot(class UInventoryEquipmentSlot* NewEquipmentSlot);
+		virtual void SetEquipmentSlot(class UInventoryAttachmentComponent* NewEquipmentSlot);
 
 
 

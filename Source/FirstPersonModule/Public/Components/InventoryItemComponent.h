@@ -59,12 +59,18 @@ protected:
 
 	/*reference to inventory manager when assigned*/
 private:
-	UPROPERTY()
-		class UInventoryManagerComponent* InventoryManager;
+	UPROPERTY(ReplicatedUsing=OnRep_ItemPresence)
+        class UInventoryManagerComponent* InventoryManager = nullptr;
+    UPROPERTY()
+        TWeakObjectPtr<class UInventoryManagerComponent> PreviousStorage;
+    UPROPERTY(ReplicatedUsing=OnRep_ItemPresence)
+        class UInventoryAttachmentComponent* AttachmentSlot = nullptr;
 public:
 	/*automatically equips this item when picked up or spawned into inventory*/
 	UPROPERTY(EditAnywhere, Category = "Equipping/Unequipping")
 		bool bAutoEquip = false;
+    UPROPERTY(EditAnywhere, Category="Equipping/Unequipping")
+        bool bCompleteEquipAutomatically = true;
 	/*if called - will immedietely unhide the mesh. Otherwise it's up to the actor itself to unhide when needed*/
 	UPROPERTY(EditAnywhere, Category = "Equipping/Unequipping")
 		bool bAutoUnhideOnEquip = true;
@@ -73,10 +79,14 @@ public:
 		uint8 EquipPriority = 0;
 private:
 	/**/
-	UPROPERTY()
+	UPROPERTY(ReplicatedUsing=OnRep_ItemPresence)
 		EEquipState EquipState = EEquipState::NONE;
 
-	FTimerHandle EquipHandler;
+	EItemPresence LastNotifiedPresence = EItemPresence::World;
+    TWeakObjectPtr<AActor> LastNotifiedHolder;
+    UPROPERTY(Transient)
+        TWeakObjectPtr<class AFirstPersonCharacter> EquipRequestUser;
+    FTimerHandle EquipHandler;
 	FTimerHandle UnequipHandler;
 	
 public:
@@ -85,13 +95,8 @@ public:
 		FIntPoint RegisteredGridKey;
 
 private:
-	UPROPERTY()
+	UPROPERTY(ReplicatedUsing=OnRep_ItemPresence)
 		EItemPresence ItemPresence = EItemPresence::World;
-	/*State of the Item*/
-	UPROPERTY()
-		EItemState ItemState = EItemState::AsPickup;
-	UPROPERTY()
-		EItemState PreviousItemState = EItemState::NONE;
 private:
 	UPROPERTY(Replicated, ReplicatedUsing = "OnRep_CollisionChanged")
 		bool bCollisionEnabled = true;
@@ -117,6 +122,8 @@ public:
 	//===========================================================================================================================================================
 
 public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	// Sets default values for this component's properties
 	UInventoryItemComponent();
 
@@ -155,15 +162,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
 		EEquipState GetEquipState() { return EquipState; };
 	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
-		EItemState GetItemState() { return ItemState; };
-	UFUNCTION(BlueprintPure, Category = "Inventory Item|State")
 		EItemPresence GetItemPresence();
 
 private:
 	UFUNCTION()
-		void SetItemState(EItemState NewState);
-	UFUNCTION()
 		void SetItemPresence(EItemPresence NewPresence);
+    UFUNCTION()
+        void OnRep_ItemPresence();
+
 	
 
 
@@ -173,7 +179,7 @@ private:
 public:
 	/*this typically is called by the InventoryManager & routes down to the owning Actor*/
 	UFUNCTION()
-		virtual void BeginEquip();
+		virtual void BeginEquip(class AFirstPersonCharacter* User = nullptr);
 	/*EndEquip() then gets called back from the owning actor after it's done its equip logic to finalize the states of the ItemComp*/
 	UFUNCTION()
 		virtual void EndEquip();
@@ -195,6 +201,10 @@ private:
 public:
 	UFUNCTION(BlueprintPure, Category = "Inventory Manager")
 		class UInventoryManagerComponent* GetInventoryManager() { return InventoryManager; };
+    UFUNCTION(BlueprintPure, Category="Inventory Manager")
+        UInventoryManagerComponent* GetPreviousStorage() const { return PreviousStorage.Get(); }
+    UFUNCTION(BlueprintPure, Category="Inventory Manager")
+        UInventoryAttachmentComponent* GetAttachmentSlot() const { return AttachmentSlot; }
 	UFUNCTION(BlueprintPure, Category = "Inventory Manager")
 		class AActor* GetOwningActor();
 

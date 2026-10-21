@@ -2,14 +2,14 @@
 
 
 #include "Weapons/AssaultRifle.h"
-#include "Components/InteractiveCollisionComponent.h"
+#include "Components/InteractiveComponent.h"
 
 AAssaultRifle::AAssaultRifle(const FObjectInitializer& ObjectIntializer)
 	:Super(ObjectIntializer)
 {
-	if (InteractionCollision)
+	if (InteractiveComponent)
 	{
-		InteractionCollision->SetRelativeLocation(FVector(16, 0, 5));
-		InteractionCollision->SetRelativeScale3D(FVector(1.4f, 0.1f, 0.3f));
+		InteractiveComponent->SetRelativeLocation(FVector(16, 0, 5));
+		InteractiveComponent->SetRelativeScale3D(FVector(1.4f, 0.1f, 0.3f));
 	}
 }

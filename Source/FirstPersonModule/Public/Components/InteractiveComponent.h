@@ -19,8 +19,13 @@ public:
 	//UPROPERTY(EditAnywhere, Category = "Interaction|Collision")
 	//	EInteractiveShape InteractiveShape = EInteractiveShape::Box;
 
-	UPROPERTY(EditAnywhere, Category = "Interaction|Collision", meta = (EditCondition = "InteractiveShape == EInteractiveShape::Box", EditConditionHides))
+	/** Unscaled half-size of the interaction collision box. */
+	UPROPERTY(EditAnywhere, Category = "Interaction|Collision", meta = (ClampMin = "0.0", UIMin = "0.0"))
 		FVector BoxExtent = FVector(25.0f);
+
+	/** Line thickness used to draw the interaction collision box. */
+	UPROPERTY(EditAnywhere, Category = "Interaction|Collision", meta = (ClampMin = "0.0", UIMin = "0.0"))
+		float CollisionLineThickness = 2.0f;
 
 	//UPROPERTY(EditAnywhere, Category = "Interaction|Collision", meta = (EditCondition = "InteractiveShape == EInteractiveShape::Sphere", EditConditionHides))
 	//	float SphereRadius = 25.0f;
@@ -30,7 +35,6 @@ public:
 
 	//UPROPERTY(EditAnywhere, Category = "Interaction|Collision", meta = (EditCondition = "InteractiveShape == EInteractiveShape::Capsule", EditConditionHides))
 	//	float CapsuleHalfHeight = 50.0f;
-
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction|Hover")
@@ -46,7 +50,6 @@ public:
 		UMaterialInstanceDynamic* DynamicMaterial = nullptr;
 
 
-
 	///*if enabled - will automatically find the UFUNCTION() (required) in the owner's C++ code and call it*/
 	//UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction")
 	//	bool bAutoCallFunction = false;
@@ -59,7 +62,6 @@ public:
 	//	FOnInteraction OnInteractionStarted;
 	//UPROPERTY(BlueprintAssignable)
 	//	FOnInteraction OnInteractionStopped;
-
 
 
 	UPROPERTY(EditAnywhere, Category = "Interaction|Animation")
@@ -82,7 +84,8 @@ public:
 
 	/*replicated variable indicating this is already being interacted with - used to prevent further use by others*/
 	UPROPERTY(Replicated)
-		bool bInteractionActive;
+		bool bInteractionActive = false;
+    float ActiveInteractionDuration = 0.0f;
 	UPROPERTY()
 		class UInteractiveAction* ActiveAction = nullptr;
 
@@ -126,6 +129,8 @@ public:
 	//===================================================================================================================================
 
 public:	
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	// Sets default values for this component's properties
 	UInteractiveComponent();
 	UFUNCTION()
@@ -134,7 +139,6 @@ public:
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
-
 
 
 protected:
@@ -149,13 +153,8 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+
 	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
-
-
-protected:
-	///*will find and call a UFUNCTION on the owner that matches the FunctionToCall name*/
-	//UFUNCTION()
-	//	void CallOwnerFunctionByName();
 
 
 	//============================
@@ -217,6 +216,9 @@ public:
 public:
 	
 	
+    UFUNCTION(BlueprintPure, Category="Interactions")
+        FInteractionContext GetInteractionContext() const;
+
 	/*checks to see if interactions are enabled - hides it from InteractionManager if true*/
 	UFUNCTION()
 		virtual bool IsInteractionEnabled() const;
@@ -225,10 +227,10 @@ public:
 
 	/*function called to initiate an interaction*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions")
-		virtual bool NativeOnBeginInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
+		virtual bool NativeOnBeginInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action, const FInteractionContext& Context);
 	/*function called when an interaction has been stopped either intentionally or unintentionally*/
 	UFUNCTION(BlueprintCallable, Category = "Interactions")
-		virtual void NativeOnStopInteraction(class AFirstPersonCharacter* User,const class UInteractiveAction* Action, EInteractionEndReason EndReason);
+		virtual void NativeOnStopInteraction(class AFirstPersonCharacter* User,const class UInteractiveAction* Action, EInteractionEndReason EndReason, const FInteractionContext& Context);
 
 protected:
 
@@ -245,7 +247,6 @@ protected:
 		virtual void NativeOnDenyInteraction(class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
 
 
-
 public:
 	UFUNCTION()
 		virtual float GetCurrentInteractionTime();
@@ -256,11 +257,8 @@ public:
 	//===============================================================
 	//===========================COLLISION===========================
 	//===============================================================
-//protected:
-//	UFUNCTION()
-//		virtual void RebuildCollision();
-//	UFUNCTION()
-//		virtual void UpdateCollisionProperties();
+protected:
+	void UpdateCollisionProperties();
 
 	//==============================================================
 	//=========================REGISTRATION=========================
@@ -286,7 +284,7 @@ public:
 protected:
 	/*will find and call a UFUNCTION on the owner that matches the FunctionToCall name*/
 	UFUNCTION()
-		void CallOwnerFunctionByName(const FName FunctionName, const class AFirstPersonCharacter* User, const class UInteractiveAction* Action);
+		void CallOwnerFunctionByName(const FName FunctionName, const class AFirstPersonCharacter* User, const class UInteractiveAction* Action, const FInteractionContext& Context);
 
 	UFUNCTION()
 		virtual void SetActiveUser(AFirstPersonCharacter* User);

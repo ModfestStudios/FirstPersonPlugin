@@ -4,15 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "Inventory/Inventory.h"
+#include "Interactives/Interactives.h"
 #include "Components/ActorComponent.h"
 #include "InventoryManagerComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnItemAdded, UInventoryManagerComponent*, InventoryManager, class AInventoryItem*, OwningActor, class AInventoryItem*, InventoryItem);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnItemAdded, UInventoryManagerComponent*, InventoryManager, class AActor*, OwningActor, class AInventoryItem*, InventoryItem);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemEquipped, class AInventoryItem*, Item);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryManagerOpened);
-
-
 
 
 UCLASS(ClassGroup = (Inventory), meta = (BlueprintSpawnableComponent), HideCategories = (Sockets, ComponentTick, ComponentReplication, Activation, Cooking, Collision, AssetUserData))
@@ -22,9 +21,6 @@ class FIRSTPERSONMODULE_API UInventoryManagerComponent : public UActorComponent
 	
 
 	GENERATED_BODY()
-public:
-
-
 protected:
 	/*what's currently active for this manager*/
 	UPROPERTY(Replicated)
@@ -62,8 +58,14 @@ public:
 		FText InventoryManagerName = NSLOCTEXT("Inventory", "DefaultInventoryManagerName", "Unnamed Inventory Manager");
 
 	/*equipment that can be attached to this inventory item*/
-	UPROPERTY(EditDefaultsOnly, Category = "Inventory", Instanced, meta = (ShowOnlyInnerProperties))
-		TArray<class UInventoryEquipmentSlot*> EquipmentSlots;
+    UPROPERTY(EditAnywhere, Category="Inventory|Equipment", meta=(TitleProperty="SlotID"))
+    TArray<FInventoryEquipmentSlotConfig> EquipmentSlotConfigs;
+
+    UPROPERTY(EditAnywhere, Category="Inventory|Equipment")
+    TSubclassOf<class UInventoryAttachmentComponent> EquipmentSlotComponentClass;
+
+    UPROPERTY(Transient, Replicated, BlueprintReadOnly, Category="Inventory|Equipment")
+    TArray<class UInventoryAttachmentComponent*> EquipmentSlots;
 
 
 	//=========================
@@ -103,7 +105,6 @@ protected:
 		bool bEnableSecondaryWeapon;
 	UPROPERTY(EditDefaultsOnly, Category = "Configuration|Alternative", meta = (EditCondition = "bCanEquipItems"))
 		bool bEnableAlternativeWeapon;
-
 
 
 	//==================
@@ -146,7 +147,6 @@ public:
 	/*the current registered Grid Key*/
 	UPROPERTY(BlueprintReadOnly, Category = "Inventory|Grid")
 		FIntPoint RegisteredGridKey;
-
 
 
 	//================
@@ -208,6 +208,7 @@ public:
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	virtual void OnComponentDestroyed(bool bDestroyingHierarchy) override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:
@@ -215,7 +216,6 @@ public:
 		virtual void OnOwnerPossessed(class AController* NewController);
 	UFUNCTION()
 		virtual void OnOwnerUnPossessed();
-
 
 
 	//=====================================
@@ -257,16 +257,35 @@ public:
 		TArray<class UInventoryManagerComponent*> GetInventoryManagersInVicinity();
 
 
-
-
 	//=====================================
 	//===========EQUIPMENT SLOTS===========
 	//=====================================
 
 
+public:
+    UFUNCTION(BlueprintCallable, Category="Inventory|Equipment")
+    void InitializeEquipmentSlots();
+    UFUNCTION(BlueprintPure, Category="Inventory|Equipment")
+    const TArray<UInventoryAttachmentComponent*> GetEquipmentSlots() const { return EquipmentSlots; }
+    UFUNCTION(BlueprintPure, Category="Inventory|Equipment")
+    UInventoryAttachmentComponent* FindEquipmentSlot(AInventoryItem* Item, bool bIncludeHands = true) const;
 
-		
+/*gets the slot by ID*/
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment Slots")
+		class UInventoryAttachmentComponent* GetEquipmentSlot(FName ID);
 
+
+	/*returns the first equipment slot matching the template*/
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment Slots")
+		class UInventoryAttachmentComponent* GetEquipmentSlotByClass(TSubclassOf<AInventoryItem> ItemClass);
+	template <typename T>
+	class UInventoryAttachmentComponent* GetEquipmentSlot()
+	{
+		return GetEquipmentSlotByClass(T::StaticClass());
+	}
+
+private:
+    bool bEquipmentInitialized = false;
 
 	//=====================================
 	//==============EQUIPPING==============
@@ -276,7 +295,7 @@ public:
 		virtual void Equip(class AInventoryItem* Item);
 protected:
 	UFUNCTION()
-		virtual void EquipToEquipmentSlot(class AInventoryItem* Item, class UInventoryEquipmentSlot* EquipmentSlot);
+		virtual void EquipToEquipmentSlot(class AInventoryItem* Item, class UInventoryAttachmentComponent* EquipmentSlot);
 
 protected:
 	UFUNCTION()
@@ -290,6 +309,15 @@ protected:
 
 	UFUNCTION()
 		virtual bool ShouldAutoEquip(class AInventoryItem* Item, bool bItemPickedUp = false);
+
+public:
+    UFUNCTION(BlueprintCallable, Category="Inventory|Equipment")
+    bool TryEquipItem(AInventoryItem* Item);
+    UFUNCTION(BlueprintCallable, Category="Inventory|Equipment")
+    bool TryPutAwayItem(AInventoryItem* Item);
+
+private:
+    bool CommitEquipment(AInventoryItem* Item, UInventoryAttachmentComponent* Slot, class AFirstPersonCharacter* User = nullptr);
 
 	//====================================
 	//=============QUICKSLOTS=============
@@ -345,12 +373,11 @@ public:
 		bool RemoveItem(class AInventoryItem* Item);
 
 	UFUNCTION(BlueprintPure, Category = "Interaction")
-		bool CanPickup(class AInventoryItem* Item);
+		bool CanPickup(class AInventoryItem* Item, bool bLongHeld = false);
 	UFUNCTION(BlueprintCallable, Category = "Interaction")
-		void PickupItem(class AInventoryItem* Item);
+		bool PickupItem(class AInventoryItem* Item, const FInteractionContext& Context);
 	UFUNCTION(BlueprintCallable, Category = "Inventory|Item Management")
 		void DropItem(class AInventoryItem* Item);
-
 
 
 private:
@@ -359,6 +386,27 @@ private:
 	UFUNCTION()
 		void RegisterItem(class AInventoryItem* Item);
 
+
+public:
+    UFUNCTION(BlueprintPure, Category="Inventory")
+    UInventoryManagerComponent* FindStorageForItem(AInventoryItem* Item) const;
+    UFUNCTION(BlueprintPure, Category="Inventory")
+    bool CanStoreLocally(AInventoryItem* Item) const;
+    UFUNCTION(BlueprintPure, Category="Inventory")
+    bool WouldCreateContainmentCycle(AInventoryItem* Item) const;
+
+public:
+	UFUNCTION(BlueprintPure, Category = "Inventory|Items")
+		virtual UInventoryItemComponent* GetItemComponent(class AInventoryItem* Item);
+
+protected:
+	UFUNCTION()
+		virtual void NativeOnInventoryUpdated();
+
+private:
+    TArray<UInventoryManagerComponent*> GetSearchManagers() const;
+    bool CommitStorage(AInventoryItem* Item);
+    void ReleaseItem(AInventoryItem* Item);
 
 	//===================
 	//=======SLOTS=======
@@ -401,41 +449,10 @@ public:
 		int32 GetItemSlotSize(EItemSize Size) const;
 
 
-
-
-public:
-
-	/*gets the slot by ID*/
-	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment Slots")
-		class UInventoryEquipmentSlot* GetEquipmentSlot(FName ID);
-
-	UFUNCTION()
-		class UInventoryEquipmentSlot* CreateDefaultEquipmentSlot(FName SubobjectName, TSubclassOf<class AInventoryItem> ItemType);
-
-
-	/*returns the first equipment slot matching the template*/
-	UFUNCTION(BlueprintCallable, Category = "Inventory|Equipment Slots")
-		class UInventoryEquipmentSlot* GetEquipmentSlotByClass(TSubclassOf<AInventoryItem> ItemClass);
-	template <typename T>
-	class UInventoryEquipmentSlot* GetEquipmentSlot() const
-	{
-		return GetEquipmentSlotByClass(T::StaticClass());
-	}
-
-
-
-
 protected:	
 	class UInventoryItemSlot* CreateInventoryItemSlot(FInventoryItemSpawnParams ItemSpawnParams, bool bSpawnInstance = false);
 	class UInventoryItemSlot* CreateInventorySlot(TSubclassOf<class AInventoryItem> ItemClass);
-	
 
-
-
-
-protected:
-	UFUNCTION()
-		virtual void NativeOnInventoryUpdated();
 
 	//==============================
 	//=============GRID=============
@@ -445,11 +462,6 @@ protected:
 public:
 	UFUNCTION()
 		void UpdateGridKey(FIntPoint NewGridKey);
-
-
-public:
-	UFUNCTION(BlueprintPure, Category = "Inventory|Items")
-		virtual UInventoryItemComponent* GetItemComponent(class AInventoryItem* Item);
 
 
 	//==============================

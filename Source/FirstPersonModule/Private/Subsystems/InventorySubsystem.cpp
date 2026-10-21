@@ -2,12 +2,17 @@
 
 
 #include "Subsystems/InventorySubsystem.h"
+#include "Interfaces/InventoryItemInterface.h"
 #include "Inventory/InventoryItemAsset.h"
 #include "Components/InventoryItemComponent.h"
 #include "Components/InventoryManagerComponent.h"
 #include "Components/InventoryAttachmentComponent.h"
 #include "Inventory/InventoryItemSlot.h"
 #include "Inventory/InventoryEquipmentSlot.h"
+
+//================================================
+//==============INVENTORY MANAGEMENT==============
+//================================================
 
 UInventoryManagerComponent* UInventorySubsystem::GetHoveredInventoryManager()
 {
@@ -66,7 +71,31 @@ TArray<class UInventoryManagerComponent*> UInventorySubsystem::GetInventoryManag
 
 	const float ThresholdSquared = Threshold * Threshold;
 	const FIntPoint GridKey = GetGridKey(Location); 
+
 	const int32 CellRadius = FMath::CeilToInt(Threshold / GridChunkSize); //Round up to the nearest integer
+    TArray<AActor*> OwnersToIgnore = VicinityCheckParameters.IgnoredActors;
+    TSet<const AActor*> IgnoredOwners;
+
+    // Expand only when requested by the caller; explicit ignored owners are always respected.
+    for (int32 Index = 0; Index < OwnersToIgnore.Num(); ++Index)
+    {
+        AActor* IgnoredOwner = OwnersToIgnore[Index];
+        TInlineComponentArray<UInventoryManagerComponent*> Inventories;
+
+        if (!IsValid(IgnoredOwner) || IgnoredOwners.Contains(IgnoredOwner))
+            continue;
+
+        IgnoredOwners.Add(IgnoredOwner);
+        if (!VicinityCheckParameters.bAutoIgnoreRecursive)
+            continue;
+
+        IgnoredOwner->GetComponents(Inventories);
+        for (UInventoryManagerComponent* Inventory : Inventories)
+            if (IsValid(Inventory))
+                for (UInventoryAttachmentComponent* Slot : Inventory->GetEquipmentSlots())
+                    if (IsValid(Slot) && IsValid(Slot->GetAttachedItem()))
+                        OwnersToIgnore.Add(Slot->GetAttachedItem());
+    }
 
 	for (int32 XOffset =- CellRadius; XOffset <= CellRadius; ++XOffset)
 	{
@@ -80,6 +109,7 @@ TArray<class UInventoryManagerComponent*> UInventorySubsystem::GetInventoryManag
 			}
 
 			const FInventoryGridEntry* GridEntry = InventoryGrid.Find(NeighborKey);
+
 			if (!GridEntry)
 			{
 				continue;
@@ -97,7 +127,7 @@ TArray<class UInventoryManagerComponent*> UInventorySubsystem::GetInventoryManag
 				AActor* Owner = InvManager->GetOwner();
 
 				/*skip invalid actors or ones on the ignore list*/
-				if (!IsValid(Owner) || VicinityCheckParameters.IgnoredActors.Contains(Owner))
+				if (!IsValid(Owner) || IgnoredOwners.Contains(Owner))
 				{
 					continue;
 				}
@@ -121,8 +151,6 @@ TArray<class UInventoryManagerComponent*> UInventorySubsystem::GetInventoryManag
 	return NearbyInvManagers;
 }
 
-
-
 void UInventorySubsystem::RegisterInventoryManager(UInventoryManagerComponent* InventoryManager)
 {
 	/*safety checks*/
@@ -141,6 +169,9 @@ void UInventorySubsystem::UnregisterInventoryManager(UInventoryManagerComponent*
 		RegisteredInventoryManagers.Remove(InventoryManager);
 }
 
+//================================================
+//================INVENTORY ITEMS=================
+//================================================
 
 //AInventoryItem* UInventorySubsystem::SpawnInventoryItem(FInventoryItemSpawnParams SpawnParameters, FVector SpawnLocation, FRotator SpawnRotation)
 //{
@@ -159,7 +190,6 @@ void UInventorySubsystem::UnregisterInventoryManager(UInventoryManagerComponent*
 //
 //	
 //}
-
 void UInventorySubsystem::RegisterInventoryItem(AInventoryItem* InventoryItem)
 {
 	if (!IsValid(InventoryItem))
@@ -174,6 +204,10 @@ void UInventorySubsystem::UnregisterInventoryItem(AInventoryItem* InventoryItem)
 {
 	
 }
+
+//================================================
+//================EQUIPMENT SLOTS=================
+//================================================
 
 UInventoryAttachmentComponent* UInventorySubsystem::GetHoveredEquipmentSlot()
 {
@@ -204,7 +238,9 @@ void UInventorySubsystem::SetSelectedEquipmentSlot(UInventoryAttachmentComponent
 		OnSelectedEquipmentSlotChanged.Broadcast();
 }
 
-
+//================================================
+//=================ITEM VICINITY==================
+//================================================
 
 TArray<class AInventoryItem*> UInventorySubsystem::GetInventoryItemsInVicinity(const FVector& Location, const float Threshold)
 {
@@ -212,6 +248,7 @@ TArray<class AInventoryItem*> UInventorySubsystem::GetInventoryItemsInVicinity(c
 
 	const float ThresholdSquared = Threshold * Threshold;
 	const FIntPoint GridKey = GetGridKey(Location);
+
 	const int32 CellRadius = FMath::CeilToInt(Threshold / GridChunkSize); //Round up to the nearest integer
 
 	for (int32 XOffset = -CellRadius; XOffset <= CellRadius; ++XOffset)
@@ -226,6 +263,7 @@ TArray<class AInventoryItem*> UInventorySubsystem::GetInventoryItemsInVicinity(c
 			}
 
 			const FInventoryGridEntry* GridEntry = InventoryGrid.Find(NeighborKey);
+
 			if (!GridEntry)
 			{
 				continue;
@@ -242,12 +280,8 @@ TArray<class AInventoryItem*> UInventorySubsystem::GetInventoryItemsInVicinity(c
 								
 				const double Distance = GetDistanceFromInventoryItem(Location, Item);
 
-				if (Item->CanBePickedUp())
-				{
-
-				}
 				/*perform checks*/
-				if (Item->CanBePickedUp())
+				if (IInventoryItemInterface::Execute_CanBePickedUp(Item))
 				{
 					if (Distance <= ThresholdSquared)
 					{
@@ -276,6 +310,9 @@ TArray<class UInventoryItemSlot*> UInventorySubsystem::GetInventorySlotsInVicini
 	return ItemSlots;
 }
 
+//================================================
+//==================ITEM ASSETS===================
+//================================================
 
 UInventoryItemAsset* UInventorySubsystem::GetHoveredItemAsset()
 {
@@ -307,6 +344,10 @@ UInventoryItemComponent* UInventorySubsystem::GetInventoryItemComponent(AActor* 
 	return Actor->GetComponentByClass<UInventoryItemComponent>();
 }
 
+//================================================
+//=================INVENTORY VIEW=================
+//================================================
+
 EInventoryView UInventorySubsystem::GetInventoryView()
 {
 	return InventoryView;
@@ -323,14 +364,14 @@ void UInventorySubsystem::SetInventoryView(EInventoryView NewInventoryView)
 		OnInventoryViewChanged.Broadcast(NewInventoryView);
 }
 
+//================================================
+//======================GRID======================
+//================================================
+
 FIntPoint UInventorySubsystem::GetGridKey(const FVector& Location) const
 {
-	return FIntPoint(
-		FMath::FloorToInt(Location.X / GridChunkSize),
-		FMath::FloorToInt(Location.Y / GridChunkSize)
-	);
+	return FIntPoint(FMath::FloorToInt(Location.X / GridChunkSize), FMath::FloorToInt(Location.Y / GridChunkSize));
 }
-
 
 void UInventorySubsystem::UpdateInventoryGridEntry(UInventoryManagerComponent* InventoryManager)
 {
@@ -342,9 +383,10 @@ void UInventorySubsystem::UpdateInventoryGridEntry(UInventoryManagerComponent* I
 	FVector ManagerLocation = InventoryManager->GetOwner()->GetActorLocation(); //location of owning actor
 	FIntPoint GridKey = GetGridKey(ManagerLocation); //Grid key based on location
 	FIntPoint OldGridKey = InventoryManager->RegisteredGridKey; //Old key
+    const FInventoryGridEntry* ExistingEntry = InventoryGrid.Find(GridKey);
 
 	/*check if exists already*/
-	if (GridKey == OldGridKey && GridEntryExists(GridKey)) //cancels out if already added
+	if (GridKey == OldGridKey && ExistingEntry && ExistingEntry->Managers.Contains(InventoryManager)) //only skip managers already registered in this cell
 		return;
 
 	/*find or add a new entry*/
@@ -391,12 +433,14 @@ void UInventorySubsystem::UpdateInventoryGridEntry(AInventoryItem* InventoryItem
 void UInventorySubsystem::RemoveInventoryGridEntry(FIntPoint GridKey, UInventoryManagerComponent* InventoryManager)
 {
 	FInventoryGridEntry* GridEntry = InventoryGrid.Find(GridKey);
+
 	GridEntry->Managers.Remove(InventoryManager);
 }
 
 void UInventorySubsystem::RemoveInventoryGridEntry(FIntPoint GridKey, AInventoryItem* InventoryItem)
 {
 	FInventoryGridEntry* GridEntry = InventoryGrid.Find(GridKey);
+
 	GridEntry->InventoryItems.Remove(InventoryItem);
 }
 
@@ -408,6 +452,7 @@ bool UInventorySubsystem::IsGridEntryWithinThreshold(const FVector& Location, co
 
 	// Clamp the location to the grid's bounds
 	FVector ClampedLocation = Location;
+
 	ClampedLocation.X = FMath::Clamp(Location.X, MinCorner.X, MaxCorner.X);
 	ClampedLocation.Y = FMath::Clamp(Location.Y, MinCorner.Y, MaxCorner.Y);
 
@@ -428,13 +473,9 @@ FInventoryGridEntry& UInventorySubsystem::GetGridEntry(FIntPoint GridKey)
 	return InventoryGrid.FindOrAdd(GridKey);
 }
 
-
-
-
-//===========================
-//=========UTILITIES=========
-//===========================
-
+//================================================
+//===================UTILITIES====================
+//================================================
 
 const double UInventorySubsystem::GetDistanceFromInventoryItem(const FVector& Location, const AInventoryItem* Item) const
 {
@@ -452,19 +493,20 @@ const double UInventorySubsystem::GetDistanceFromInventoryManager(const FVector&
 	return Distance;
 }
 
-
 void UInventorySubsystem::SortInventoryItemsByDistance(const FVector& Location, TArray<class AInventoryItem*>& InventoryItemList)
 {
-	InventoryItemList.Sort([&Location](const AInventoryItem& A, const AInventoryItem& B)
+	const auto SortItemsByDistance = [&Location](const AInventoryItem& A, const AInventoryItem& B)
 		{
 			return FVector::DistSquared(A.GetActorLocation(), Location) < FVector::DistSquared(B.GetActorLocation(), Location);
-		});
+		};
+
+	InventoryItemList.Sort(SortItemsByDistance);
 }
 
 /*sorts the list based on who's closest to the given location*/
 void UInventorySubsystem::SortInventoryManagersByDistance(const FVector& Location, TArray<class UInventoryManagerComponent*>& InventoryManagerList)
 {
-	InventoryManagerList.Sort([&Location](const UInventoryManagerComponent& A, const UInventoryManagerComponent& B)
+	const auto SortManagersByDistance = [&Location](const UInventoryManagerComponent& A, const UInventoryManagerComponent& B)
 		{
 			const AActor* OwnerA = A.GetOwner();
 			const AActor* OwnerB = B.GetOwner();
@@ -476,7 +518,9 @@ void UInventorySubsystem::SortInventoryManagersByDistance(const FVector& Locatio
 
 			return FVector::DistSquared(OwnerA->GetActorLocation(), Location)
 				< FVector::DistSquared(OwnerB->GetActorLocation(), Location);
-		});
+		};
+
+	InventoryManagerList.Sort(SortManagersByDistance);
 }
 
 UInventoryItemSlot* UInventorySubsystem::CreateInventorySlotFromItem(AInventoryItem* Item)
@@ -588,10 +632,9 @@ bool UInventorySubsystem::AreInventoryManagerListsIdentical(const TArray<class U
 	return ListA == ListB;
 }
 
-
-//=========================
-//========DEBUGGING========
-//=========================
+//================================================
+//===================DEBUGGING====================
+//================================================
 
 void UInventorySubsystem::ToggleDebugGrid()
 {
@@ -610,10 +653,7 @@ void UInventorySubsystem::DrawDebugGrid()
 	/*loop through all existing grids and draw them*/
 	for (const auto& GridEntry : InventoryGrid)
 	{
-		FVector Center = FVector(
-			(GridEntry.Key.X + 0.5f) * GridChunkSize,
-			(GridEntry.Key.Y + 0.5f) * GridChunkSize,
-			0);
+		FVector Center = FVector((GridEntry.Key.X + 0.5f) * GridChunkSize, (GridEntry.Key.Y + 0.5f) * GridChunkSize, 0);
 
 		FVector Extents(GridChunkSize * 0.5f, GridChunkSize * 0.5f, 100);
 
@@ -638,12 +678,7 @@ void UInventorySubsystem::DrawDebugDataTable(const FVector& Location)
 
 		UInventoryManagerComponent* Manager = ManagerPtr.Get();
 
-		DebugText += FString::Printf(
-			TEXT("%6d | %6d | %s\n"),
-			GridKey.X,
-			GridKey.Y,
-			*Manager->GetName()			
-		);
+		DebugText += FString::Printf(TEXT("%6d | %6d | %s\n"), GridKey.X, GridKey.Y, *Manager->GetName());
 	}
 
 	GEngine->AddOnScreenDebugMessage(1, 10.0f, FColor::Emerald, DebugText);
@@ -653,6 +688,7 @@ FInventoryGridDebugData UInventorySubsystem::GetDebugGridDataForLocation(const F
 {
 	
 	FInventoryGridDebugData DebugData;
+
 	DebugData.GridKey = GetGridKey(Location);
 	
 	FInventoryGridEntry* GridEntry = InventoryGrid.Find(DebugData.GridKey);
@@ -662,6 +698,7 @@ FInventoryGridDebugData UInventorySubsystem::GetDebugGridDataForLocation(const F
 		if (UInventoryManagerComponent* ManagerEntry = WeakManagerPtr.IsValid() ? WeakManagerPtr.Get() : nullptr)
 		{
 			FInventoryGridEntryDebugData DebugEntry;
+
 			DebugEntry.Name = ManagerEntry->GetFullName();
 			DebugEntry.Class = ManagerEntry->GetClass();
 			DebugEntry.Location = ManagerEntry->GetOwner()->GetActorLocation();
@@ -673,7 +710,4 @@ FInventoryGridDebugData UInventorySubsystem::GetDebugGridDataForLocation(const F
 
 	return DebugData;
 }
-
-
-
 
