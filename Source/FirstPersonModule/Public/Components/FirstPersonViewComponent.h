@@ -20,12 +20,12 @@ struct FDamageIndicator
 
 private:
 	/*auto-assigned ID for tracking*/
-	UPROPERTY(VisibleAnywhere, Category = "First Person View|General")
+	UPROPERTY(VisibleAnywhere, Category = "First Person View|General", meta = (IgnoreForMemberInitializationTest))
 		FGuid Guid = FGuid::NewGuid();
 public:
 	/*the post-process material to apply to our camera*/
 	UPROPERTY(EditAnywhere, Category = "First Person View|General")
-		class UMaterialInterface* Material;
+		class UMaterialInterface* Material = nullptr;
 	/*runtime Material that'll be applied to Post Processing - used for preloading*/
 	UPROPERTY()
 		class UMaterialInstanceDynamic* DynamicMaterial = nullptr;
@@ -41,7 +41,7 @@ public:
 		float AnimationLength = 1.0f;
 	/*the curve that handles animating of timing + intensity of the material*/
 	UPROPERTY(EditAnywhere, Category = "First Person View|General")
-		class UCurveFloat* AnimationCurve;
+		class UCurveFloat* AnimationCurve = nullptr;
 
 	bool HasMatchingDamageType(TSubclassOf<class UDamageType> DamageType)
 	{
@@ -93,13 +93,13 @@ private:
 		FGuid IndicatorId;
 public:
 	UPROPERTY()
-		UMaterialInstanceDynamic* Material;
+		UMaterialInstanceDynamic* Material = nullptr;
 	UPROPERTY()
-		class UCurveFloat* AnimCurve;
+		class UCurveFloat* AnimCurve = nullptr;
 	UPROPERTY()
 		double Length = 1.0f;
 	UPROPERTY()
-		double StartTimestamp;
+		double StartTimestamp = 0.0;
 	
 
 	FDamageIndicatorAnim() {}

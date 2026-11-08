@@ -20,30 +20,30 @@ struct FProjectile
 public:
 
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		class UProjectileInfo* ProjectileInfo;
+		class UProjectileInfo* ProjectileInfo = nullptr;
 	/*direction info*/
 	UPROPERTY()
-		FVector Location;
+		FVector Location = FVector::ZeroVector;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		FVector PreviousLocation;
+		FVector PreviousLocation = FVector::ZeroVector;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		FVector ForwardDirection;
+		FVector ForwardDirection = FVector::ZeroVector;
 	/*speed info*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float Velocity; //meters per second
+		float Velocity = 0.0f; //meters per second
 	/*gravity info*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float GravityStrength;
+		float GravityStrength = 0.0f;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float TerminalFallVelocity;
+		float TerminalFallVelocity = 0.0f;
 	/*tracer bits*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float TracerVelocity;
+		float TracerVelocity = 0.0f;
 	/*travel-expenses*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float DistanceTraveled;
+		float DistanceTraveled = 0.0f;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float EffectiveRange;
+		float EffectiveRange = 0.0f;
 
 	/*impact info*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
@@ -52,17 +52,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
 		FHitResult HitResults;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		float TimeSinceHit;
+		float TimeSinceHit = 0.0f;
 
 	TArray<AActor*> IgnoredActors;
 
 	/*instigator info*/
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		class AActor* DamageCauser;
+		class AActor* DamageCauser = nullptr;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		class APawn* OwningPawn;
+		class APawn* OwningPawn = nullptr;
 	UPROPERTY(BlueprintReadOnly, Category = "Projectiles")
-		class AController* Instigator;
+		class AController* Instigator = nullptr;
 
 	FProjectile() {};
 	FProjectile(UProjectileInfo* _projectileInfo, FVector _location, FVector _direction, AActor* _damageCauser, APawn* _owningPawn, AController* _instigator) :

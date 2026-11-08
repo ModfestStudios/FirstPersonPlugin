@@ -37,7 +37,7 @@ struct FHeadGib
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Gibs")
-		UStaticMesh* GibMesh;
+		UStaticMesh* GibMesh = nullptr;
 
 	/*if system decides to gib an eyeball - will ignore appropriately*/
 	UPROPERTY(EditAnywhere, Category = "Gibs")
@@ -55,7 +55,7 @@ struct FArmGib
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Gibs")
-		class UStaticMesh* GibMesh;
+		class UStaticMesh* GibMesh = nullptr;
 	UPROPERTY(EditAnywhere, Category = "Gibs")
 		EGibSide SideOfBody = EGibSide::Left;
 	UPROPERTY(EditAnywhere, Category = "Gibs")
@@ -69,7 +69,7 @@ struct FLegGib
 public:
 
 	UPROPERTY(EditAnywhere, Category = "Gibs")
-		class UStaticMesh* GibMesh;
+		class UStaticMesh* GibMesh = nullptr;
 	UPROPERTY(EditAnywhere, Category = "Gibs")
 		EGibSide SideOfBody = EGibSide::Left;
 	UPROPERTY(EditAnywhere, Category = "Gibs")

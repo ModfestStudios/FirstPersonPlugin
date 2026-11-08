@@ -238,6 +238,17 @@ void AFirstPersonGameState::Multicast_LoadLevelInstance_Implementation(const FSo
 	/*update flag*/
 	bLoadingLevel = true;
 	LoadingLevelPath = LevelPath.GetLongPackageName();
+	GetWorld()->GetTimerManager().ClearTimer(LevelStreamHandler);
+	if (AFirstPersonPlayerController* PC = GetWorld()->GetFirstPlayerController<AFirstPersonPlayerController>())
+	{
+		if (PC->IsLocalController())
+		{
+			if (AFirstPersonPlayerState* PS = PC->GetPlayerState<AFirstPersonPlayerState>())
+				PS->LevelInstanceLoadPercent = 0.0f;
+			if (GetNetMode() == NM_Client)
+				PC->Server_UpdateLevelLoadPercent(0.0f);
+		}
+	}
 
 	TSoftObjectPtr<UWorld> LevelAsset(LevelPath);
 	UE_LOG(LogGameMode, Log, TEXT("\t Loading Level %s..."),*LevelPath.ToString());
@@ -260,7 +271,7 @@ void AFirstPersonGameState::Multicast_LoadLevelInstance_Implementation(const FSo
 		LoadingLevelStream->SetShouldBeLoaded(true);
 
 		/*start timer that'll check (locally) if the level has loaded for this player*/
-		GetWorld()->GetTimerManager().SetTimer(LevelStreamHandler, this, &AFirstPersonGameState::CheckLevelLoaded, 0.005f, true);
+		GetWorld()->GetTimerManager().SetTimer(LevelStreamHandler, this, &AFirstPersonGameState::CheckLevelLoaded, 0.1f, true);
 	}
 	else
 	{
@@ -273,18 +284,21 @@ void AFirstPersonGameState::Multicast_LoadLevelInstance_Implementation(const FSo
 
 void AFirstPersonGameState::CheckLevelLoaded()
 {
-	if (!LoadingLevelStream)
+	if (!bLoadingLevel || !LoadingLevelStream)
 	{
 		return;
 	}
 
 	/*check load percentage*/
 	AFirstPersonPlayerController* PC = GetWorld()->GetFirstPlayerController<AFirstPersonPlayerController>();
+	if (PC && !PC->IsLocalController())
+		PC = nullptr;
 	AFirstPersonPlayerState* PS = PC ? PC->GetPlayerState<AFirstPersonPlayerState>() : nullptr;
-	//const FName PackageName = LoadingLevelStream->GetWorldAssetPackageFName();
-	float Pct = GetAsyncLoadPercentage(FName(LoadingLevelPath));
-
-	UE_LOG(LogTemp, Log, TEXT("CheckLevelLoaded() - %s - %f"), *LoadingLevelPath, Pct);
+	// Dynamic instances (including PIE) load into a renamed package. UE 5.8's
+	// AsyncLoading2 returns -1 unconditionally; level readiness is the fallback.
+	float Pct = GetAsyncLoadPercentage(LoadingLevelStream->GetWorldAssetPackageFName());
+	if (Pct < 0.0f)
+		Pct = GetAsyncLoadPercentage(FName(LoadingLevelPath));
 
 	if (LoadingLevelStream->IsLevelLoaded() && LoadingLevelStream->IsLevelVisible())
 	{
@@ -304,8 +318,11 @@ void AFirstPersonGameState::CheckLevelLoaded()
 	}
 	else
 	{
-		/*small clamp for UI purposes since -1 means not loading & 100% doesn't guarantee visibility yet*/
-		Pct = FMath::Clamp(Pct, 0.0f, 95.0f);
+		// Package loading is only the first stage. Component registration/visibility
+		// can take much longer, and no longer has an async package percentage.
+		Pct = LoadingLevelStream->IsLevelLoaded() ? 95.0f : FMath::Clamp(Pct * 0.95f, 0.0f, 95.0f);
+		if (PS)
+			Pct = FMath::Max(Pct, PS->LevelInstanceLoadPercent);
 		
 
 		/*mark percent*/
@@ -322,8 +339,9 @@ void AFirstPersonGameState::OnLevelInstanceLoadFinished()
 	
 	/*init*/
 	AFirstPersonPlayerController* PC = GetWorld()->GetFirstPlayerController<AFirstPersonPlayerController>();
-	FString PlayerName = PC ? PC->GetPlayerState<APlayerState>()->GetPlayerName() : FString("Uknown Player");
-	int32 PlayerId = PC->GetPlayerState<APlayerState>()->GetPlayerId();
+	APlayerState* PS = PC ? PC->GetPlayerState<APlayerState>() : nullptr;
+	FString PlayerName = PS ? PS->GetPlayerName() : FString("Unknown Player");
+	int32 PlayerId = PS ? PS->GetPlayerId() : INDEX_NONE;
 	UE_LOG(LogGameMode, Log, TEXT("\t Client Name: %s Client ID: %s"), *PlayerName, *FString::SanitizeFloat(PlayerId));
 
 	/*trigger Blueprint event*/
@@ -331,7 +349,8 @@ void AFirstPersonGameState::OnLevelInstanceLoadFinished()
 
 	/*notify server that we've completed loading*/
 	
-	PC->ServerNotify_LevelInstanceLoadFinished();
+	if (PC && PC->IsLocalController())
+		PC->ServerNotify_LevelInstanceLoadFinished();
 
 	UE_LOG(LogGameMode, Log, TEXT("%s::OnLevelInstanceLoadFinished() - End"), *GetName());
 }

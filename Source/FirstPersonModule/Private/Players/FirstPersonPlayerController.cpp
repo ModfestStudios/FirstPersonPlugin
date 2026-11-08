@@ -59,12 +59,12 @@ AFirstPersonPlayerController::AFirstPersonPlayerController()
 		ControllerMappingContext = ControllerMappingContextRef.Object;
 
 	/*setup default actions*/
-	static ConstructorHelpers::FObjectFinder<UInputAction> ToggleServerInfoActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ToggleServerInfo"));
+	static ConstructorHelpers::FObjectFinder<UInputAction> ToggleServerInfoActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleServerInfo"));
 	if (ToggleServerInfoActionRef.Succeeded())
 		ToggleServerInfoAction = ToggleServerInfoActionRef.Object;
 	
 
-	static ConstructorHelpers::FObjectFinder<UInputAction> ToggleEscapeMenuActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/ToggleEscapeMenu"));
+	static ConstructorHelpers::FObjectFinder<UInputAction> ToggleEscapeMenuActionRef(TEXT("/FirstPersonModule/Blueprints/Input/Actions/IA_FirstPersonPlugin_ToggleEscapeMenu"));
 	if (ToggleEscapeMenuActionRef.Succeeded())
 		ToggleEscapeMenuAction = ToggleEscapeMenuActionRef.Object;
 }

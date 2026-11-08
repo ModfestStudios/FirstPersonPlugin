@@ -32,6 +32,7 @@ public class FirstPersonModule : ModuleRules
 				"CoreUObject",
 				"DeveloperSettings",
 				"Engine",
+				"AnimGraphRuntime",
 				"EngineSettings",
 				"InputCore",
                 "OnlineSubsystem",

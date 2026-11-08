@@ -80,7 +80,7 @@ public:
 		FName TemperatureZone;
 	/*prevents the body temperature from going beyond this by ambients alone*/
 	UPROPERTY(EditAnywhere, Category = "Temperature")
-		float BodyTemperatureCap;
+		float BodyTemperatureCap = 0.0f;
 };
 
 /**

@@ -22,6 +22,8 @@
 
 /*subsystems*/
 #include "Subsystems/CharacterSubsystem.h"
+#include "Subsystems/ServerSubsystem.h"
+#include "GameFramework/GameSession.h"
 #include "Subsystems/MissionSubsystem.h"
 
 
@@ -35,6 +37,8 @@
 
 
 
+//========================================================FUNCTIONS========================================================
+//=====================INITIALIZATION=====================
 AFirstPersonGame::AFirstPersonGame()
 {
 	DefaultPawnClass = AFirstPersonCharacter::StaticClass();
@@ -67,8 +71,22 @@ void AFirstPersonGame::InitGameState()
 	Super::InitGameState();
 }
 
+//=====================PLAYER LOGIN=====================
 void AFirstPersonGame::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
 {
+	const UServerSubsystem* Server = GetGameInstance() ? GetGameInstance()->GetSubsystem<UServerSubsystem>() : nullptr;
+	const bool bLocalTransport = Server && Server->GetServerSessionInfo().ConnectionType != EServerConnectionType::Online && (Server->GetServerState() == EServerState::Hosting || Server->GetServerState() == EServerState::TravelPending);
+
+	// LAN/direct intentionally allow clients without the host's platform identity.
+	// Keep capacity/spectator approval and the original ID in the login event. Online
+	// sessions still use the engine's provider-identity compatibility validation.
+	if (bLocalTransport && GameSession)
+	{
+		ErrorMessage = GameSession->ApproveLogin(Options);
+		FGameModeEvents::GameModePreLoginEvent.Broadcast(this, UniqueId, ErrorMessage);
+
+		return;
+	}
 	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
 }
 

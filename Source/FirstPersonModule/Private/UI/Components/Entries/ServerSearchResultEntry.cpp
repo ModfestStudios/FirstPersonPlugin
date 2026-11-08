@@ -24,7 +24,7 @@ void UServerSearchResultEntry::NativeOnItemSelectionChanged(bool bIsSelected)
 	{
 		if (ServerSubsystem)
 		{
-			ServerSubsystem->OnServerSelected(SearchResult);
+			ServerSubsystem->SetServerSelection(SearchResult);
 		}
 	}
 	/*unselect*/

@@ -34,7 +34,7 @@ public:
 		bool bCurrentlySeen = false;
 	/*how well the AI can see this actor based on the distance mapped against this AI's VisualFalloff*/
 	UPROPERTY()
-		float SightStrength;
+		float SightStrength = 0.0f;
 	UPROPERTY(BlueprintReadOnly)
 		float LastSeenTime = -1.0f;
 	/*basic counter of how long we've seen this actor in one continous sight (with grace period factored)*/
