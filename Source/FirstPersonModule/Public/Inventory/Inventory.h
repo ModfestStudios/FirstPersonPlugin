@@ -47,7 +47,7 @@ struct FInventoryGridDebugData
 public:
 
 	UPROPERTY(BlueprintReadOnly)
-		FIntPoint GridKey;
+		FIntPoint GridKey = FIntPoint::ZeroValue;
 	UPROPERTY(BlueprintReadOnly)
 		TArray<FInventoryGridEntryDebugData> Entries;
 

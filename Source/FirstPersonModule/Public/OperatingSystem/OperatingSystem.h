@@ -62,7 +62,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Power-On Self Test")
 		FText Message;
 	UPROPERTY(EditAnywhere, Category = "Power-On Self Test")
-		float ExecuteTime;
+		float ExecuteTime = 0.0f;
 };
 
 //New file system in place of old directory structure (maintains files, directories, content, and path)

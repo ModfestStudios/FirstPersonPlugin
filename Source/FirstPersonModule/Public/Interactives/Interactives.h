@@ -62,7 +62,7 @@ struct FInteractiveActionConfig
 	GENERATED_BODY()
 public:
 
-	UPROPERTY()
+	UPROPERTY(meta = (IgnoreForMemberInitializationTest))
 		FGuid ID;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Interaction")
 		bool bEnabled = true;

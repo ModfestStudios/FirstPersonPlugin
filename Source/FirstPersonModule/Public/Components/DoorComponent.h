@@ -60,7 +60,7 @@ public:
 		bool bAnimateUsingCurve = false;
 	/*door motion*/
 	UPROPERTY(EditAnywhere, Category = "Animation", meta = (EditCondition = "bAnimateUsingCurve"))
-		UCurveFloat* AnimationCurve;	
+		UCurveFloat* AnimationCurve = nullptr;	
 	/*how far open/closed the door will be by the end*/
 	UPROPERTY(EditAnywhere, Category = "Animation")
 		float TargetPosition = 0;

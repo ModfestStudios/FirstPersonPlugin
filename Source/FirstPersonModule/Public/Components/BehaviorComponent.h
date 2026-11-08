@@ -59,7 +59,7 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		class AActor* Actor = nullptr;
 	UPROPERTY(BlueprintReadOnly)
-		EActorRelationship Relationship;	
+		EActorRelationship Relationship = EActorRelationship::Unknown;	
 	UPROPERTY(BlueprintReadOnly)
 		FThreatEvaluation Threat;
 	UPROPERTY(BlueprintReadOnly)

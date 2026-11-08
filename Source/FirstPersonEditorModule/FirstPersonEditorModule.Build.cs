@@ -13,6 +13,8 @@ public class FirstPersonEditorModule : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
+				"AnimGraph",
+				"BlueprintGraph",
 				"FirstPersonModule"
 			});
 		
@@ -23,7 +25,6 @@ public class FirstPersonEditorModule : ModuleRules
 				"SlateCore",
 				"EditorStyle",
 				"UnrealEd",
-				"BlueprintGraph",   // Required for FKismetEditorUtilities
 				"AssetTools",
 				"KismetCompiler",
 				"Kismet"  // Essential for Blueprint-related utilities

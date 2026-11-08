@@ -12,12 +12,12 @@ struct FElevatorDestination
 	GENERATED_BODY()
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Destination")
-		FVector Location;
+		FVector Location = FVector::ZeroVector;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Destination")
 		FName DestinationId = NAME_None;
 
 	FElevatorDestination() {};
-	FElevatorDestination(FName Id, FVector StartLocation) : DestinationId(Id), Location(StartLocation) {};	
+	FElevatorDestination(FName Id, FVector StartLocation) : Location(StartLocation), DestinationId(Id) {};	
 };
 
 

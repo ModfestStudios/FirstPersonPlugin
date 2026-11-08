@@ -38,7 +38,7 @@ public:
 	UPROPERTY()
 		UActorComponent* Interactive = nullptr;
 	UPROPERTY()
-		EInteractionStatus Status;
+		EInteractionStatus Status = EInteractionStatus::Unknown;
 
 
 	FInteraction() {};
